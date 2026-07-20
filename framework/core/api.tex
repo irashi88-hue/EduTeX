@@ -1,0 +1,53 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% EduTeX Framework
+%
+% File        : api.tex
+% Module      : Core
+%
+% Description :
+%   Public API exposed to books.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ProvidesFile{api.tex}[2026/07/19 EduTeX Public API]
+
+%=============================================================================
+% BOOK METADATA
+%=============================================================================
+
+\newcommand{\BookTitle}[1]{\gdef\EduTeXBookTitle{#1}}
+\newcommand{\BookSubtitle}[1]{\gdef\EduTeXBookSubtitle{#1}}
+\newcommand{\BookAuthor}[1]{\gdef\EduTeXBookAuthor{#1}}
+\newcommand{\BookVersion}[1]{\gdef\EduTeXBookVersion{#1}}
+
+%=============================================================================
+% FRAMEWORK CONFIGURATION
+%=============================================================================
+
+\newcommand{\UseTheme}[1]{\gdef\EduTeXTheme{#1}}
+\newcommand{\UseLayout}[1]{\gdef\EduTeXLayout{#1}}
+
+%=============================================================================
+% PLUGINS
+%=============================================================================
+
+\newcommand{\EnablePlugin}[1]{%
+    \edutex@info{Plugin requested: #1}%
+}
+
+%=============================================================================
+% LOAD BOOK
+%=============================================================================
+
+\newcommand{\EduTeXLoadBook}[1]{%
+    \edutex@loadbook{#1}%
+}
+
+%=============================================================================
+% BUILD BOOK
+%=============================================================================
+
+\newcommand{\EduTeXBuildBook}{%
+    \edutex@info{Building book}%
+}

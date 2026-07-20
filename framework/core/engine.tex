@@ -1,0 +1,78 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% EduTeX Framework
+%
+% File        : engine.tex
+% Module      : Core
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ProvidesFile{engine.tex}[2026/07/19 EduTeX Engine]
+
+\makeatletter
+
+%=============================================================================
+% INTERNAL STATE
+%=============================================================================
+
+\newif\ifedutex@initialized
+\edutex@initializedfalse
+
+%=============================================================================
+% LOAD MANIFEST
+%=============================================================================
+
+\newcommand{\edutex@loadmanifest}[1]{%
+    \edutex@info{Loading Manifest}%
+    \edutex@loadfile{#1}%
+}
+
+%=============================================================================
+% LOAD BOOK
+%=============================================================================
+
+\newcommand{\edutex@loadbook}[1]{%
+    \edutex@info{Loading book from '#1'}%
+    \edutex@loadmanifest{#1/manifest.tex}%
+    \edutex@info{Book loaded}%
+}
+
+%=============================================================================
+% LOAD THEME
+%=============================================================================
+
+\newcommand{\edutex@loadtheme}[1]{%
+    \edutex@info{Loading Theme '#1'}%
+}
+
+%=============================================================================
+% LOAD LAYOUT
+%=============================================================================
+
+\newcommand{\edutex@loadlayout}[1]{%
+    \edutex@info{Loading Layout '#1'}%
+}
+
+%=============================================================================
+% LOAD PLUGINS
+%=============================================================================
+
+\newcommand{\edutex@loadplugins}{%
+    \edutex@info{Loading Plugins}%
+}
+
+%=============================================================================
+% INITIALIZE FRAMEWORK
+%=============================================================================
+
+\newcommand{\edutex@initialize}{%
+    \ifedutex@initialized
+        \edutex@warning{Framework already initialized}
+    \else
+        \edutex@info{Initializing EduTeX Framework}
+        \global\edutex@initializedtrue
+        \edutex@info{Initialization completed}
+    \fi
+}
+
+\makeatother

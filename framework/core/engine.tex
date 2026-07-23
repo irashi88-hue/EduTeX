@@ -4,10 +4,11 @@
 %
 % File        : engine.tex
 % Module      : Core
+% Description : Internal framework engine.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\ProvidesFile{engine.tex}[2026/07/19 EduTeX Engine]
+\ProvidesFile{engine.tex}[2026/07/21 EduTeX Engine]
 
 \makeatletter
 
@@ -16,15 +17,39 @@
 %=============================================================================
 
 \newif\ifedutex@initialized
+
 \edutex@initializedfalse
+
+%=============================================================================
+% INITIALIZATION
+%=============================================================================
+
+\newcommand{\edutex@initialize}{%
+
+    \ifedutex@initialized
+
+        \edutex@warning{Framework already initialized}
+
+    \else
+
+        \global\edutex@initializedtrue
+
+        \edutex@info{EduTeX initialized}
+
+    \fi
+
+}
 
 %=============================================================================
 % LOAD MANIFEST
 %=============================================================================
 
 \newcommand{\edutex@loadmanifest}[1]{%
-    \edutex@info{Loading Manifest}%
-    \edutex@loadfile{#1}%
+
+    \edutex@info{Loading manifest '#1'}
+
+    \edutex@loadfile{#1}
+
 }
 
 %=============================================================================
@@ -32,47 +57,11 @@
 %=============================================================================
 
 \newcommand{\edutex@loadbook}[1]{%
-    \edutex@info{Loading book from '#1'}%
-    \edutex@loadmanifest{#1/manifest.tex}%
-    \edutex@info{Book loaded}%
-}
 
-%=============================================================================
-% LOAD THEME
-%=============================================================================
+    \edutex@info{Loading book '#1'}
 
-\newcommand{\edutex@loadtheme}[1]{%
-    \edutex@info{Loading Theme '#1'}%
-}
+    \edutex@loadmanifest{#1/manifest.tex}
 
-%=============================================================================
-% LOAD LAYOUT
-%=============================================================================
-
-\newcommand{\edutex@loadlayout}[1]{%
-    \edutex@info{Loading Layout '#1'}%
-}
-
-%=============================================================================
-% LOAD PLUGINS
-%=============================================================================
-
-\newcommand{\edutex@loadplugins}{%
-    \edutex@info{Loading Plugins}%
-}
-
-%=============================================================================
-% INITIALIZE FRAMEWORK
-%=============================================================================
-
-\newcommand{\edutex@initialize}{%
-    \ifedutex@initialized
-        \edutex@warning{Framework already initialized}
-    \else
-        \edutex@info{Initializing EduTeX Framework}
-        \global\edutex@initializedtrue
-        \edutex@info{Initialization completed}
-    \fi
 }
 
 \makeatother

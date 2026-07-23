@@ -1,14 +1,18 @@
 {
     "cSpell.words": [
+        "bootstrap",
         "Dativ",
+        "EduTeX",
         "Genitiv",
+        "initializedfalse",
+        "initializedtrue",
+        "latexmk",
+        "loadfile",
+        "loadmanifest",
+        "manifest",
         "Perfekt",
         "Präteritum",
-        "Raiola",
-        "EduTeX",
-        "latexmk",
-        "manifest",
-        "bootstrap"
+        "Raiola"
     ],
 
     "latex-workshop.latex.autoBuild.run": "onSave",

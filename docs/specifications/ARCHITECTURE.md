@@ -17,7 +17,7 @@
 
 **Version:** 2.0.0
 
-**Status:** Draft
+**Status:** Released
 
 **Classification:** Authoritative
 
@@ -318,79 +318,108 @@ Runtime behavior is specified by the Runtime Architecture Specification.
 
 ## 9.1 Overview
 
-Architectural components are the fundamental building blocks of the EduTeX Framework.
+The EduTeX Framework is composed of Architectural Elements.
 
-Each component encapsulates a single architectural responsibility and collaborates with other components through well-defined public contracts.
+An Architectural Element represents a distinct entity within the architectural model and SHALL belong to exactly one architectural category.
 
-The Architecture Specification defines the component model.
+The architecture recognizes three categories of Architectural Elements:
 
-The internal design of each component SHALL be defined exclusively within its dedicated Component Specification.
+- Architectural Components
+- Architectural Mechanisms
+- User Assets
 
----
-
-# 9.2 Component Definition
-
-An architectural component is an autonomous architectural element that:
-
-- owns a single architectural responsibility;
-- exposes a well-defined public interface;
-- encapsulates its internal implementation;
-- collaborates through explicit dependencies;
-- can evolve independently within architectural constraints.
-
-Architectural components SHALL remain implementation independent.
+Each category defines a different architectural responsibility.
 
 ---
 
-# 9.3 Component Characteristics
+# 9.2 Architectural Components
 
-Every architectural component SHALL satisfy the following characteristics.
+An Architectural Component is an autonomous Architectural Element that owns a single architectural responsibility.
 
-## Single Responsibility
+An Architectural Component SHALL:
 
-Each component SHALL own one architectural capability.
+- own exactly one architectural capability;
+- expose one or more public architectural contracts;
+- encapsulate its internal implementation;
+- declare its dependencies explicitly;
+- evolve independently within architectural constraints.
 
-Responsibilities SHALL NOT overlap between components.
+Architectural Components SHALL own behavior.
 
----
+Architectural Components MAY own internal state.
 
-## Encapsulation
+Architectural Components SHALL NOT own other Architectural Components.
 
-Internal implementation details SHALL remain private to the component.
-
-Only public contracts MAY be consumed by other architectural elements.
-
----
-
-## Explicit Dependencies
-
-Dependencies SHALL be explicitly declared.
-
-Implicit dependencies SHALL NOT exist.
+Component composition SHALL be achieved through collaboration rather than containment.
 
 ---
 
-## Replaceability
+# 9.3 Architectural Mechanisms
 
-A component SHOULD be replaceable provided its public contract remains unchanged.
+An Architectural Mechanism is an Architectural Element responsible for coordinating collaboration between Architectural Components.
+
+Architectural Mechanisms SHALL NOT own business responsibilities.
+
+Architectural Mechanisms SHALL NOT own educational knowledge.
+
+Architectural Mechanisms MAY coordinate multiple Architectural Components.
+
+Architectural Mechanisms MAY maintain internal execution state required to perform coordination.
+
+Architectural Mechanisms SHALL expose public architectural contracts when interaction with other elements is required.
+
+Current Architectural Mechanisms include:
+
+- Extension System
+- Build System
 
 ---
 
-## Independence
+# 9.4 User Assets
 
-Whenever possible, components SHOULD evolve independently from one another.
+User Assets represent the educational artifacts manipulated by the framework.
+
+User Assets SHALL remain independent from Runtime Infrastructure.
+
+User Assets SHALL NOT contain framework implementation logic.
+
+Current User Assets include:
+
+- Knowledge Models
+
+Future versions MAY introduce additional asset categories.
 
 ---
 
-# 9.4 Component Relationships
+# 9.5 Public Architectural Contracts
 
-Architectural components collaborate through explicitly defined relationships.
+Collaboration between Architectural Elements SHALL occur exclusively through Public Architectural Contracts.
+
+A Public Architectural Contract defines the externally visible capabilities offered by an Architectural Element.
+
+Public Architectural Contracts MAY include:
+
+- services;
+- interfaces;
+- extension points;
+- configuration contracts;
+- resource contracts.
+
+Internal implementation SHALL NEVER be considered part of a Public Architectural Contract.
+
+---
+
+# 9.6 Component Relationships
+
+Architectural Components collaborate through explicitly defined relationships.
 
 The architecture recognizes the following relationship types.
 
 ## Dependency
 
-One component requires services provided by another component.
+A component requires services provided by another Architectural Element.
+
+Dependencies SHALL be explicit.
 
 Dependencies SHALL be unidirectional.
 
@@ -398,13 +427,15 @@ Dependencies SHALL be unidirectional.
 
 ## Coordination
 
-Architectural mechanisms MAY coordinate multiple components without owning their responsibilities.
+Architectural Mechanisms coordinate collaboration between Architectural Components.
+
+Coordination SHALL NOT transfer ownership of responsibilities.
 
 ---
 
 ## Ownership
 
-Each responsibility SHALL be owned by exactly one architectural component.
+Every architectural responsibility SHALL be owned by exactly one Architectural Component.
 
 Ownership SHALL NOT be shared.
 
@@ -412,21 +443,19 @@ Ownership SHALL NOT be shared.
 
 ## Visibility
 
-Components SHALL expose only their public architectural contracts.
+Architectural Elements SHALL expose only their Public Architectural Contracts.
 
 Internal implementation SHALL remain hidden.
 
 ---
 
-# 9.5 Component Specifications
+# 9.7 Component Specifications
 
-Every architectural component SHALL own a dedicated Component Specification.
+Every Architectural Component SHALL own a dedicated Component Specification.
 
 Component Specifications constitute the authoritative description of component behavior.
 
-This document SHALL reference Component Specifications but SHALL NOT duplicate their internal design.
-
-The current architectural components are documented by the following specifications.
+This document SHALL reference Component Specifications but SHALL NOT duplicate their internal architecture.
 
 | Component | Specification |
 |-----------|---------------|
@@ -436,17 +465,17 @@ The current architectural components are documented by the following specificati
 | Resolver | RESOLVER_SPEC.md |
 | Activator | ACTIVATOR_SPEC.md |
 
-Additional Component Specifications MAY be introduced as the architecture evolves.
+Additional Component Specifications MAY be introduced without modifying the architectural model.
 
 ---
 
-# 9.6 Architectural Boundaries
+# 9.8 Architectural Boundaries
 
 The Architecture Specification defines:
 
-- architectural structure;
-- architectural responsibilities;
+- the Architectural Element Model;
 - architectural relationships;
+- dependency rules;
 - architectural constraints.
 
 Component Specifications define:
@@ -460,4 +489,302 @@ Component Specifications define:
 
 This separation SHALL be preserved throughout the framework documentation.
 
-Architectural documents SHALL NOT duplicate information owned by Component Specifications.
+# 10. Dependency Model
+
+## 10.1 Overview
+
+The EduTeX Framework follows a strictly controlled dependency model.
+
+Dependencies define the static relationships between architectural elements.
+
+The dependency model SHALL guarantee:
+
+- deterministic architecture;
+- low coupling;
+- high cohesion;
+- architectural stability;
+- independent evolution of components.
+
+Dependency relationships describe architectural structure only.
+
+They SHALL NOT describe runtime execution.
+
+---
+
+# 10.2 Dependency Principles
+
+Architectural dependencies SHALL follow these principles.
+
+## Unidirectional Dependencies
+
+Dependencies SHALL always have a single direction.
+
+Bidirectional dependencies SHALL NOT exist.
+
+---
+
+## Explicit Dependencies
+
+Every dependency SHALL be explicitly defined.
+
+Implicit architectural dependencies SHALL NOT exist.
+
+---
+
+## Dependency Visibility
+
+Components SHALL depend only on public architectural contracts.
+
+Internal implementation SHALL NOT be visible outside the owning component.
+
+---
+
+## Stable Dependencies
+
+Higher-level architectural elements SHOULD depend on more stable architectural elements.
+
+Lower-level infrastructure SHALL NOT depend on higher-level services.
+
+---
+
+# 10.3 Architectural Dependency Hierarchy
+
+The architectural dependency hierarchy is defined as follows.
+
+```text
+                User Assets
+                     │
+                     ▼
+           Framework Services
+                     │
+                     ▼
+      Architectural Mechanisms
+                     │
+                     ▼
+        Runtime Infrastructure
+```
+
+Dependencies SHALL always point toward lower architectural layers.
+
+Reverse dependencies SHALL NOT exist.
+
+---
+
+# 10.4 Dependency Graph
+
+The Runtime Infrastructure provides the foundation of the framework.
+
+Framework Services consume Runtime Infrastructure.
+
+Architectural Mechanisms coordinate architectural elements without owning their responsibilities.
+
+User Assets remain independent from framework implementation.
+
+The conceptual dependency graph is shown below.
+
+```text
+                   User Assets
+                         │
+                         ▼
+                Framework Services
+              ┌──────────┼──────────┐
+              │          │          │
+          Knowledge    Theme     Layout
+              │          │          │
+              └──────────┼──────────┘
+                         │
+                         ▼
+            Architectural Mechanisms
+             ┌──────────────────────┐
+             │ Extension System     │
+             │ Build System         │
+             └──────────────────────┘
+                         │
+                         ▼
+             Runtime Infrastructure
+      ┌─────────────────────────────────┐
+      │ Core                            │
+      │ Configuration                   │
+      │ Registry                        │
+      │ Resolver                        │
+      │ Activator                       │
+      └─────────────────────────────────┘
+```
+
+This graph represents the static architecture of the framework.
+
+It SHALL NOT be interpreted as a runtime sequence diagram.
+
+---
+
+# 11. Design Rules
+
+The following rules govern every architectural decision within the EduTeX Framework.
+
+## DR-001 — Unidirectional Dependencies
+
+Architectural dependencies SHALL be unidirectional.
+
+Circular dependencies SHALL NOT exist.
+
+---
+
+## DR-002 — Single Responsibility
+
+Each architectural component SHALL own exactly one architectural responsibility.
+
+Responsibilities SHALL NOT overlap.
+
+---
+
+## DR-003 — Configuration Ownership
+
+Configuration SHALL be managed exclusively by the Configuration component.
+
+Other components SHALL consume configuration without owning it.
+
+---
+
+## DR-004 — Encapsulation
+
+Architectural components SHALL expose functionality exclusively through public contracts.
+
+Internal implementation SHALL remain encapsulated.
+
+---
+
+## DR-005 — Separation of Concerns
+
+Architectural Components, Architectural Mechanisms and User Assets SHALL remain conceptually independent.
+
+Their responsibilities SHALL NOT overlap.
+
+---
+
+## DR-006 — Component Isolation
+
+Each architectural component SHALL own its internal architecture.
+
+Component implementation SHALL be documented exclusively in its dedicated Component Specification.
+
+---
+
+## DR-007 — Architectural Ownership
+
+Every architectural concept SHALL have a single authoritative document.
+
+The ownership model is defined as follows.
+
+| Architectural Concept | Authoritative Document |
+|------------------------|------------------------|
+| Framework Vision | FRAMEWORK_SPEC.md |
+| Static Architecture | ARCHITECTURE.md |
+| Runtime Behaviour | RUNTIME_ARCHITECTURE.md |
+| Component Behaviour | Individual Component Specifications |
+
+Architectural information SHALL NOT be duplicated across authoritative documents.
+
+---
+
+## DR-008 — Architectural Stability
+
+The Architecture Specification SHALL evolve only when the architectural model changes.
+
+Implementation changes SHALL NOT require modifications to this document.
+
+# 12. Documentation Mapping
+
+## 12.1 Documentation Hierarchy
+
+The EduTeX Framework documentation is organized as a hierarchy of authoritative specifications.
+
+Each document owns a specific architectural concern.
+
+The documentation hierarchy is defined as follows.
+
+```text
+Level 0
+└── Vision
+
+Level 1
+└── FRAMEWORK_SPEC.md
+
+Level 2
+├── ARCHITECTURE.md
+└── RUNTIME_ARCHITECTURE.md
+
+Level 3
+├── CORE_SPEC.md
+├── CONFIGURATION_SPEC.md
+├── REGISTRY_SPEC.md
+├── RESOLVER_SPEC.md
+├── ACTIVATOR_SPEC.md
+└── Additional Component Specifications
+
+Level 4+
+└── Domain-specific specifications
+```
+
+Each lower-level document SHALL conform to the architectural constraints defined by higher-level specifications.
+
+---
+
+## 12.2 Documentation Responsibilities
+
+Architectural responsibilities are distributed as follows.
+
+| Document | Responsibility |
+|-----------|----------------|
+| FRAMEWORK_SPEC.md | Framework vision, goals and overall design philosophy |
+| ARCHITECTURE.md | Static architectural structure and architectural rules |
+| RUNTIME_ARCHITECTURE.md | Runtime lifecycle, execution model and processing pipelines |
+| Component Specifications | Detailed definition of individual architectural components |
+
+Each architectural concept SHALL have exactly one authoritative owner.
+
+---
+
+## 12.3 Architectural Traceability
+
+Every architectural decision SHALL be traceable to one authoritative document.
+
+Specifications SHALL reference higher-level documents rather than duplicate their contents.
+
+Traceability SHALL be preserved throughout the documentation hierarchy.
+
+---
+
+# 13. Normative References
+
+The following documents are normative references for this specification.
+
+- FRAMEWORK_SPEC.md
+- SPECIFICATION_STANDARD.md
+- SPECIFICATION_TEMPLATE.md
+- DOCUMENTATION_ARCHITECTURE.md
+
+The latest approved version of each document SHALL be considered authoritative.
+
+---
+
+# 14. Future Evolution
+
+The Architecture Specification defines the stable architectural model of the EduTeX Framework.
+
+Future architectural revisions SHALL preserve:
+
+- architectural consistency;
+- separation of concerns;
+- documentation ownership;
+- implementation independence.
+
+New architectural elements MAY be introduced provided they comply with the principles and design rules defined by this specification.
+
+---
+
+# 15. Change History
+
+| Version | Date | Description |
+|----------|------|-------------|
+| 1.x.x | Previous Releases | Initial architecture definition |
+| 2.0.0 | 05/08/2026 | Major architectural refactoring introducing the Architectural Element Model, Runtime Infrastructure, Framework Services, Architectural Mechanisms, User Assets, Component Model separation and Runtime Architecture extraction. |

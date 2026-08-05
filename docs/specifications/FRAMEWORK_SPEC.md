@@ -8,39 +8,32 @@
 
 ---
 
-## Document Information
+Document ID: FW-SPEC-001
 
-| Field | Value |
-|--------|-------|
-| Document Title | EduTeX Framework Specification |
-| Document ID | FW-SPEC |
-| Version | 1.0.0-RC1 |
-| Status | Review |
-| Classification | Governing Document |
-| Authors | EduTeX Project |
+Version: 1.1.0
 
-### Review Status
+Status: Released
 
-| Review | Status |
-|---------|--------|
-| Technical Review | ✓ |
-| Editorial Review | ✓ |
-| Structural Review | ✓ |
-| Information Ownership Review | ✓ |
-| Terminology Review | ✓ |
-| Diagram Strategy Review | ✓ |
-| Completeness Review | ✓ |
+Classification: Authoritative
+
+Owner: EduTeX Framework
+
+Level: Level 1 — Framework
+
+Parent Document: Vision
+
+
 
 ### Dependencies
 
 None
 
-### Referenced By
+### Related documents
 
-- ARCH
-- TERM
 - DIR-SPEC
 - FILE-SPEC
+- ARCHITECTURE.md
+- RUNTIME_ARCHITECTURE.md
 
 ---
 
@@ -93,6 +86,14 @@ This document is the root specification of the EduTeX project.
 
 # Out of Scope
 
+The Framework Specification SHALL NOT define:
+
+- static architecture;
+- runtime execution;
+- runtime lifecycle;
+- processing pipelines;
+- component internal behaviour.
+
 This document intentionally does not define:
 
 - implementation details;
@@ -125,10 +126,9 @@ This document intentionally focuses on governing principles rather than implemen
     - I.3 Design Philosophy
     - I.4 Design Principles
 - Part II - Framework
-    - II.1 Repository Overview
+    - II.1 Framework Organization
     - II.2 Framework Lifecycle
-    - II.3 Startup Flow
-    - II.4 Processing Flow
+    - II.3 Processing Flow
 - Part III - Development
     - III.1 Build System
     - III.2 Documentation
@@ -146,6 +146,10 @@ This document intentionally focuses on governing principles rather than implemen
 The Project section defines the fundamental principles upon which the EduTeX framework is built.
 
 It establishes the long-term vision of the project, its objectives, the design philosophy adopted during development and the principles governing all architectural and implementation decisions.
+
+The EduTeX Framework is organized through a hierarchy of Architectural Elements.
+
+The detailed architectural organization is defined by the Architecture Specification.
 
 The concepts introduced in this part are normative and apply to every component of the framework.
 
@@ -296,7 +300,7 @@ This section intentionally describes the framework from a conceptual perspective
 
 -------------------------------------------------------------------------------
 
-# II.1 Repository Overview
+# II.1 Framework Organization
 
 ## Purpose
 
@@ -313,6 +317,7 @@ Its organization is designed to support independent evolution of framework compo
 This section introduces the repository at a conceptual level only.
 
 The physical directory hierarchy, responsibilities and dependencies are documented in the corresponding Repository and Directory Specifications.
+
 
 ## Principles
 
@@ -341,78 +346,12 @@ Describes the high-level lifecycle followed during framework execution.
 
 ## Description
 
-The Framework Lifecycle defines the major phases through which the framework progresses from initialization to document generation.
-
-Each phase has a well-defined responsibility and contributes to the overall execution of the framework.
-
-The lifecycle provides a stable conceptual model independent of implementation details.
-
-## Lifecycle Phases
-
-1. Compiler Entry
-2. Bootstrap
-3. Configuration
-4. Framework Initialization
-5. Resource Loading
-6. Document Assembly
-7. Output Generation
-
-Each phase is described conceptually in this specification.
-
-Detailed responsibilities and implementation mechanisms are defined in the Architecture Specification.
-
-## Design Decisions
-
-The lifecycle represents the conceptual execution model of EduTeX and remains independent from the implementation of individual components.
-
-## Related Sections
-
-- Startup Flow
-- Processing Flow
-
-## Related Documents
-
-- ARCH
+The runtime lifecycle of the EduTeX Framework is defined by the Runtime Architecture Specification.
 
 -------------------------------------------------------------------------------
 
-# II.3 Startup Flow
 
-## Purpose
-
-Describes how control enters the framework and how initialization begins.
-
-## Description
-
-The Startup Flow defines the sequence of operations performed before the framework becomes operational.
-
-Its objective is to establish a valid execution environment by preparing the framework infrastructure and loading the information required by subsequent phases.
-
-The Startup Flow concludes once the framework has completed its initialization and is ready to process educational content.
-
-## Principles
-
-- Initialization shall follow a deterministic sequence.
-- Dependencies shall be resolved before use.
-- Initialization responsibilities shall remain separated.
-- Errors shall be detected as early as possible.
-
-## Design Decisions
-
-The Startup Flow defines responsibilities rather than implementation details.
-
-## Related Sections
-
-- Framework Lifecycle
-- Processing Flow
-
-## Related Documents
-
-- ARCH
-
--------------------------------------------------------------------------------
-
-# II.4 Processing Flow
+# II.3 Processing Flow
 
 ## Purpose
 
@@ -420,34 +359,7 @@ Describes the conceptual processing sequence followed after framework initializa
 
 ## Description
 
-The Processing Flow defines how the initialized framework transforms educational knowledge into the final document.
-
-It describes the logical progression of processing stages while intentionally abstracting implementation details.
-
-Each stage consumes the output of the previous one, progressively refining the document until the final output is produced.
-
-## Processing Stages
-
-1. Educational Knowledge Processing
-2. Theme Processing
-3. Layout Processing
-4. Plugin Processing
-5. Document Assembly
-6. Output Generation
-
-The detailed behavior of each stage is specified by the Architecture Specification.
-
-## Design Decisions
-
-Processing stages describe conceptual responsibilities and shall not be interpreted as implementation modules.
-
-## Related Sections
-
-- Framework Lifecycle
-
-## Related Documents
-
-- ARCH
+The document processing model is defined by the Runtime Architecture Specification.
 
 ---
 
@@ -486,7 +398,9 @@ The implementation of the build system shall remain modular and extensible in or
 
 ## Design Decisions
 
-The Build System is considered part of the development infrastructure rather than part of the framework runtime.
+The Build System is an Architectural Mechanism responsible for document generation.
+
+Its architectural definition is provided by the Architecture Specification.
 
 ## Related Sections
 
@@ -513,6 +427,16 @@ Every architectural decision shall be documented before implementation.
 Documentation provides the governing knowledge of the project and represents the primary source of truth for contributors.
 
 Project documentation evolves together with the framework through controlled reviews and versioned releases.
+
+FRAMEWORK_SPEC
+
+│
+
+├── ARCHITECTURE
+
+├── RUNTIME_ARCHITECTURE
+
+└── COMPONENT_SPECIFICATIONS
 
 ## Principles
 
@@ -622,6 +546,14 @@ Every extension shall be evaluated from both technical and documentation perspec
 - Review changes before adoption.
 - Evolve incrementally.
 
+Future revisions SHALL preserve the separation between:
+
+- Framework Vision
+- Static Architecture
+- Runtime Architecture
+- Component Specifications.
+
+
 ## Design Decisions
 
 Future extensions shall derive from the governing documents of the project.
@@ -708,14 +640,15 @@ Examples:
 
 | Version | Date | Description |
 |----------|------|-------------|
-| 1.0.0-RC1 | TBD | First assembled release candidate |
+| 1.0.0-RC1 | 28/07/2026 | First assembled release candidate |
+| 1.1.0 | 05/08/2026 | Minor issue aligned with V2 architecture |
 
 -------------------------------------------------------------------------------
 
 # Document Status
 
-Status: Review
+Status: Released
 
 Next Milestone:
 
-Framework Specification v1.0.0 (Frozen)
+Framework Specification v1.1.0 (Frozen)

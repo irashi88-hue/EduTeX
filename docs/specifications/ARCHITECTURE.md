@@ -15,7 +15,7 @@
 
 **Document ID:** ARCH-SPEC-001
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 
 **Status:** Released
 
@@ -754,7 +754,85 @@ Traceability SHALL be preserved throughout the documentation hierarchy.
 
 ---
 
-# 13. Normative References
+# 13. Architectural Component Model
+
+## 13.1 Purpose
+
+This chapter complements the static Architecture Specification by providing a high-level architectural description of the framework components.
+
+It defines the architectural capability of each major component and the conceptual dependency relationships between them.
+
+This chapter SHALL NOT redefine responsibilities, interfaces or implementation details.
+
+Detailed behaviour SHALL remain the responsibility of the corresponding Component Specifications.
+
+---
+
+## 13.2 Runtime Infrastructure
+
+The Runtime Infrastructure provides the execution services required to coordinate the EduTeX Framework.
+
+It consists of the following architectural components.
+
+| Component | Architectural Capability |
+|-----------|--------------------------|
+| Core | Coordinates framework execution and runtime orchestration. |
+| Configuration | Provides validated framework configuration to all architectural components. |
+| Registry | Maintains the authoritative registry of runtime entities managed by the framework. |
+| Resolver | Resolves relationships and references between registered runtime entities. |
+| Activator | Activates runtime entities according to the Runtime Lifecycle. |
+
+The architectural capability describes the primary purpose of a component.
+
+It SHALL NOT be interpreted as a complete responsibility specification.
+
+Detailed responsibilities SHALL be defined by the corresponding Component Specification.
+
+---
+
+## 13.3 Runtime Infrastructure Dependency Model
+
+The Runtime Infrastructure follows a hierarchical dependency model.
+
+The conceptual dependency graph is illustrated below.
+
+```text
+                Core
+                  │
+                  ▼
+          Configuration
+                  │
+                  ▼
+              Registry
+                  │
+                  ▼
+              Resolver
+                  │
+                  ▼
+              Activator
+```
+
+Dependencies SHALL follow the direction defined by this model.
+
+Lower-level components SHALL NOT introduce reverse dependencies.
+
+Components SHALL collaborate exclusively through their Architectural Contracts.
+
+The Runtime Infrastructure Dependency Model complements, but SHALL NOT replace, the dependency rules defined by this Architecture Specification.
+
+---
+
+## 13.4 Architectural Constraints
+
+The Architectural Component Model SHALL satisfy the following constraints.
+
+- Every architectural component SHALL define one primary architectural capability.
+- Architectural capabilities SHALL describe purpose, not implementation.
+- Dependencies SHALL remain acyclic.
+- Component Specifications SHALL elaborate, but SHALL NOT contradict, the Architectural Component Model.
+- Future architectural components SHALL extend this model without modifying existing dependency relationships unless an architectural revision is approved.
+
+# 14. Normative References
 
 The following documents are normative references for this specification.
 
@@ -767,7 +845,7 @@ The latest approved version of each document SHALL be considered authoritative.
 
 ---
 
-# 14. Future Evolution
+# 15. Future Evolution
 
 The Architecture Specification defines the stable architectural model of the EduTeX Framework.
 
@@ -788,3 +866,4 @@ New architectural elements MAY be introduced provided they comply with the princ
 |----------|------|-------------|
 | 1.x.x | Previous Releases | Initial architecture definition |
 | 2.0.0 | 05/08/2026 | Major architectural refactoring introducing the Architectural Element Model, Runtime Infrastructure, Framework Services, Architectural Mechanisms, User Assets, Component Model separation and Runtime Architecture extraction. |
+| 2.1.0 | 06/08/2026 | Add Architectural Component Model to close architectural cap on model capability |

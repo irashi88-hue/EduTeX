@@ -1,7 +1,7 @@
 document_id:      COMP-RES-001
 title:            EduTeX Resolver Component Specification
 type:             Component Specification
-version:          1.0.0
+version:          1.0.1
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -318,6 +318,12 @@ Registry
 
 Read-only access to the authoritative entity registry.
 
+REG-002 Entity Registration Contract
+
+Registry
+
+Informs Resolver of recognized reference types and entity structure.
+
 8.3 Contract Stability
 
 All public contracts defined in §8.1 are architectural contracts.
@@ -616,6 +622,12 @@ Version
 Date
 
 Description
+
+1.0.1
+
+2026-08-20
+
+Add REG-002 to §8.2 consumed contracts table (review fix)
 
 1.0.0
 

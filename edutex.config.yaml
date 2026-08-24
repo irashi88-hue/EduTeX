@@ -1,0 +1,39 @@
+# EduTeX Project Configuration
+# Schema version: 1.0.0
+# Reference: CONFIGURATION_SPEC.md (CFG-001, CFG-002)
+
+edutex:
+  version: "0.1.0"
+
+# --- Knowledge Model selection ---
+knowledge:
+  # Path to the Knowledge Model source file (relative to project root)
+  model: "assets/knowledge_models/example.md"
+
+# --- Theme selection ---
+theme:
+  # Name of the theme to apply (must match a directory under assets/themes/)
+  name: "default"
+
+# --- Layout selection ---
+layout:
+  # Name of the layout to apply (must match a directory under assets/layouts/)
+  name: "default"
+
+# --- Build configuration ---
+build:
+  # Output format: "pdf" (via LaTeX) | "latex" | "html"
+  output_format: "pdf"
+  # Output directory (relative to project root)
+  output_dir: "output"
+  # Output filename (without extension)
+  output_file: "document"
+
+# --- Extension configuration ---
+extensions:
+  # List of enabled extensions (empty = no extensions)
+  enabled: []
+
+# --- Logging ---
+logging:
+  level: "INFO"   # DEBUG | INFO | WARNING | ERROR

@@ -1,7 +1,7 @@
 document_id:      MECH-BUILD-001
 title:            EduTeX Build System Specification
 type:             Component Specification
-version:          1.0.0
+version:          1.0.1
 status:           Draft
 owner:            EduTeX Architectural Mechanisms
 level:            3
@@ -413,7 +413,7 @@ The following constraints govern the Build System.
 
 BUILD-C-001 — No Content Ownership
 
-The Build System SHALL NOT own or modify educational content, visual styling rules, or document structure.
+The Build System SHALL NOT own or modify educational content, educational knowledge, visual styling rules, or document structure.
 
 These belong exclusively to Knowledge, Theme, and Layout respectively.
 
@@ -608,6 +608,12 @@ Version
 Date
 
 Description
+
+1.0.1
+
+2026-08-22
+
+Add educational knowledge boundary to BUILD-C-001 (R5)
 
 1.0.0
 

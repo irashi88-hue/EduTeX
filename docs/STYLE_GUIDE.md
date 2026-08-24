@@ -2,7 +2,7 @@
 document_id:      DS-STYLE-001
 title:            EduTeX Document Style Guide
 type:             Document Standard
-version:          1.2.0
+version:          1.3.0
 status:           Frozen
 owner:            EduTeX Project
 level:            1
@@ -79,7 +79,7 @@ All contributors to the EduTeX project SHALL read this document before producing
 
 # 5. Metadata Block
 
-## 7.1 Format
+## 5.1 Format
 
 Every document SHALL open with a YAML frontmatter block delimited by `---`.
 
@@ -103,7 +103,7 @@ informative_refs:
 ---
 ```
 
-## 7.2 Required Fields
+## 5.2 Required Fields
 
 | Field             | Description                                              |
 |-------------------|----------------------------------------------------------|
@@ -118,7 +118,7 @@ informative_refs:
 | `normative_refs`  | List of normative reference filenames                    |
 | `informative_refs`| List of informative reference filenames (may be empty)   |
 
-## 7.3 Document ID Convention
+## 5.3 Document ID Convention
 
 Document IDs follow the pattern `PREFIX-TYPE-NNN`:
 
@@ -154,7 +154,7 @@ Allowed values for the `status` field, in lifecycle order:
 
 # 6. Document Title
 
-## 5.1 Rule
+## 6.1 Rule
 
 Immediately after the closing `---` of the metadata block, every document SHALL include a single `#` heading with the document title.
 
@@ -178,7 +178,7 @@ A horizontal rule `---` SHALL follow the title heading to visually separate it f
 # 1. Purpose
 ```
 
-## 5.2 No Filename as Title
+## 6.2 No Filename as Title
 
 The document filename SHALL NOT be used as the document title heading.
 
@@ -364,7 +364,7 @@ The extended format SHALL be used consistently within a section — compact and 
 
 # 11. Tables
 
-## 13.1 Format
+## 11.1 Format
 
 Tables SHALL use standard Markdown pipe syntax.
 
@@ -377,13 +377,13 @@ Column headers SHALL be written in title case.
 | Configuration | CONFIGURATION_SPEC.md|
 ```
 
-## 13.2 Alignment
+## 11.2 Alignment
 
 Columns SHALL be left-aligned by default.
 
 Numeric columns MAY be right-aligned.
 
-## 13.3 Usage
+## 11.3 Usage
 
 Tables SHALL be used for:
 
@@ -558,6 +558,7 @@ Each architectural element SHALL own a clearly defined responsibility. Responsib
 | 1.0.0   | 2026-08-07 | Initial release                                                                                                                                                                                                                                          |
 | 1.1.0   | 2026-08-07 | Fixed subsection numbering in §2; clarified separator semantics in §7; unified normative keyword styling in §8; corrected document level; added PROC prefix to §4.3; added §15 Language, §16 Inline Notes, §17 Line Breaks; reordered closing sections |
 | 1.2.0   | 2026-08-07 | Added §2 Intended Audience; renumbered all subsequent sections; clarified title separator rule in §9; added explicit rule for separators between named rules in §11.1; added Change History row to Quick Reference; status set to Frozen |
+| 1.3.0   | 2026-08-24 | Fixed subsection numbering in §5 (was 7.x), §6 (was 5.x) and §11 (was 13.x) to match their parent section numbers. No content changes. |
 
 ---
 

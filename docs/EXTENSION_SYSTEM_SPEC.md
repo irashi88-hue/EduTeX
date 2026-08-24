@@ -1,7 +1,7 @@
 document_id:      MECH-EXT-001
 title:            EduTeX Extension System Specification
 type:             Component Specification
-version:          1.0.0
+version:          1.0.1
 status:           Draft
 owner:            EduTeX Architectural Mechanisms
 level:            3
@@ -124,7 +124,11 @@ maintaining the registry of declared extension points exposed by Framework Servi
 
 loading and validating extensions registered in the activated framework state;
 
+identifying applicable extensions registered in the activated framework state;
+
 coordinating extension contribution at each declared extension point during Extension Processing;
+
+integrating extension-provided capabilities into document processing at each extension point;
 
 enforcing extension isolation so that extensions cannot modify core component behavior;
 
@@ -156,7 +160,11 @@ loading extensions from the activated framework state via ACT-001 during the Ini
 
 validating that loaded extensions conform to the Extension Contract (EXT-001);
 
+identifying applicable extensions registered in the activated framework state;
+
 coordinating extension contribution at each declared extension point during Extension Processing;
+
+integrating extension-provided capabilities into document processing at each extension point;
 
 enforcing extension isolation: extensions SHALL NOT modify the internal state of any Framework Services component;
 
@@ -382,7 +390,7 @@ The following constraints govern the Extension System.
 
 EXT-C-001 — No Business Responsibility Ownership
 
-The Extension System SHALL NOT own educational content, visual styling, or document structure responsibilities.
+The Extension System SHALL NOT own educational content, educational knowledge, visual styling, or document structure responsibilities.
 
 These belong exclusively to Knowledge, Theme, and Layout respectively.
 
@@ -416,7 +424,13 @@ EXT-C-007 — Fatal Error on Extension Failure
 
 If a required extension fails to load or fails during contribution, the Extension System SHALL propagate a fatal error through CC-003.
 
-EXT-C-008 — Technology Independence
+EXT-C-008 — No Runtime Lifecycle Modification
+
+Extensions coordinated by the Extension System SHALL NOT modify the core runtime lifecycle.
+
+The Extension System SHALL enforce this boundary through EXT-001 and EXT-002.
+
+EXT-C-009 — Technology Independence
 
 The Extension System SHALL remain independent from any specific implementation technology.
 
@@ -564,7 +578,7 @@ None (extensions contribute into Framework Services; Build System follows)
 
 Key Constraints
 
-No business ownership, extension isolation, deterministic ordering, validation before contribution
+No business ownership, no runtime lifecycle modification, extension isolation, deterministic ordering, validation before contribution
 
 Extension Points
 
@@ -577,6 +591,12 @@ Version
 Date
 
 Description
+
+1.0.1
+
+2026-08-22
+
+Add identify/integrate responsibilities (R7), add EXT-C-008 lifecycle constraint, add educational knowledge boundary (R5)
 
 1.0.0
 

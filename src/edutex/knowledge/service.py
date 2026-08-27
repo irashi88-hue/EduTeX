@@ -98,7 +98,7 @@ class KnowledgeService:
                 "Register a Knowledge Model entity before running Knowledge Processing."
             )
 
-        km_path = project_root / km_entity.source_path
+        km_path = km_entity.source_path if km_entity.source_path.is_absolute() else project_root / km_entity.source_path
 
         # Step 2 — load and validate frontmatter (KNOW-002)
         meta, body = load_knowledge_model(km_path)

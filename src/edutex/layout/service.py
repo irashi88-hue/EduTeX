@@ -105,7 +105,7 @@ class LayoutService:
                 "Register a Layout entity before running Layout Processing."
             )
 
-        layout_path = project_root / layout_entity.source_path / "layout.yaml"
+        layout_path = layout_entity.source_path if layout_entity.source_path.is_absolute() else project_root / layout_entity.source_path / "layout.yaml"
 
         # Step 2 — load layout asset → LayoutModel (LAYOUT-002)
         self._layout_model = self._load_layout(layout_path)

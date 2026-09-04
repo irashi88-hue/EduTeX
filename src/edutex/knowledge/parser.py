@@ -242,6 +242,11 @@ def parse(source: str) -> list[dict]:
             flush_text()
             node, i = _parse_block(lines, i, depth=0)
             ast.append(node.to_dict())
+        elif _CLOSE_RE.match(stripped):
+            raise ParseError(
+                "Unexpected closing delimiter ':::'. There is no open shortcode to close.",
+                i + 1,
+            )
         else:
             pending_text.append(line)
             i += 1

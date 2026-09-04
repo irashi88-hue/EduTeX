@@ -8,7 +8,7 @@ edutex:
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
-  model: "assets/knowledge_models/edutex_visual_test.md"
+  model: "assets/knowledge_models/example.md"
 
 # --- Theme selection ---
 theme:
@@ -23,11 +23,11 @@ layout:
 # --- Build configuration ---
 build:
   # Output format: "pdf" (via LaTeX) | "latex" | "html"
-  output_format: "html"
+  output_format: "pdf"
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)
-  output_file: "visual_test"
+  output_file: "document"
 
 # --- Extension configuration ---
 extensions:

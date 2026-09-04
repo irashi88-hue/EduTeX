@@ -26,7 +26,7 @@ from edutex.core.errors import LayoutError
 from edutex.knowledge.models import TextBlock
 from edutex.layout.models import (
     AppendixConfig, DocumentElement, DocumentStructure,
-    LayoutModel, PageConfig, PlacementRule,
+    LayoutModel, PageConfig, PlacementRule, SolutionReference,
 )
 from edutex.registry.models import EntityType
 from edutex.theme.models import StyledContent, StyledNode
@@ -105,7 +105,12 @@ class LayoutService:
                 "Register a Layout entity before running Layout Processing."
             )
 
-        layout_path = layout_entity.source_path if layout_entity.source_path.is_absolute() else project_root / layout_entity.source_path / "layout.yaml"
+        configured_path = project_root / layout_entity.source_path
+        layout_path = (
+            configured_path / "layout.yaml"
+            if configured_path.is_dir()
+            else configured_path
+        )
 
         # Step 2 — load layout asset → LayoutModel (LAYOUT-002)
         self._layout_model = self._load_layout(layout_path)
@@ -175,36 +180,75 @@ class LayoutService:
     def _build_structure(
         self, styled_content: StyledContent, layout_model: LayoutModel
     ) -> DocumentStructure:
-        """
-        Assign placement rules to styled nodes and determine document order.
-        Collects solution nodes into the appendix if enabled.
-        """
+        """Build ordered elements and stable exercise/solution references."""
         elements: list[DocumentElement] = []
         prose_blocks: list[tuple[int, TextBlock]] = []
         appendix_nodes: list[StyledNode] = []
+        solution_references: list[SolutionReference] = []
         position = 0
+        exercise_index = 0
 
         for item in styled_content.items:
             if isinstance(item, TextBlock):
                 prose_blocks.append((position, item))
                 position += 1
-            elif isinstance(item, StyledNode):
-                # Collect solutions into appendix (they are nested inside exercises)
-                if item.node_type == "solution" and layout_model.appendix.enabled:
-                    appendix_nodes.append(item)
-                    continue
+                continue
+            if not isinstance(item, StyledNode):
+                continue
 
-                placement = layout_model.get_placement(item.node_type)
-                elements.append(DocumentElement(
-                    styled_node=item,
-                    placement=placement,
-                    position_index=position,
-                ))
-                position += 1
+            exercise_id = ""
+            solution_id = ""
+            solution_index = 0
+            if item.node_type == "exercise":
+                exercise_index += 1
+                exercise_id = f"exercise-{exercise_index}"
+                solution = next(
+                    (child for child in item.children if child.node_type == "solution"),
+                    None,
+                )
+                if solution is not None and layout_model.appendix.enabled:
+                    solution_index = exercise_index
+                    solution_id = f"solution-{solution_index}"
+                    exercise_title = self._extract_title(item.body)[0]
+                    solution_title = self._extract_title(solution.body)[0]
+                    appendix_nodes.append(solution)
+                    solution_references.append(SolutionReference(
+                        index=solution_index,
+                        exercise_id=exercise_id,
+                        solution_id=solution_id,
+                        exercise_title=exercise_title,
+                        solution_title=solution_title,
+                    ))
+
+            # Solutions remain semantic children of exercises and never become
+            # body elements. Top-level solutions are also kept out of the body.
+            if item.node_type == "solution":
+                if layout_model.appendix.enabled:
+                    appendix_nodes.append(item)
+                continue
+
+            placement = layout_model.get_placement(item.node_type)
+            elements.append(DocumentElement(
+                styled_node=item,
+                placement=placement,
+                position_index=position,
+                exercise_id=exercise_id,
+                solution_id=solution_id,
+                solution_index=solution_index,
+            ))
+            position += 1
 
         return DocumentStructure(
             elements=elements,
             prose_blocks=prose_blocks,
             layout_model=layout_model,
             appendix_nodes=appendix_nodes,
+            solution_references=solution_references,
         )
+
+    @staticmethod
+    def _extract_title(body: str) -> tuple[str, str]:
+        lines = body.strip().splitlines()
+        if lines and lines[0].startswith("title:"):
+            return lines[0][len("title:"):].strip(), "\n".join(lines[1:]).lstrip("\n")
+        return "", body.strip()

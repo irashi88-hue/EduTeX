@@ -23,7 +23,7 @@ layout:
 # --- Build configuration ---
 build:
   # Output format: "pdf" (via LaTeX) | "latex" | "html"
-  output_format: "html"
+  output_format: "pdf"
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)

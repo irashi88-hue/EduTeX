@@ -55,8 +55,10 @@ def _register_project_assets(config, project_root: Path) -> Registry:
     registry = Registry()
 
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
-    theme_path = project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
-    layout_path = project_root / "assets" / "layouts" / config.layout.name / "layout.yaml"
+    theme_dir = project_root / "assets" / "themes" / config.theme.name
+    layout_dir = project_root / "assets" / "layouts" / config.layout.name
+    theme_path = theme_dir / "theme.yaml"
+    layout_path = layout_dir / "layout.yaml"
 
     _require_file(knowledge_path, "Knowledge Model")
     _require_file(theme_path, "Theme asset")
@@ -70,12 +72,12 @@ def _register_project_assets(config, project_root: Path) -> Registry:
     registry.register(EntityRecord(
         entity_id=config.theme.name,
         entity_type=EntityType.THEME,
-        source_path=theme_path,
+        source_path=theme_dir,
     ))
     registry.register(EntityRecord(
         entity_id=config.layout.name,
         entity_type=EntityType.LAYOUT,
-        source_path=layout_path,
+        source_path=layout_dir,
     ))
 
     for extension_id in config.extensions.enabled:

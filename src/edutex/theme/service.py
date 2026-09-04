@@ -99,7 +99,12 @@ class ThemeService:
                 "Register a Theme entity before running Theme Processing."
             )
 
-        theme_path = theme_entity.source_path if theme_entity.source_path.is_absolute() else project_root / theme_entity.source_path / "theme.yaml"
+        configured_path = project_root / theme_entity.source_path
+        theme_path = (
+            configured_path / "theme.yaml"
+            if configured_path.is_dir()
+            else configured_path
+        )
 
         # Step 2 — load theme asset → ThemeModel (THEME-002)
         self._theme_model = self._load_theme(theme_path)

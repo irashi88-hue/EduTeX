@@ -77,6 +77,16 @@ class LayoutModel:
         )
 
 
+@dataclass(frozen=True)
+class SolutionReference:
+    """Stable link between an exercise and its appendix solution."""
+    index: int
+    exercise_id: str
+    solution_id: str
+    exercise_title: str = ""
+    solution_title: str = ""
+
+
 @dataclass
 class DocumentElement:
     """
@@ -86,6 +96,9 @@ class DocumentElement:
     styled_node:    StyledNode
     placement:      PlacementRule
     position_index: int    # order in the final document
+    exercise_id: str = ""
+    solution_id: str = ""
+    solution_index: int = 0
 
     @property
     def node_type(self) -> str:
@@ -104,6 +117,7 @@ class DocumentStructure:
     prose_blocks:    list[tuple[int, TextBlock]]  # (position_index, block)
     layout_model:    LayoutModel
     appendix_nodes:  list[StyledNode] = field(default_factory=list)
+    solution_references: list[SolutionReference] = field(default_factory=list)
 
     def ordered_elements(self) -> list[DocumentElement]:
         """Return elements in their final document order."""

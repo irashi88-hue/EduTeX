@@ -18,6 +18,7 @@ from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.core.errors import EduTeXError
 from edutex.knowledge.service import KnowledgeService
+from edutex.extension.service import ExtensionService
 from edutex.layout.service import LayoutService
 from edutex.registry.models import EntityRecord, EntityType
 from edutex.registry.registry import Registry
@@ -76,6 +77,18 @@ def _register_project_assets(config, project_root: Path) -> Registry:
         entity_type=EntityType.LAYOUT,
         source_path=layout_path,
     ))
+
+    for extension_id in config.extensions.enabled:
+        extension_path = (
+            project_root / "assets" / "extensions" / extension_id / "extension.yaml"
+        )
+        _require_file(extension_path, f"Extension asset '{extension_id}'")
+        registry.register(EntityRecord(
+            entity_id=extension_id,
+            entity_type=EntityType.EXTENSION,
+            source_path=extension_path,
+        ))
+
     registry.close_registration_window()
     return registry
 
@@ -104,8 +117,18 @@ def build_project(config_path: Path, project_root: Path) -> Path:
     layout = LayoutService()
     layout.process(state, theme, project_root)
 
+    extensions = ExtensionService()
+    extensions.process(state, layout, project_root)
+
     build = BuildService()
-    build.build(config, knowledge, theme, layout, project_root)
+    build.build(
+        config,
+        knowledge,
+        theme,
+        layout,
+        project_root,
+        document=extensions.document,
+    )
     return build.output_path
 
 
@@ -181,6 +204,8 @@ def validate_command(project_root: Path, config_file: Path) -> None:
         theme.process(state, knowledge, project_root)
         layout = LayoutService()
         layout.process(state, theme, project_root)
+        extensions = ExtensionService()
+        extensions.process(state, layout, project_root)
     except EduTeXError as exc:
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:

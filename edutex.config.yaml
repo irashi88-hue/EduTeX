@@ -23,7 +23,7 @@ layout:
 # --- Build configuration ---
 build:
   # Output format: "pdf" (via LaTeX) | "latex" | "html"
-  output_format: "pdf"
+  output_format: "html"
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)
@@ -32,7 +32,8 @@ build:
 # --- Extension configuration ---
 extensions:
   # List of enabled extensions (empty = no extensions)
-  enabled: []
+  enabled:
+    - reading_tip
 
 # --- Logging ---
 logging:

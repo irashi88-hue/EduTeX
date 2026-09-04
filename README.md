@@ -59,7 +59,7 @@ edutex build --project path/to/project --config edutex.config.yaml
 
 The `build` command runs the complete pipeline:
 
-`configuration -> registry -> resolver -> activator -> knowledge -> theme -> layout -> build`
+`configuration -> registry -> resolver -> activator -> knowledge -> theme -> layout -> extensions -> build`
 
 The output format and destination are controlled by the `build` section of
 `edutex.config.yaml`. With `output_format: pdf`, EduTeX writes the LaTeX source and compiles the PDF with `latexmk` (or `pdflatex`
@@ -78,3 +78,22 @@ python -m pytest -q
 The integration suite verifies configuration validation, the complete pipeline,
 LaTeX source generation, explicit failure when no LaTeX compiler is available,
 and PDF generation when `latexmk` or `pdflatex` is installed.
+
+
+### Extensions
+
+Extensions are optional assets under `assets/extensions/<extension-id>/`.
+Each extension contains an `extension.yaml` manifest and a Python module with
+one callable entrypoint. Enable an extension by listing its ID in the project
+configuration:
+
+```yaml
+extensions:
+  enabled:
+    - reading_tip
+```
+
+The example `reading_tip` extension targets `layout.post_structure` and is
+intentionally disabled by default. Extensions run after Layout and before
+Build; they receive an isolated document snapshot and must return a new
+`DocumentStructure`.

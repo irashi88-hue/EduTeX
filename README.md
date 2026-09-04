@@ -41,3 +41,40 @@ tools/               # Developer tooling scripts
 ## Specifications
 
 All architectural specifications are located in docs/.
+
+## Command Line Usage
+
+From the project root:
+
+```bash
+edutex validate
+edutex build
+```
+
+Options:
+
+```bash
+edutex build --project path/to/project --config edutex.config.yaml
+```
+
+The `build` command runs the complete pipeline:
+
+`configuration -> registry -> resolver -> activator -> knowledge -> theme -> layout -> build`
+
+The output format and destination are controlled by the `build` section of
+`edutex.config.yaml`. With `output_format: pdf`, EduTeX writes the LaTeX source and compiles the PDF with `latexmk` (or `pdflatex`
+as a fallback). If neither compiler is installed, the command fails explicitly
+after preserving the generated `.tex` source. With `output_format: latex`, it
+writes only the `.tex` source.
+
+## Automated Integration Tests
+
+From the project root, with the development dependencies installed:
+
+```bash
+python -m pytest -q
+```
+
+The integration suite verifies configuration validation, the complete pipeline,
+LaTeX source generation, explicit failure when no LaTeX compiler is available,
+and PDF generation when `latexmk` or `pdflatex` is installed.

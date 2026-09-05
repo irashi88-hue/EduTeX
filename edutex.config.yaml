@@ -8,7 +8,7 @@ edutex:
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
-  model: "assets/knowledge_models/edutex_visual_test.md"
+  model: "assets/knowledge_models/it-a1-present-tense.md"
 
 # --- Theme selection ---
 theme:

@@ -42,18 +42,44 @@ tools/               # Developer tooling scripts
 
 All architectural specifications are located in docs/.
 
-## Command Line Usage
+## Simple usage
+
+### Create a project
+
+EduTeX can create a ready-to-build project with one command:
+
+```bash
+edutex init my-project
+```
+
+The starter project uses the midnight-blue `dark` theme by default. Use `--theme default` for the light theme and `--language it` or `--language en` to select the starter language.
+
+The starter project uses HTML by default, so it does not require a LaTeX
+distribution. Validate and build it with:
+
+```bash
+edutex validate --project my-project
+edutex build --project my-project
+```
+
+Open `my-project/output/document.html` in a browser. To avoid overwriting an
+existing directory, `init` refuses non-empty folders unless `--force` is used.
+
+### Windows launcher
+
+On Windows, double-click `edutex_launcher.pyw`. The launcher creates a local
+`.edutex-venv` environment and installs EduTeX only on first use. Later
+validation and builds reuse that environment; no manual activation is needed.
+Use **Create project** for a new project, or choose an existing project folder
+and click **Validate** or **Build**.
+
+### Command line options
 
 From the project root:
 
 ```bash
 edutex validate
 edutex build
-```
-
-Options:
-
-```bash
 edutex build --project path/to/project --config edutex.config.yaml
 ```
 
@@ -75,9 +101,9 @@ From the project root, with the development dependencies installed:
 python -m pytest -q
 ```
 
-The integration suite verifies configuration validation, the complete pipeline,
-LaTeX source generation, explicit failure when no LaTeX compiler is available,
-and PDF generation when `latexmk` or `pdflatex` is installed.
+The integration suite verifies project initialization, configuration validation,
+the complete pipeline, LaTeX source generation, explicit failure when no LaTeX
+compiler is available, and PDF generation when `latexmk` or `pdflatex` is installed.
 
 
 ### Extensions

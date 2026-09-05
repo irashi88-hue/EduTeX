@@ -9,6 +9,8 @@ It does not implement parsing, styling, layout, or LaTeX rendering itself.
 from __future__ import annotations
 
 import logging
+import shutil
+from importlib.resources import as_file, files
 from pathlib import Path
 
 import click
@@ -55,10 +57,8 @@ def _register_project_assets(config, project_root: Path) -> Registry:
     registry = Registry()
 
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
-    theme_dir = project_root / "assets" / "themes" / config.theme.name
-    layout_dir = project_root / "assets" / "layouts" / config.layout.name
-    theme_path = theme_dir / "theme.yaml"
-    layout_path = layout_dir / "layout.yaml"
+    theme_path = project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
+    layout_path = project_root / "assets" / "layouts" / config.layout.name / "layout.yaml"
 
     _require_file(knowledge_path, "Knowledge Model")
     _require_file(theme_path, "Theme asset")
@@ -72,12 +72,12 @@ def _register_project_assets(config, project_root: Path) -> Registry:
     registry.register(EntityRecord(
         entity_id=config.theme.name,
         entity_type=EntityType.THEME,
-        source_path=theme_dir,
+        source_path=theme_path,
     ))
     registry.register(EntityRecord(
         entity_id=config.layout.name,
         entity_type=EntityType.LAYOUT,
-        source_path=layout_dir,
+        source_path=layout_path,
     ))
 
     for extension_id in config.extensions.enabled:
@@ -138,6 +138,76 @@ def build_project(config_path: Path, project_root: Path) -> Path:
 @click.version_option(version=CLI_VERSION, prog_name="edutex")
 def main() -> None:
     """EduTeX — generate educational documents from Knowledge Models."""
+
+
+@main.command("init")
+@click.argument(
+    "project_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("edutex-project"),
+    required=False,
+)
+@click.option(
+    "--theme",
+    type=click.Choice(["default", "dark"], case_sensitive=False),
+    default="dark",
+    show_default=True,
+    help="Theme for the generated project.",
+)
+@click.option(
+    "--language",
+    type=click.Choice(["en", "it"], case_sensitive=False),
+    default="it",
+    show_default=True,
+    help="Language stored in the starter knowledge model.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Overwrite the generated starter files in an existing directory.",
+)
+def init_command(project_dir: Path, theme: str, language: str, force: bool) -> None:
+    """Create a ready-to-build EduTeX project."""
+    target = project_dir.expanduser().resolve()
+    if target.exists() and not target.is_dir():
+        raise click.ClickException(f"Project path is not a directory: {target}")
+
+    if target.exists() and any(target.iterdir()) and not force:
+        raise click.ClickException(
+            f"Project directory is not empty: {target}. "
+            "Choose an empty directory or pass --force."
+        )
+
+    target.mkdir(parents=True, exist_ok=True)
+    try:
+        template = files("edutex.project_template")
+        with as_file(template) as template_path:
+            for name in ("edutex.config.yaml", "README.md"):
+                shutil.copy2(template_path / name, target / name)
+            shutil.copytree(
+                template_path / "assets",
+                target / "assets",
+                dirs_exist_ok=True,
+            )
+            config_path = target / "edutex.config.yaml"
+            config_text = config_path.read_text(encoding="utf-8")
+            config_path.write_text(
+                config_text.replace('name: "dark"', f'name: "{theme.lower()}"', 1),
+                encoding="utf-8",
+            )
+            model_path = target / "assets" / "knowledge_models" / "example.md"
+            model_text = model_path.read_text(encoding="utf-8")
+            model_path.write_text(
+                model_text.replace("language: it", f"language: {language.lower()}", 1),
+                encoding="utf-8",
+            )
+    except OSError as exc:
+        raise click.ClickException(f"Could not create project: {exc}") from exc
+
+    click.echo(f"EduTeX project created: {target}")
+    click.echo("Next steps:")
+    click.echo(f"  edutex validate --project {target}")
+    click.echo(f"  edutex build --project {target}")
 
 
 @main.command("build")

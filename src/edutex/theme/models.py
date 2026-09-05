@@ -40,6 +40,7 @@ class ThemeModel:
     theme_name: str
     version:    str
     styles:     dict[str, StyleRule] = field(default_factory=dict)
+    palette:    dict[str, str] = field(default_factory=dict)
 
     def get_style(self, node_type: str) -> StyleRule:
         """

@@ -1,0 +1,92 @@
+# EduTeX Default Layout
+# Layout ID: default
+# Version: 1.0.0
+#
+# Defines the structural organization of the generated document.
+# Specifies page geometry, section order, and placement rules per node type.
+
+id: default
+name: "EduTeX Default Layout"
+version: "1.0.0"
+
+page:
+  size: "A4"
+  margin_top_mm: 25
+  margin_bottom_mm: 25
+  margin_left_mm: 30
+  margin_right_mm: 25
+  columns: 1
+
+# Order in which content node types appear in the document.
+# Types not listed here follow natural source order.
+section_order:
+  - rule
+  - note
+  - example
+  - vocab
+  - verb
+  - conjugation
+  - formula
+  - exercise
+
+# Placement rules per node type
+placement:
+  rule:
+    page_break_before: false
+    keep_with_next: true
+    spacing_before_mm: 6
+    spacing_after_mm: 4
+
+  note:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 4
+    spacing_after_mm: 4
+
+  example:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 4
+    spacing_after_mm: 4
+
+  exercise:
+    page_break_before: false
+    keep_with_next: true
+    spacing_before_mm: 8
+    spacing_after_mm: 6
+
+  vocab:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 3
+    spacing_after_mm: 3
+
+  conjugation:
+    page_break_before: false
+    keep_with_next: true
+    spacing_before_mm: 6
+    spacing_after_mm: 6
+
+  verb:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 3
+    spacing_after_mm: 3
+
+  formula:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 6
+    spacing_after_mm: 6
+
+  _default:
+    page_break_before: false
+    keep_with_next: false
+    spacing_before_mm: 4
+    spacing_after_mm: 4
+
+# Appendix: where solutions are collected
+appendix:
+  enabled: true
+  title: "Solutions"
+  page_break_before: true

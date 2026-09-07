@@ -38,6 +38,116 @@ docs/                # Architecture and specification documents
 tools/               # Developer tooling scripts
 ```
 
+
+## Release 0.2.0 — Interactive HTML exercises
+
+EduTeX 0.2.0 consolidates the first interactive exercise toolkit for HTML
+output. The implementation remains renderer-based: lesson authors can use the
+exercise types below without changing the parser, layout, or solution appendix.
+
+### Supported exercise types
+
+#### Fill-in-the-blank with clickable words
+
+```text
+::: exercise
+title: Completa la frase
+type: cloze
+sentence: Ich ______ Luca.
+answers:
+- heiße
+::: solution
+Ich heiße Luca.
+:::
+:::
+```
+
+The available words can be clicked into the blanks, removed by clicking the
+filled blank, checked, and reset. Each blank receives visual feedback.
+
+#### Short answer
+
+```text
+::: exercise
+title: Rispondi alla domanda
+type: short_answer
+prompt: Come ti chiami?
+answer: Ich heiße Luca.
+::: solution
+Ich heiße Luca.
+:::
+:::
+```
+
+Short-answer fields include a German special-character bar (`ä ö ü Ä Ö Ü ß`)
+that inserts a character at the cursor position. Final punctuation (`.`, `!`,
+`?`, `…`) is ignored during answer comparison.
+
+#### True or false
+
+```text
+::: exercise
+title: Verifica le frasi
+type: true_false
+statement: Berlin è la capitale della Germania.
+answer: true
+statement: Wien è la capitale della Svizzera.
+answer: false
+:::
+```
+
+#### Sentence builder
+
+```text
+::: exercise
+title: Costruisci la frase
+type: builder
+tokens:
+- Ich
+- heiße
+- Luca.
+::: solution
+Ich heiße Luca.
+:::
+:::
+```
+
+Words are shuffled and selected with buttons. Selected words can be removed,
+then the sentence can be checked or reset.
+
+#### Matching
+
+```text
+::: exercise
+title: Abbina le parole
+type: matching
+words:
+- Hallo
+- Tschüss
+meanings:
+- ciao
+- arrivederci
+::: solution
+Hallo = ciao; Tschüss = arrivederci.
+:::
+:::
+```
+
+Matching meanings are shuffled, cannot be reused within the same exercise, and
+can be checked or reset. The HTML renderer also keeps the existing solution
+toggle and appendix link.
+
+### HTML interaction conventions
+
+All interactive exercises are generated as self-contained HTML. They use
+keyboard-accessible controls, visible focus styles, localized Italian labels
+for German lessons, and client-side feedback without external JavaScript
+libraries or network requests.
+
+LaTeX and other output paths remain available through the existing build
+configuration. This release intentionally pauses the addition of new exercise
+types so the current set can be tested and refined before further expansion.
+
 ## Specifications
 
 All architectural specifications are located in docs/.
@@ -51,8 +161,6 @@ EduTeX can create a ready-to-build project with one command:
 ```bash
 edutex init my-project
 ```
-
-The starter project uses the midnight-blue `dark` theme by default. Use `--theme default` for the light theme and `--language it` or `--language en` to select the starter language.
 
 The starter project uses HTML by default, so it does not require a LaTeX
 distribution. Validate and build it with:

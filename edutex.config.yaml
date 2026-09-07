@@ -8,7 +8,7 @@ edutex:
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
-  model: "assets/knowledge_models/it-a1-present-tense.md"
+  model: "assets/knowledge_models/de-a1-unit-01.md"
 
 # --- Theme selection ---
 theme:
@@ -27,13 +27,12 @@ build:
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)
-  output_file: "visual_test"
+  output_file: "document"
 
 # --- Extension configuration ---
 extensions:
   # List of enabled extensions (empty = no extensions)
-  enabled:
-    - reading_tip
+  enabled: []
 
 # --- Logging ---
 logging:

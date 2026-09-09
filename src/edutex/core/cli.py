@@ -8,6 +8,7 @@ It does not implement parsing, styling, layout, or LaTeX rendering itself.
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 from importlib.resources import as_file, files
@@ -20,6 +21,7 @@ from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.core.errors import EduTeXError
 from edutex.knowledge.service import KnowledgeService
+from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
 from edutex.extension.service import ExtensionService
 from edutex.layout.service import LayoutService
 from edutex.registry.models import EntityRecord, EntityType
@@ -28,7 +30,7 @@ from edutex.resolver.resolver import Resolver
 from edutex.theme.service import ThemeService
 
 
-CLI_VERSION = "0.1.0"
+CLI_VERSION = "0.3.0"
 
 
 def _configure_logging(level: str) -> None:
@@ -95,14 +97,48 @@ def _register_project_assets(config, project_root: Path) -> Registry:
     return registry
 
 
-def build_project(config_path: Path, project_root: Path) -> Path:
+def _run_lint_preflight(config, project_root: Path, *, output_format: str = "text"):
+    """Lint the configured Knowledge Model before an opt-in build."""
+    source_path = _resolve_path(project_root, config.knowledge.model)
+    _require_file(source_path, "Knowledge Model")
+    try:
+        report = ShortcodeLinter().lint_file(source_path)
+    except (OSError, UnicodeError) as exc:
+        raise click.ClickException(f"Could not read source file: {exc}") from exc
+
+    if output_format == "text":
+        click.echo(format_text(report))
+    return report
+
+
+def _format_build_json(report, *, status: str, output_path: Path | None = None, message: str | None = None) -> str:
+    """Serialize one complete build/lint result without mixed terminal text."""
+    payload = {
+        "lint": report.to_dict() if report is not None else None,
+        "build": {"status": status},
+    }
+    if output_path is not None:
+        payload["build"]["output"] = str(output_path)
+    if message is not None:
+        payload["build"]["message"] = message
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def build_project(
+    config_path: Path,
+    project_root: Path,
+    *,
+    config=None,
+) -> Path:
     """
     Execute the complete EduTeX pipeline for a project.
 
     This function is separate from Click so it can be tested without a
-    subprocess and reused by future frontends.
+    subprocess and reused by future frontends. An already-loaded config may
+    be supplied by callers that need to perform a preflight first.
     """
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
     _configure_logging(config.logging.level.value)
 
     registry = _register_project_assets(config, project_root)
@@ -156,7 +192,7 @@ def main() -> None:
 )
 @click.option(
     "--language",
-    type=click.Choice(["en", "it"], case_sensitive=False),
+    type=click.Choice(["en", "it", "ja"], case_sensitive=False),
     default="it",
     show_default=True,
     help="Language stored in the starter knowledge model.",
@@ -196,11 +232,18 @@ def init_command(project_dir: Path, theme: str, language: str, force: bool) -> N
                 encoding="utf-8",
             )
             model_path = target / "assets" / "knowledge_models" / "example.md"
-            model_text = model_path.read_text(encoding="utf-8")
-            model_path.write_text(
-                model_text.replace("language: it", f"language: {language.lower()}", 1),
-                encoding="utf-8",
-            )
+            if language.lower() == "ja":
+                japanese_template = (
+                    template_path / "assets" / "knowledge_models" / "example-ja.md"
+                )
+                if japanese_template.is_file():
+                    shutil.copy2(japanese_template, model_path)
+            else:
+                model_text = model_path.read_text(encoding="utf-8")
+                model_path.write_text(
+                    model_text.replace("language: it", f"language: {language.lower()}", 1),
+                    encoding="utf-8",
+                )
     except OSError as exc:
         raise click.ClickException(f"Could not create project: {exc}") from exc
 
@@ -208,6 +251,35 @@ def init_command(project_dir: Path, theme: str, language: str, force: bool) -> N
     click.echo("Next steps:")
     click.echo(f"  edutex validate --project {target}")
     click.echo(f"  edutex build --project {target}")
+
+
+@main.command("lint")
+@click.argument(
+    "source_file",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(("text", "json"), case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Report format for terminal or tooling integration.",
+)
+def lint_command(source_file: Path, output_format: str) -> None:
+    """Lint one Knowledge Model source file without building it."""
+    try:
+        report = ShortcodeLinter().lint_file(source_file)
+    except (OSError, UnicodeError) as exc:
+        raise click.ClickException(f"Could not read source file: {exc}") from exc
+
+    if output_format.lower() == "json":
+        click.echo(report.to_json())
+    else:
+        click.echo(format_text(report))
+
+    if not report.valid:
+        raise click.exceptions.Exit(1)
 
 
 @main.command("build")
@@ -227,19 +299,59 @@ def init_command(project_dir: Path, theme: str, language: str, force: bool) -> N
     show_default=True,
     help="Configuration file, relative to the project directory unless absolute.",
 )
-def build_command(project_root: Path, config_file: Path) -> None:
+@click.option(
+    "--lint",
+    "run_lint",
+    is_flag=True,
+    help="Run shortcode linting before the build.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(("text", "json"), case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Output format for the build result and optional lint report.",
+)
+def build_command(project_root: Path, config_file: Path, run_lint: bool, output_format: str) -> None:
     """Build the configured project and produce the selected output."""
     project_root = project_root.resolve()
     config_path = _resolve_path(project_root, config_file)
 
+    output_format = output_format.lower()
+    lint_report = None
     try:
-        output_path = build_project(config_path, project_root)
+        config = None
+        if run_lint:
+            config = load_config(config_path)
+            lint_report = _run_lint_preflight(
+                config,
+                project_root,
+                output_format=output_format,
+            )
+            if not lint_report.valid:
+                message = "Build blocked: shortcode lint found errors."
+                if output_format == "json":
+                    click.echo(_format_build_json(lint_report, status="blocked", message=message))
+                else:
+                    click.echo(message)
+                raise click.exceptions.Exit(1)
+        output_path = build_project(config_path, project_root, config=config)
     except EduTeXError as exc:
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:
         raise click.ClickException(f"File operation failed: {exc}") from exc
 
-    click.echo(f"Build completed: {output_path}")
+    if output_format == "json":
+        click.echo(
+            _format_build_json(
+                lint_report,
+                status="completed",
+                output_path=output_path,
+            )
+        )
+    else:
+        click.echo(f"Build completed: {output_path}")
 
 
 @main.command("validate")

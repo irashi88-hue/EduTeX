@@ -1,10 +1,9 @@
-# EduTeX Project Configuration
+﻿# EduTeX Project Configuration
 # Schema version: 1.0.0
 # Reference: CONFIGURATION_SPEC.md (CFG-001, CFG-002)
 
 edutex:
-  version: "0.1.0"
-
+  version: "0.3.0"
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
@@ -37,3 +36,5 @@ extensions:
 # --- Logging ---
 logging:
   level: "INFO"   # DEBUG | INFO | WARNING | ERROR
+
+

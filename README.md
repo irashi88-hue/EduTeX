@@ -39,6 +39,29 @@ tools/               # Developer tooling scripts
 ```
 
 
+
+## Release 0.3.0 — Shortcode authoring quality
+
+EduTeX 0.3.0 adds authoring-time quality checks for Knowledge Models. The
+standalone `lint` command, the opt-in `build --lint` preflight, deterministic
+JSON output, and semantic shortcode diagnostics help identify source problems
+before rendering. The normal build remains unchanged unless `--lint` is passed.
+
+### Japanese Knowledge Models
+
+The initial Japanese path accepts `ja` in Knowledge Model metadata and in the
+project initializer:
+
+```powershell
+edutex init japanese-project --language ja --theme default
+```
+
+The generated starter lesson covers あいさつと自己紹介 (greetings and
+introductions) and uses mixed kanji, hiragana, and katakana. HTML output uses
+`lang="ja"` and Japanese interface labels. LaTeX output keeps the Unicode
+content and selects a CJK-capable preamble; PDF output requires XeLaTeX or
+LuaLaTeX through `latexmk` or directly.
+
 ## Release 0.2.0 — Interactive HTML exercises
 
 EduTeX 0.2.0 consolidates the first interactive exercise toolkit for HTML
@@ -231,3 +254,128 @@ The example `reading_tip` extension targets `layout.post_structure` and is
 intentionally disabled by default. Extensions run after Layout and before
 Build; they receive an isolated document snapshot and must return a new
 `DocumentStructure`.
+
+
+### Lint preflight durante il build
+
+Il lint durante il build è opt-in: il comando normale resta invariato e non
+controlla gli shortcode automaticamente.
+
+```powershell
+edutex build --project path/to/project
+edutex build --project path/to/project --lint
+```
+
+Con `--lint`, EduTeX controlla il Knowledge Model configurato prima di avviare
+il pipeline. Gli errori bloccano il build con codice di uscita `1`; i warning
+vengono mostrati ma non impediscono la generazione dell'output.
+
+Per strumenti CI o editor è disponibile un report JSON deterministico:
+
+```powershell
+edutex build --project path/to/project --lint --format json
+```
+
+Il formato testuale resta il predefinito:
+
+```powershell
+edutex build --project path/to/project --lint --format text
+```
+
+Il report JSON contiene sempre due sezioni:
+
+| Campo | Contenuto |
+| --- | --- |
+| `lint` | Report del Knowledge Model: `path`, `valid`, `errors`, `warnings` |
+| `build` | Esito del build: `status`, più `output` se completato o `message` se bloccato |
+
+Gli stati possibili sono:
+
+- `completed`: il lint non ha errori e il build è terminato correttamente;
+- `blocked`: il lint contiene almeno un errore e il build non è stato avviato.
+
+Esempio di successo:
+
+```json
+{
+  "lint": {
+    "path": "assets/knowledge_models/example.md",
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  },
+  "build": {
+    "status": "completed",
+    "output": "output/document.html"
+  }
+}
+```
+
+Esempio di blocco:
+
+```json
+{
+  "lint": {
+    "path": "assets/knowledge_models/example.md",
+    "valid": false,
+    "errors": [
+      {
+        "severity": "error",
+        "code": "SC101",
+        "message": "formula requires a non-empty body."
+      }
+    ],
+    "warnings": []
+  },
+  "build": {
+    "status": "blocked",
+    "message": "Build blocked: shortcode lint found errors."
+  }
+}
+```
+
+## Quality baseline
+
+EduTeX includes a lightweight validation baseline that does not require
+importing the complete runtime. It protects version consistency,
+Python compilation, the supported interactive-exercise dispatch table, and the
+self-contained accessible HTML contract.
+
+Run the dependency-free check from the project root:
+
+```bash
+python tools/validate_release.py
+```
+
+When the development dependencies are installed, run the smoke test suite too:
+
+```bash
+python -m pytest -q tests/test_release_smoke.py
+```
+
+The full end-to-end pipeline remains the preferred check when all framework
+modules and project assets are available.
+
+## Local quality baseline
+
+Run the local quality baseline from the project root:
+
+```powershell
+python tools\quality_check.py
+```
+
+The check is deterministic and does not install packages or use the network. It
+verifies Python syntax, the configured pytest suite, the standalone lint command
+in text and JSON modes, the opt-in `build --lint` preflight, and the public CLI
+commands and options. Use `--verbose` to print additional diagnostics:
+
+```powershell
+python tools\quality_check.py --verbose
+```
+
+The regular build remains unchanged; the lint preflight is opt-in:
+
+```powershell
+edutex build
+edutex build --lint
+```

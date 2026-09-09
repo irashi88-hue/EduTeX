@@ -1,15 +1,15 @@
 edutex:
-  version: "0.3.0"
+  version: "0.1.0"
 knowledge:
   model: "assets/knowledge_models/example.md"
 theme:
-  name: "dark"
+  name: "default"
 layout:
   name: "default"
 build:
-  output_format: "html"
+  output_format: "pdf"
   output_dir: "output"
-  output_file: "document"
+  output_file: "integration_document"
 extensions:
   enabled: []
 logging:

@@ -193,11 +193,10 @@ In questa unità sai usare:
 - **Bist du …?** — sei …?;
 - **Ja** e **nein**;
 - le forme principali di **sein** e **heißen**.
-
 ::: exercise
 title: Scegli la forma corretta
 type: choice
-question: Scegli la forma corretta di “chiamarsi”:
+Scegli la forma corretta di “chiamarsi”:
 options:
 - heißen
 - heiße

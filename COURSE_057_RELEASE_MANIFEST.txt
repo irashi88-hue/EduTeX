@@ -1,0 +1,23 @@
+EduTeX 0.5.7 Accessibility HTML tranche
+
+This incremental patch strengthens keyboard navigation and landmark semantics
+for generated course and lesson HTML while preserving existing presentation and
+progression behavior.
+
+Changes:
+  - add a focus-visible skip link to the course index;
+  - add an identified, focusable main course-content landmark;
+  - add a focus-visible skip link to generated lesson pages;
+  - add an identified, focusable lesson-content landmark;
+  - add explicit aria-label values to course index, previous, and next links;
+  - mark unavailable navigation controls with aria-disabled;
+  - add regression tests for generated accessibility markup;
+  - document the accessibility baseline.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.7_accessibility_html.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

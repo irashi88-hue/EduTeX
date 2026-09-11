@@ -1,0 +1,33 @@
+EduTeX 0.4.0 Course Management tranche - manifest packaging fix
+
+This incremental patch adds course.yaml at the repository root for an existing
+EduTeX project. It also retains the packaged project template and the existing
+edutex init behaviour.
+
+New commands:
+  edutex course validate --project .
+  edutex course validate --project . --format json
+  edutex course build --project . --format html
+  edutex course build --project . --format latex
+  edutex course build --project . --format pdf
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.4.0_course_management_manifest_fix.tar.gz -C .
+
+For an existing project, the archive now creates the starter manifest at:
+  .\course.yaml
+Review and customize its title, modules, lessons, and source paths before
+building. Back up an existing customized course.yaml before extracting this
+patch, because the starter file is intended for projects that do not yet have
+a course manifest.
+
+For a new project, use edutex init; it copies course.yaml from the packaged
+project template automatically.
+
+Then run:
+  edutex course validate --project .
+  edutex course build --project . --format html
+
+The single-lesson commands remain unchanged:
+  edutex validate --project .
+  edutex build --project .

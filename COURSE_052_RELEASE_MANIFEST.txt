@@ -1,0 +1,23 @@
+EduTeX 0.5.2 Quality Contract tranche
+
+This incremental patch extends the local quality baseline with a dedicated
+course-management contract check for the 0.4.x and 0.5.x course features.
+
+Changes:
+  - add Q006 Course management contract;
+  - verify course validation JSON and presentation theme;
+  - verify HTML index and generated lesson pages;
+  - verify disabled presentation blocks are not rendered;
+  - verify LaTeX output;
+  - verify PDF output when latexmk or pdflatex is available;
+  - keep the PDF sub-check environment-aware when no LaTeX compiler is installed;
+  - include assets and edutex.config.yaml in the isolated fixture;
+  - document the new quality contract.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.2_quality_contract.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

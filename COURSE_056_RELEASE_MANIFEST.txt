@@ -1,0 +1,15 @@
+EduTeX 0.5.6 Course Authoring Diagnostics hotfix
+
+This hotfix corrects the warning diagnostics regression test. The shared test
+fixture declares duration_minutes: 20, so it correctly produces no duration
+warning. The warning-specific test now removes that field before validation.
+
+Runtime behavior is unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.6_course_authoring_diagnostics_hotfix.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

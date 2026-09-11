@@ -1,0 +1,47 @@
+EduTeX 0.5.17 - pypdf parser diagnostics
+
+Scope
+- Distinguish pypdf parser states: passed, failed, and skipped_unavailable.
+- Report a clear diagnostic when the optional pypdf package is not installed.
+- Preserve parser failure details when pypdf cannot load or validate a PDF.
+- Add focused tests for unavailable dependency, parser failure, and success.
+- Keep the edutex.pdf-runtime.v1 schema additive and JSON-safe.
+- Include copyable PowerShell commands for applying and testing the release.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- pypdf unavailable status: PASS
+- pypdf parser failure status: PASS
+- pypdf parser success status: PASS
+- runtime report JSON serialization: PASS
+- focused standard-library harness: PASS
+- pytest: NOT RUN - pytest is unavailable in the offline build environment.
+
+Compatibility
+- Existing Q001-Q007 names and behavior remain unchanged.
+- The existing pdf_runtime_summary() API remains available.
+- The edutex.pdf-runtime.v1 report remains JSON-safe; pypdf diagnostic is
+  additive.
+- Missing optional pypdf remains non-blocking.
+- An installed pypdf parser failure remains a real compiled-PDF gate failure.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.17_pypdf_parser_diagnostics.tar.gz -C .
+
+Print the structured report:
+  python -c "from tools.quality_check import pdf_runtime_report; import json; print(json.dumps(pdf_runtime_report(), indent=2, sort_keys=True))"
+
+Run focused checks:
+  python -m compileall -q .\tools .\tests
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the normal project checks:
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

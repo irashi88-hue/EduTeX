@@ -1,0 +1,18 @@
+EduTeX 0.5.4 Course Authoring Validation hotfix
+
+This hotfix aligns the 0.5.3 regression assertions with the official
+Knowledge Model loader wording. The loader reports "front matter" as two
+words; the tests previously expected the non-contract spelling "frontmatter".
+
+Changes:
+  - update the missing-front-matter assertion;
+  - update the incomplete-front-matter assertion;
+  - no runtime behavior changes.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.4_course_authoring_validation_hotfix.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

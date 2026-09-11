@@ -1,0 +1,17 @@
+id: sample-course
+title: "My EduTeX Course"
+language: en
+level: A1
+version: 1.0.0
+author: "EduTeX author"
+description: "A structured course built from EduTeX lessons."
+modules:
+  - id: module-01
+    title: "Getting started"
+    lessons:
+      - id: lesson-01
+        title: "First lesson"
+        source: assets/knowledge_models/example.md
+        duration_minutes: 20
+        objectives:
+          - "Understand the lesson goal"

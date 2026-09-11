@@ -1,0 +1,557 @@
+"""Course manifest validation and index generation tests."""
+
+from __future__ import annotations
+
+import json
+import shutil
+from pathlib import Path
+
+from click.testing import CliRunner
+
+from edutex.core.cli import main
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+MANIFEST = """id: german-a1
+title: German A1
+language: de
+level: A1
+version: 1.0.0
+author: EduTeX
+description: Beginner course
+modules:
+  - id: module-01
+    title: Greetings
+    lessons:
+      - id: lesson-01
+        title: Hello
+        source: lessons/hello.md
+        duration_minutes: 20
+        objectives: [Introduce yourself]
+"""
+
+
+GOODBYE_LESSON = """---
+id: goodbye
+title: Goodbye
+language: en
+level: A1
+version: 1.0.0
+author: Tester
+---
+# Goodbye
+
+Second lesson.
+"""
+
+
+def make_project(path: Path) -> None:
+    shutil.copytree(PROJECT_ROOT / "assets", path / "assets")
+    (path / "lessons").mkdir(parents=True)
+    (path / "lessons/hello.md").write_text(
+        "---\nid: hello\ntitle: Hello\nlanguage: en\nlevel: A1\nversion: 1.0.0\nauthor: Tester\n---\n# Hello\n",
+        encoding="utf-8",
+    )
+    (path / "edutex.config.yaml").write_text(
+        """edutex:
+  version: "0.3.0"
+knowledge:
+  model: "assets/knowledge_models/example.md"
+theme:
+  name: "default"
+layout:
+  name: "default"
+build:
+  output_format: "html"
+  output_dir: "output"
+  output_file: "document"
+extensions:
+  enabled: []
+logging:
+  level: "INFO"
+""",
+        encoding="utf-8",
+    )
+    (path / "course.yaml").write_text(MANIFEST, encoding="utf-8")
+
+
+def test_course_validate_json(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path), "--format", "json"])
+    assert result.exit_code == 0, result.output
+    assert '"valid": true' in result.output
+    assert '"lessons": 1' in result.output
+
+
+def test_course_html_has_keyboard_skip_link_and_main_landmark(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+    index = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    lesson = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+    assert '<a class="skip-link" href="#course-content">Skip to course content</a>' in index
+    assert '<main id="course-content" tabindex="-1" aria-labelledby="course-title">' in index
+    assert '<h1 id="course-title">German A1</h1>' in index
+    assert '<a class="skip-link" href="#lesson-content">Skip to lesson content</a>' in lesson
+    assert '<main id="lesson-content" tabindex="-1" aria-label="Lesson content">' in lesson
+
+
+def test_course_lesson_navigation_has_explicit_link_labels(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+    first = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+    second = (tmp_path / "output/lessons/lesson-02.html").read_text(encoding="utf-8")
+    assert 'aria-label="Next lesson: Goodbye"' in first
+    assert 'aria-label="Previous lesson: Hello"' in second
+    assert 'aria-label="Course index"' in first
+    assert 'aria-disabled="true"' in first
+
+
+def test_course_build_html_contains_navigation(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(main, ["course", "build", "--project", str(tmp_path), "--format", "html"])
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    assert '<meta name="generator" content="EduTeX Course Management">' in source
+    assert "German A1" in source
+    assert "Greetings" in source
+    assert "Hello" in source
+    assert 'href="lessons/lesson-01.html"' in source
+
+
+def test_course_build_latex_contains_roadmap(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(main, ["course", "build", "--project", str(tmp_path), "--format", "latex"])
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.tex").read_text(encoding="utf-8")
+    assert "\\section{Greetings}" in source
+    assert "Hello" in source
+    assert "lessons/hello.md" in source
+
+
+def test_course_build_latex_enables_pdf_text_accessibility(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "latex"]
+    )
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.tex").read_text(encoding="utf-8")
+    assert r"\usepackage{cmap}" in source
+    assert r"\ifdefined\pdfgentounicode" in source
+    assert r"\input glyphtounicode" in source
+    assert r"\pdfgentounicode=1" in source
+    assert "unicode=true" in source
+    assert "bookmarks=true" in source
+    assert "bookmarksopen=true" in source
+    assert "bookmarksnumbered=true" in source
+
+
+def test_course_build_latex_sets_pdf_metadata_and_language(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "latex"]
+    )
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.tex").read_text(encoding="utf-8")
+    assert "pdftitle={German A1}" in source
+    assert "pdfauthor={EduTeX}" in source
+    assert "pdfsubject={Beginner course}" in source
+    assert "pdflang={de-DE}" in source
+
+
+def test_course_build_latex_uses_metadata_fallbacks(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = (tmp_path / "course.yaml").read_text(encoding="utf-8")
+    manifest = manifest.replace("author: EduTeX\n", "author: \n").replace(
+        "description: Beginner course\n", "description: \n"
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "latex"]
+    )
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.tex").read_text(encoding="utf-8")
+    assert "pdfauthor={EduTeX}" in source
+    assert "pdfsubject={EduTeX course roadmap}" in source
+
+
+def test_course_validate_json_reports_structured_source_diagnostic(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/hello.md").write_text("# Hello\n", encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code != 0
+    payload = json.loads(result.output)
+    diagnostic = payload["diagnostics"][0]
+    assert diagnostic["code"] == "COURSE_SOURCE_FRONTMATTER_MISSING"
+    assert diagnostic["severity"] == "error"
+    assert diagnostic["field"] == "course.modules[1].lessons[1].source"
+    assert diagnostic["path"] == "lessons/hello.md"
+
+
+def test_course_validate_json_reports_warnings_without_fake_fields(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = (tmp_path / "course.yaml").read_text(encoding="utf-8")
+    (tmp_path / "course.yaml").write_text(
+        manifest.replace("        duration_minutes: 20\n", ""),
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    warning = next(item for item in payload["diagnostics"] if item["severity"] == "warning")
+    assert warning["code"] == "COURSE_DURATION_UNDECLARED"
+    assert "field" not in warning
+
+
+def test_course_validate_json_reports_unknown_prerequisite_code(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n        prerequisites: [missing-lesson]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code != 0
+    payload = json.loads(result.output)
+    diagnostic = next(item for item in payload["diagnostics"] if "prerequisite" in item["message"].lower())
+    assert diagnostic["code"] == "COURSE_PREREQUISITE_UNKNOWN"
+    assert diagnostic["field"] == "course.modules[1].lessons[1].prerequisites"
+
+
+def test_course_validate_json_keeps_legacy_errors_and_diagnostics(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/hello.md").write_text("# Hello\n", encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    payload = json.loads(result.output)
+    assert payload["valid"] is False
+    assert payload["errors"]
+    assert payload["diagnostics"]
+    assert payload["errors"][0] == payload["diagnostics"][0]["message"]
+
+
+def test_course_validate_rejects_lesson_without_frontmatter(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/hello.md").write_text("# Hello\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "not a valid Knowledge Model" in result.output
+    assert "front matter" in result.output
+
+
+def test_course_validate_rejects_lesson_with_incomplete_frontmatter(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/hello.md").write_text(
+        "---\nid: hello\ntitle: Hello\n---\n# Hello\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "not a valid Knowledge Model" in result.output
+    assert "missing required front matter fields" in result.output
+
+
+def test_course_validate_rejects_missing_source(tmp_path: Path) -> None:
+    (tmp_path / "course.yaml").write_text(MANIFEST.replace("lessons/hello.md", "lessons/missing.md"), encoding="utf-8")
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output
+
+
+def test_init_materializes_course_manifest(tmp_path: Path) -> None:
+    project = tmp_path / "new-project"
+    result = CliRunner().invoke(main, ["init", str(project)])
+    assert result.exit_code == 0, result.output
+    assert (project / "course.yaml").is_file()
+
+
+def test_course_build_html_generates_lesson_pages_and_navigation(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    (tmp_path / "course.yaml").write_text(
+        MANIFEST.replace(
+            "source: lessons/hello.md",
+            "source: lessons/hello.md",
+        ).replace(
+            "        duration_minutes: 20\n        objectives: [Introduce yourself]\n",
+            "        duration_minutes: 20\n        objectives: [Introduce yourself]\n      - id: lesson-02\n        title: Goodbye\n        source: lessons/goodbye.md\n",
+        ),
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code == 0, result.output
+    index = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    first = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+    second = (tmp_path / "output/lessons/lesson-02.html").read_text(encoding="utf-8")
+    assert (tmp_path / "output/lessons/lesson-01.html").is_file()
+    assert (tmp_path / "output/lessons/lesson-02.html").is_file()
+    assert 'href="lessons/lesson-01.html"' in index
+    assert 'href="lessons/lesson-02.html"' in index
+    assert 'href="../course.html"' in first
+    assert 'href="lesson-02.html"' in first
+    assert 'href="lesson-01.html"' in second
+    assert 'Course navigation' in first
+    assert "# Hello" not in first
+
+
+def test_course_build_html_reports_lesson_build_failure(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "course.yaml").write_text(
+        MANIFEST.replace("lessons/hello.md", "lessons/missing.md"),
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "Course manifest is invalid" in result.output
+    assert "does not exist" in result.output
+
+
+
+def test_course_validate_accepts_prerequisites_and_reports_dependency_count(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        "---\nid: goodbye\ntitle: Goodbye\nlanguage: en\nlevel: A1\nversion: 1.0.0\nauthor: Tester\n---\n# Goodbye\n",
+        encoding="utf-8",
+    )
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n      - id: lesson-02\n        title: Goodbye\n        source: lessons/goodbye.md\n        prerequisites: [lesson-01]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == 0, result.output
+    assert '"dependencies": 1' in result.output
+
+
+def test_course_validate_rejects_unknown_prerequisite(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n        prerequisites: [missing-lesson]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "Unknown prerequisite 'missing-lesson'" in result.output
+
+
+def test_course_validate_rejects_prerequisite_cycle(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        "---\nid: goodbye\ntitle: Goodbye\nlanguage: en\nlevel: A1\nversion: 1.0.0\nauthor: Tester\n---\n# Goodbye\n",
+        encoding="utf-8",
+    )
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n        prerequisites: [lesson-02]\n      - id: lesson-02\n        title: Goodbye\n        source: lessons/goodbye.md\n        prerequisites: [lesson-01]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "Prerequisite cycle detected" in result.output
+
+
+def test_course_index_contains_dependency_gate_and_progress_script(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n      - id: lesson-02\n        title: Goodbye\n        source: lessons/goodbye.md\n        prerequisites: [lesson-01]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code == 0, result.output
+    index = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    lesson = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+    assert 'data-prerequisites="[&quot;lesson-01&quot;]"' in index
+    assert "localStorage" in index
+    assert "edutex:course:german-a1:completed" in index
+    assert "data-course-complete" in lesson
+    assert "Mark lesson complete" in lesson
+
+
+def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    two_lessons = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+    (tmp_path / "course.yaml").write_text(two_lessons, encoding="utf-8")
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+    stale = tmp_path / "output/lessons/lesson-02.html"
+    assert stale.is_file()
+
+    (tmp_path / "course.yaml").write_text(MANIFEST, encoding="utf-8")
+    result = runner.invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+    assert not stale.exists()
+    assert (tmp_path / "output/lessons/lesson-01.html").is_file()
+
+
+def test_course_metadata_is_optional_for_legacy_manifest(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == 0, result.output
+    assert '"objectives": 0' in result.output
+    assert '"competencies": 0' in result.output
+    assert '"duration_minutes": 20' in result.output
+
+
+def test_course_metadata_and_declared_duration_are_rendered(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "description: Beginner course\n",
+        "description: Beginner course\n"
+        "objectives:\n"
+        "  - Introduce yourself confidently\n"
+        "  - Ask simple questions\n"
+        "competencies:\n"
+        "  - Speaking\n"
+        "  - Listening\n"
+        "estimated_duration_minutes: 90\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code == 0, result.output
+    source = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    assert "Course goals" in source
+    assert "Introduce yourself confidently" in source
+    assert "Skills you will build" in source
+    assert "Speaking" in source
+    assert "90 min remaining" in source
+    assert "data-course-progress-bar" in source
+    assert "totalMinutes = 90" in source
+
+
+def test_course_metadata_is_reported_in_json(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "description: Beginner course\n",
+        "description: Beginner course\n"
+        "objectives: [Goal one]\n"
+        "competencies: [Skill one, Skill two]\n"
+        "estimated_duration_minutes: 45\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == 0, result.output
+    assert '"objectives": 1' in result.output
+    assert '"competencies": 2' in result.output
+    assert '"duration_minutes": 45' in result.output
+
+
+def test_course_presentation_defaults_preserve_legacy_manifest(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main,
+        ["course", "validate", "--project", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == 0, result.output
+    assert '"theme": "midnight"' in result.output
+
+
+def test_course_presentation_customizes_theme_and_visibility(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "description: Beginner course\n",
+        """description: Beginner course
+presentation:
+  theme: forest
+  accent: "#123456"
+  show_contents: false
+  show_progress: false
+  show_objectives: false
+  show_competencies: false
+  show_prerequisites: false
+  show_lesson_navigation: false
+objectives: [Course goal]
+competencies: [Speaking]
+""",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code == 0, result.output
+    index = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    assert 'edutex-course-theme" content="forest"' in index
+    assert "--accent:#123456" in index
+    assert '<nav class="contents"' not in index
+    assert '<section class="progress-card"' not in index
+    assert "Course goals" not in index
+    assert "Skills you will build" not in index
+
+
+def test_course_presentation_rejects_invalid_theme_and_color(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = MANIFEST.replace(
+        "description: Beginner course\n",
+        """description: Beginner course
+presentation:
+  theme: neon
+  accent: blue
+""",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+    result = CliRunner().invoke(main, ["course", "validate", "--project", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "course.presentation.theme must be one of" in result.output
+    assert "six-digit hexadecimal color" in result.output

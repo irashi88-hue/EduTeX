@@ -1,0 +1,34 @@
+EduTeX 0.5.10 — Quality baseline PDF/LaTeX contract
+
+Scope
+- Extend the local quality baseline with Q007 PDF/LaTeX accessibility contract.
+- Verify generated LaTeX markers for text mapping, Unicode, bookmarks, and PDF metadata.
+- Verify compiled PDF structure with qpdf when a LaTeX compiler is available.
+- Verify extracted PDF text with pdftotext when available.
+- Keep the check environment-aware: missing LaTeX compilers skip only the compiled-PDF sub-check.
+- Add pure-helper tests and update the quality process specification.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- Q007 marker helper tests: PASS
+- Q007 source contract logic: PASS
+- LaTeX/PDF runtime gates: environment-aware; compiler availability is checked at runtime.
+
+Compatibility
+- Existing Q001–Q006 check names and behavior remain unchanged.
+- The quality command still stops at the first failed required check.
+- No new mandatory Python or LaTeX dependency is introduced.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.10_quality_pdf_contract.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src .\tools
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

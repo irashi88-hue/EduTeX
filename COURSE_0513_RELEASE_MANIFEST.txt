@@ -1,0 +1,48 @@
+EduTeX 0.5.13 — Structured PDF runtime report
+
+Scope
+- Add pdf_runtime_report(language) with stable schema edutex.pdf-runtime.v1.
+- Report compiler readiness, required compiler tools, inspection availability,
+  executable paths, roles, and versions when available.
+- Distinguish standard and CJK compiler requirements.
+- Fix version probing for Poppler tools that use -v instead of --version.
+- Keep the report JSON-safe and read-only.
+- Add focused tests for schema, roles, versions, CJK selection, and skip state.
+- Document the structured runtime report contract.
+- Include copyable PowerShell commands for applying and testing the release.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- Q001–Q007 check-name stability: PASS
+- LaTeX source marker contract: PASS
+- runtime report JSON serialization: PASS
+- standard runtime report: PASS
+- CJK/report roles: PASS
+- Poppler version detection: PASS
+- current environment: qpdf, pdftotext, pdfinfo, and pdftoppm available;
+  latexmk, pdflatex, and xelatex unavailable.
+
+Compatibility
+- Existing Q001–Q007 names and behavior remain unchanged.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+- The existing compact pdf_runtime_summary() API remains available.
+- The report never installs tools or modifies the environment.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.13_pdf_runtime_report.tar.gz -C .
+
+Print the structured report:
+  python -c "from tools.quality_check import pdf_runtime_report; import json; print(json.dumps(pdf_runtime_report(), indent=2, sort_keys=True))"
+
+Run focused checks:
+  python -m compileall -q .\\tools .\\tests
+
+Run the normal project checks:
+  python -m pytest -q
+  python .\\tools\\quality_check.py --verbose

@@ -8,6 +8,7 @@ It does not implement parsing, styling, layout, or LaTeX rendering itself.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import shutil
@@ -19,6 +20,7 @@ import click
 from edutex.activator.activator import Activator
 from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
+from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
 from edutex.core.errors import EduTeXError
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
@@ -176,6 +178,192 @@ def main() -> None:
     """EduTeX — generate educational documents from Knowledge Models."""
 
 
+@main.group("course")
+def course_group() -> None:
+    """Validate and render a course curriculum manifest."""
+
+
+@course_group.command("validate")
+@click.option("--project", "project_root", type=click.Path(file_okay=False, dir_okay=True, path_type=Path), default=Path("."), show_default=True)
+@click.option("--manifest", "manifest_file", type=click.Path(dir_okay=False, path_type=Path), default="course.yaml", show_default=True)
+@click.option("--format", "output_format", type=click.Choice(("text", "json"), case_sensitive=False), default="text", show_default=True)
+def course_validate_command(project_root: Path, manifest_file: Path, output_format: str) -> None:
+    """Validate course.yaml and every linked lesson source."""
+    project_root = project_root.resolve()
+    manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
+    report = validate_course(manifest_path, project_root)
+    if output_format.lower() == "json":
+        click.echo(report.to_json())
+    else:
+        if report.valid:
+            course = report.manifest
+            click.echo(f"Course valid: {course.title} ({course.module_count} modules, {course.lesson_count} lessons)")
+            for warning in report.warnings:
+                click.echo(f"WARNING: {warning}")
+        else:
+            click.echo("Course invalid:")
+            for error in report.errors:
+                click.echo(f"ERROR: {error}")
+    if not report.valid:
+        raise click.exceptions.Exit(1)
+
+
+def _build_course_lesson(
+    manifest: CourseManifest,
+    lesson: CourseLesson,
+    module_number: int,
+    lesson_number: int,
+    *,
+    project_root: Path,
+) -> Path:
+    """Build one course lesson through the normal EduTeX pipeline."""
+    config_path = project_root / "edutex.config.yaml"
+    if not config_path.is_file():
+        raise click.ClickException(
+            f"Lesson build requires project configuration: {config_path}"
+        )
+    config = load_config(config_path)
+    lesson_config = config.model_copy(
+        update={
+            "knowledge": config.knowledge.model_copy(
+                update={"model": Path(lesson.source)}
+            ),
+            "build": config.build.model_copy(
+                update={
+                    "output_format": "html",
+                    "output_dir": Path("output") / "lessons",
+                    "output_file": lesson.lesson_id,
+                }
+            ),
+        }
+    )
+    output = build_project(config_path, project_root, config=lesson_config)
+    _add_course_lesson_navigation(
+        output,
+        manifest,
+        lesson,
+        module_number,
+        lesson_number,
+    )
+    return output
+
+
+def _add_course_lesson_navigation(
+    html_path: Path,
+    manifest: CourseManifest,
+    lesson: CourseLesson,
+    module_number: int,
+    lesson_number: int,
+) -> None:
+    """Add course navigation to a generated standalone lesson page."""
+    lessons = [item for module in manifest.modules for item in module.lessons]
+    index = next(i for i, item in enumerate(lessons) if item.lesson_id == lesson.lesson_id)
+    previous = lessons[index - 1] if index > 0 else None
+    following = lessons[index + 1] if index + 1 < len(lessons) else None
+    def link(item: CourseLesson | None, label: str) -> str:
+        if item is None:
+            return f"<span class=\"course-nav-disabled\" aria-disabled=\"true\">{label}</span>"
+        title = html.escape(item.title, quote=True)
+        return (
+            f"<a href=\"{item.lesson_id}.html\" "
+            f"aria-label=\"{label} lesson: {title}\">{label}: {html.escape(item.title)}</a>"
+        )
+    storage_key = json.dumps(f"edutex:course:{manifest.course_id}:completed")
+    lesson_id_json = json.dumps(lesson.lesson_id)
+    completion_ui = (
+        "<button type=\"button\" class=\"course-complete\" "
+        f"data-course-complete=\"{html.escape(lesson.lesson_id, quote=True)}\">"
+        "Mark lesson complete</button>"
+        "<span class=\"course-complete-status\" aria-live=\"polite\"></span>"
+    )
+    if manifest.presentation.show_lesson_navigation:
+        nav = (
+            "<nav class=\"course-lesson-nav\" aria-label=\"Course navigation\">"
+            "<a href=\"../course.html\" aria-label=\"Course index\">Course index</a>"
+            f"<span>Module {module_number} · Lesson {lesson_number}</span>"
+            f"{link(previous, 'Previous')}"
+            f"{link(following, 'Next')}"
+            f"{completion_ui}"
+            "</nav>"
+        )
+    else:
+        nav = f"<div class=\"course-complete-only\">{completion_ui}</div>"
+    source = html_path.read_text(encoding="utf-8")
+    style = f"""<style>
+.skip-link{{position:absolute;left:1rem;top:-4rem;z-index:10;padding:.55rem .8rem;background:{manifest.presentation.ink};color:#fff;font-weight:800}}
+.skip-link:focus-visible{{top:1rem}}
+.course-lesson-nav{{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin:0 auto 1.25rem;padding:.8rem 1rem;max-width:980px;background:{manifest.presentation.ink};color:#fff;font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}
+.course-lesson-nav a{{color:{manifest.presentation.accent}}}.course-lesson-nav span{{color:#d7e4f5}}.course-nav-disabled{{opacity:.55}}
+.course-lesson-nav a:focus-visible,.course-complete:focus-visible{{outline:3px solid {manifest.presentation.accent};outline-offset:3px}}
+.course-complete{{border:1px solid {manifest.presentation.accent};border-radius:4px;padding:.35rem .6rem;background:{manifest.presentation.surface};color:{manifest.presentation.ink};font:inherit;cursor:pointer}}
+.course-complete-status{{color:{manifest.presentation.accent_secondary}}}
+.course-complete-only{{max-width:980px;margin:0 auto 1.25rem;padding:.8rem 1rem;background:{manifest.presentation.surface};color:{manifest.presentation.ink};font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}
+</style>"""
+    script = f"""<script>
+(() => {{
+  const key = {storage_key};
+  const lessonId = {lesson_id_json};
+  const button = document.querySelector('[data-course-complete]');
+  const status = document.querySelector('.course-complete-status');
+  const read = () => {{
+    try {{ return new Set(JSON.parse(localStorage.getItem(key) || '[]')); }}
+    catch (error) {{ return new Set(); }}
+  }};
+  const write = (items) => {{
+    try {{ localStorage.setItem(key, JSON.stringify([...items])); }} catch (error) {{}}
+  }};
+  const refresh = () => {{
+    const completed = read();
+    const isComplete = completed.has(lessonId);
+    button.textContent = isComplete ? 'Mark as incomplete' : 'Mark lesson complete';
+    if (status) status.textContent = isComplete ? 'Completed' : '';
+  }};
+  if (button) button.addEventListener('click', () => {{
+    const completed = read();
+    if (completed.has(lessonId)) completed.delete(lessonId); else completed.add(lessonId);
+    write(completed); refresh();
+  }});
+  refresh();
+}})();
+</script>"""
+    source = source.replace("</head>", style + "</head>", 1)
+    source = source.replace("<body>", "<body><a class=\"skip-link\" href=\"#lesson-content\">Skip to lesson content</a>" + nav, 1)
+    source = source.replace("<main>", "<main id=\"lesson-content\" tabindex=\"-1\" aria-label=\"Lesson content\">", 1)
+    source = source.replace("</body>", script + "</body>", 1)
+    html_path.write_text(source, encoding="utf-8")
+
+
+@course_group.command("build")
+@click.option("--project", "project_root", type=click.Path(file_okay=False, dir_okay=True, path_type=Path), default=Path("."), show_default=True)
+@click.option("--manifest", "manifest_file", type=click.Path(dir_okay=False, path_type=Path), default="course.yaml", show_default=True)
+@click.option("--format", "output_format", type=click.Choice(("html", "latex", "pdf"), case_sensitive=False), default="html", show_default=True)
+@click.option("--output", "output_file", type=click.Path(dir_okay=False, path_type=Path), default=None)
+def course_build_command(project_root: Path, manifest_file: Path, output_format: str, output_file: Path | None) -> None:
+    """Build a course index or printable roadmap."""
+    project_root = project_root.resolve()
+    manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
+    try:
+        lesson_builder = None
+        if output_format.lower() == "html":
+            lesson_builder = lambda manifest, lesson, module_number, lesson_number: _build_course_lesson(
+                manifest,
+                lesson,
+                module_number,
+                lesson_number,
+                project_root=project_root,
+            )
+        output = build_course(
+            manifest_path,
+            project_root,
+            output_format,
+            output_file,
+            lesson_builder=lesson_builder,
+        )
+    except CourseBuildError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Course build completed: {output}")
+
+
 @main.command("init")
 @click.argument(
     "project_dir",
@@ -218,8 +406,10 @@ def init_command(project_dir: Path, theme: str, language: str, force: bool) -> N
     try:
         template = files("edutex.project_template")
         with as_file(template) as template_path:
-            for name in ("edutex.config.yaml", "README.md"):
-                shutil.copy2(template_path / name, target / name)
+            for name in ("edutex.config.yaml", "README.md", "course.yaml"):
+                template_file = template_path / name
+                if template_file.is_file():
+                    shutil.copy2(template_file, target / name)
             shutil.copytree(
                 template_path / "assets",
                 target / "assets",

@@ -1,0 +1,40 @@
+EduTeX 0.4.2 Course Prerequisites tranche
+
+This incremental patch adds dependency-aware course progression.
+
+Manifest syntax:
+  lessons:
+    - id: lesson-01
+      title: Foundations
+      source: assets/knowledge_models/foundations.md
+    - id: lesson-02
+      title: Practice
+      source: assets/knowledge_models/practice.md
+      prerequisites: [lesson-01]
+
+Validation now rejects:
+  - prerequisites that reference unknown lesson IDs;
+  - self-references;
+  - duplicate prerequisite IDs;
+  - prerequisite cycles.
+
+HTML course builds now add:
+  - prerequisite metadata on lesson links;
+  - browser-local progress state using localStorage;
+  - locked links until prerequisites are completed;
+  - a completion control on each generated lesson page;
+  - automatic previous/next availability based on course progress.
+
+The completion state is local to the browser and keyed by course ID. No backend
+or server-side learner data is introduced.
+
+Commands:
+  edutex course validate --project .
+  edutex course validate --project . --format json
+  edutex course build --project . --format html
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.4.2_course_prerequisites.tar.gz -C .
+
+The 0.4.1 HTML build orchestration and the existing single-lesson build remain
+unchanged. LaTeX and PDF continue to produce the printable course roadmap.

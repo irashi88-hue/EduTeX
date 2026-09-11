@@ -1,0 +1,42 @@
+EduTeX 0.5.11 — PDF runtime validation contract
+
+Scope
+- Harden Q007 with explicit compiler selection for standard and CJK courses.
+- Recognize latexmk, pdflatex, and xelatex according to the language path.
+- Validate compiled PDFs with qpdf when available.
+- Validate extracted text with pdftotext when available.
+- Validate Title, Author, and Subject with pdfinfo when available.
+- Load PDFs with pypdf when available and check the document language when exposed.
+- Render the first page with pdftoppm when available.
+- Add focused helper tests for compiler selection, pdfinfo parsing, and metadata mismatches.
+- Document the expanded runtime gates.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- check-name stability: PASS
+- LaTeX source marker contract: PASS
+- compiler selection helper: PASS
+- pdfinfo and metadata helpers: PASS
+- runtime tool inventory: qpdf, pdftotext, pdfinfo, and pdftoppm available;
+  latexmk, pdflatex, and xelatex unavailable in the current environment.
+- compiled PDF gates: skipped because no LaTeX compiler is installed.
+
+Compatibility
+- Existing Q001–Q007 names and behavior remain unchanged.
+- No new mandatory Python or LaTeX dependency is introduced.
+- Optional PDF inspection tools are used only when present.
+- The quality command remains environment-aware and stops at the first failed required check.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.11_pdf_runtime_contract.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\\src .\\tools
+  python -m pytest -q
+  python .\\tools\\quality_check.py --verbose

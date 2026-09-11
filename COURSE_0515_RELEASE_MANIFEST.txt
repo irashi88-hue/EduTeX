@@ -1,0 +1,47 @@
+EduTeX 0.5.15 - Explicit compiled PDF gate statuses
+
+Scope
+- Add inspection_gates to edutex.pdf-runtime.v1 with availability, role, and
+  status for qpdf, pdftotext, pdfinfo, pdftoppm, and optional pypdf.
+- Make Q007 report effective compiled-PDF gate outcomes in its detail string.
+- Distinguish passed, failed, and unavailable optional checks.
+- Preserve the compact pdf_runtime_summary() API and existing check names.
+- Add focused tests for gate status reporting and JSON serialization.
+- Include copyable PowerShell commands for applying and testing the release.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- runtime report gate statuses: PASS
+- missing qpdf diagnostic: PASS
+- JSON serialization: PASS
+- focused standard-library harness: PASS
+- pytest: NOT RUN - pytest is unavailable in the offline build environment.
+
+Compatibility
+- Existing Q001-Q007 names and behavior remain unchanged.
+- The existing pdf_runtime_summary() API remains available.
+- The edutex.pdf-runtime.v1 report remains JSON-safe; inspection_gates is an
+  additive field.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+- Missing optional inspection tools remain non-blocking.
+- The report never installs tools, modifies PATH, or changes project files.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.15_pdf_gate_status.tar.gz -C .
+
+Print the structured report:
+  python -c "from tools.quality_check import pdf_runtime_report; import json; print(json.dumps(pdf_runtime_report(), indent=2, sort_keys=True))"
+
+Run focused checks:
+  python -m compileall -q .\tools .\tests
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the normal project checks:
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

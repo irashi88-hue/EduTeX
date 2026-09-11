@@ -1,0 +1,30 @@
+EduTeX 0.5.9 — PDF text accessibility and LaTeX navigation contract
+
+Scope
+- Improve text search/copy behavior for pdfLaTeX course exports with cmap.
+- Enable the pdfTeX ToUnicode mapping when the engine supports it.
+- Load glyphtounicode.tex when available without making it a hard dependency.
+- Enable Unicode-aware, numbered, opened PDF bookmarks through hyperref.
+- Add focused regression assertions for the accessibility preamble.
+- Document structural, text, parser, and metadata checks for compiled PDFs.
+
+Changed files
+- src/edutex/course/service.py
+- tests/test_course_management.py
+- docs/course_management.md
+
+Validation
+- compileall: PASS
+- AST validation for renderer and tests: PASS
+- LaTeX accessibility source contract: PASS
+- qpdf availability check: PASS (qpdf available)
+- LaTeX/PDF compiler smoke test: SKIPPED — latexmk, pdflatex, and xelatex
+  are unavailable in the offline environment.
+- qpdf/pdf parser/render gates: SKIPPED because no PDF could be compiled.
+
+Compatibility
+- Existing PDF metadata, language normalization, HTML, and course validation
+  contracts are unchanged.
+- Existing CJK XeLaTeX selection is unchanged.
+- The glyphtounicode file remains optional and compilation does not fail when
+  it is absent.

@@ -1,0 +1,50 @@
+EduTeX 0.5.18 - JSON quality baseline output
+
+Scope
+- Add --json output mode to tools/quality_check.py for CI consumers.
+- Emit stable schema edutex.quality-baseline.v1.
+- Report overall result, completed/expected counts, first failure, and ordered
+  check results with return codes and diagnostic details.
+- Preserve the default human-readable output and exit-code behavior.
+- Add focused tests for successful shape, failure reporting, empty results, and
+  JSON serialization.
+- Include copyable PowerShell commands for applying and testing the release.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- baseline report shape: PASS
+- failure reporting: PASS
+- empty result handling: PASS
+- JSON serialization: PASS
+- focused standard-library harness: PASS
+- pytest: NOT RUN - pytest is unavailable in the offline build environment.
+
+Compatibility
+- Existing Q001-Q007 names and behavior remain unchanged.
+- Default human-readable quality output remains unchanged.
+- Existing exit codes remain unchanged.
+- The new --json mode emits only JSON on stdout and uses an additive stable
+  schema for CI consumers.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.18_quality_json.tar.gz -C .
+
+Run the human-readable baseline:
+  python .\tools\quality_check.py --verbose
+
+Run the CI JSON baseline:
+  python .\tools\quality_check.py --json
+
+Run focused checks:
+  python -m compileall -q .\tools .\tests
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the normal project checks:
+  python -m pytest -q

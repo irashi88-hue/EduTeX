@@ -1,0 +1,21 @@
+EduTeX 0.5.3 Course Authoring Validation tranche
+
+This incremental patch makes course validation inspect every linked Knowledge
+Model source before a course build is attempted.
+
+Changes:
+  - reuse the official Knowledge Model loader during course validation;
+  - reject missing, invalid, or incomplete YAML front matter in lesson sources;
+  - report the course manifest field responsible for the invalid source;
+  - add regression tests for missing and incomplete front matter;
+  - preserve existing path validation, prerequisite validation, and build behavior;
+  - document the authoring contract.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.3_course_authoring_validation.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose
+  edutex course validate --project .

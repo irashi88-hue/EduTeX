@@ -1,0 +1,61 @@
+EduTeX 0.5.23 - Quality check catalog contract
+
+Scope
+- Formalize Q001-Q007 in one ordered quality check catalog.
+- Give each check a stable ID, public name, description, and required flag.
+- Derive check_names() and the expected-check count from the catalog.
+- Expose quality_check_catalog() for local tooling and CI consumers.
+- Include the expected catalog in the existing JSON quality report.
+- Preserve check execution order, report schema, existing fields, and runtime
+  behavior.
+- Add focused tests for catalog identity, uniqueness, completeness, and JSON
+  report exposure.
+- Document the catalog contract in QL-001 and QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added QUALITY_CHECK_CATALOG.
+  - Derived CHECK_NAMES from the catalog.
+  - Added quality_check_catalog().
+  - Derived expected-check counts and completeness from the catalog.
+  - Added additive check_catalog report field.
+- tests/test_quality_check.py
+  - Added catalog stability, uniqueness, completeness, and report assertions.
+- docs/quality_process_spec.md
+  - Documented the catalog contract and report semantics.
+
+Compatibility
+- Q001-Q007 IDs, names, order, and execution behavior are unchanged.
+- edutex.quality-baseline.v1 remains the active schema identifier.
+- Existing report fields and outcome semantics remain available.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Catalog identity and order: PASS.
+- Catalog uniqueness and completeness: PASS.
+- Baseline outcome compatibility: PASS.
+- JSON report serialization and catalog exposure: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.23_quality_catalog.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

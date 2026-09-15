@@ -1,0 +1,30 @@
+EduTeX 0.5.40 packaging contract test hotfix
+
+Problem fixed
+The Q008 catalog extension correctly changed the expected catalog size from
+seven to eight checks, but five focused test expectations were not updated:
+- the all-passed status fixture omitted Q008;
+- completion_rate expectations still used a seven-check denominator;
+- one missing_checks expectation omitted Q008.
+
+Change
+- tests/test_quality_check.py
+  - Added Q008 to the all-passed status fixture.
+  - Updated completion_rate expectations for an eight-check catalog.
+  - Added Q008 to the expected missing-check list.
+
+No production code changed. The Q008 packaging contract and the
+edutex.quality-baseline.v1 report schema are unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.40_packaging_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

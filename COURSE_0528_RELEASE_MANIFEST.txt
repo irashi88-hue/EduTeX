@@ -1,0 +1,61 @@
+EduTeX 0.5.28 - Quality baseline execution identifier
+
+Scope
+- Add an additive run_id field to every JSON quality baseline report.
+- Generate one UUID version 4 identifier per quality runner invocation.
+- Pass the same identifier into report construction so one execution has one ID.
+- Preserve the existing report schema identifier, fields, check ordering, outcome
+  semantics, missing-check behavior, diagnostics, text output, and exit codes.
+- Preserve compatibility for direct quality_baseline_report() callers by allowing
+  an optional deterministic run_id and generating one when omitted.
+- Add focused tests for UUID uniqueness, supplied IDs, and generated IDs.
+- Document the execution-identifier contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added new_quality_run_id().
+  - Added optional run_id to quality_baseline_report().
+  - Added additive run_id report field.
+  - Updated main() to generate and pass one ID per invocation.
+- tests/test_quality_check.py
+  - Added UUID v4 uniqueness and report-ID tests.
+- docs/quality_process_spec.md
+  - Documented the run_id contract in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- Existing calls to quality_baseline_report(results) remain valid.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- UUID v4 uniqueness: PASS.
+- Supplied run_id preservation: PASS.
+- Generated run_id validation: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.28_quality_run_id.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

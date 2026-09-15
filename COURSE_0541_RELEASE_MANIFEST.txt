@@ -1,0 +1,59 @@
+EduTeX 0.5.41 - Release metadata contract
+
+Scope
+- Add Q009, a deterministic release metadata integrity check.
+- Require a valid semver in pyproject.toml and CLI_VERSION.
+- Require the project and CLI versions to match.
+- Require the edutex console entry point to target edutex.core.cli:main.
+- Add focused tests for coherent metadata, version mismatch, missing/invalid
+  versions, and entry point mismatch.
+- Align the repository project version with the restored CLI version 0.3.0.
+- Document QL-016 while preserving Q001-Q008 behavior and the existing report
+  schema.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+- pyproject.toml
+
+Q009 contract
+- pyproject.toml exists and is valid TOML;
+- [project].version is valid semver;
+- src/edutex/core/cli.py contains a valid CLI_VERSION;
+- project version and CLI version are identical;
+- project.scripts.edutex equals edutex.core.cli:main.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Q001-Q008 identifiers and semantics remain unchanged.
+- The check performs no installation, network access, or global CLI lookup.
+- Runtime CLI behavior is unchanged.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Q009 coherent fixture: PASS.
+- Q009 version mismatch fixture: PASS.
+- Q009 invalid-version fixture: PASS.
+- Q009 entry-point mismatch fixture: PASS.
+- Nine-check catalog and execution plan: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.41_release_metadata_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

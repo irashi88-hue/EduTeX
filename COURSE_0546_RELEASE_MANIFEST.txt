@@ -1,0 +1,46 @@
+EduTeX 0.5.46 - Quality report identity contract
+
+Scope
+- Add Q014, a deterministic contract check for report identifiers and chronology.
+- Verify report check IDs, missing-check IDs, catalog IDs, failed-check identity,
+  non-empty run IDs, and UTC timestamp ordering.
+- Repair the stale Q013 missing-check fixture exposed by the expanded catalog.
+- Preserve edutex.quality-baseline.v1 and Q001-Q013 behavior.
+- Document QL-021.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q014 is additive. Runtime CLI behavior is unchanged.
+- Q001-Q013 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Q013 stale missing-check fixture repair: PASS.
+- Q014 complete/failed/incomplete identity fixtures: PASS.
+- Fourteen-check catalog and execution plan: PASS.
+- Q010 schema, Q011 consistency, Q012 diagnostics, and Q013 value-types contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.46_quality_report_identity_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

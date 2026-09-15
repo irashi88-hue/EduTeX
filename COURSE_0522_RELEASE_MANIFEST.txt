@@ -1,0 +1,59 @@
+EduTeX 0.5.22 - Quality baseline outcome contract
+
+Scope
+- Formalize the quality baseline outcome as passed, failed, or incomplete.
+- Add additive status, complete, and exit_code fields to the existing JSON report.
+- Expose quality_baseline_status(results) for consumers that need the normalized
+  outcome without parsing the full report.
+- Preserve the existing schema identifier, passed field, check list, diagnostics,
+  check counts, failed_check field, text output, and exit-code behavior.
+- Add focused tests for all three outcome states and JSON compatibility.
+- Document the outcome contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added QUALITY_BASELINE_SCHEMA, QUALITY_OUTCOME_STATUSES, and
+    QUALITY_EXIT_CODES constants.
+  - Added quality_baseline_status().
+  - Added status, complete, and exit_code to quality_baseline_report().
+  - Kept main() exit behavior aligned with the normalized report.
+- tests/test_quality_check.py
+  - Added passed, failed, incomplete, and empty-result coverage.
+- docs/quality_process_spec.md
+  - Documented QL-013 outcome semantics and the public helper.
+
+Compatibility
+- Existing edutex.quality-baseline.v1 schema identifier is unchanged.
+- Existing report fields remain available and retain their meaning.
+- Existing human-readable output and process exit codes remain unchanged.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Passed outcome classification: PASS.
+- Failed outcome classification: PASS.
+- Incomplete and empty-result classification: PASS.
+- JSON report compatibility: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.22_quality_outcome.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

@@ -1,0 +1,32 @@
+EduTeX 0.5.39 packaging repair
+
+Purpose
+- Restore the complete CLI surface that existed before the 0.5.39 packaging regression.
+- Preserve the 0.5.39 structured JSON error behavior for build --format json.
+
+Root cause
+The original 0.5.39 archive accidentally included an obsolete CLI 0.1.0. Extracting
+that archive replaced src/edutex/core/cli.py and removed --theme, lint, course, and
+build --lint.
+
+Changed file
+- src/edutex/core/cli.py
+  - Restored the complete CLI baseline with init --theme/--language, lint, course,
+    and build --lint.
+  - Retained structured JSON errors for EduTeXError and OSError when build uses
+    --format json.
+  - Text-mode diagnostics and successful/blocked JSON contracts remain unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.39_build_json_errors_repair.tar.gz -C .
+
+Verify the CLI surface:
+  python -m edutex.core.cli --help
+  python -m edutex.core.cli init --help
+  python -m edutex.core.cli lint --help
+  python -m edutex.core.cli build --help
+  python -m edutex.core.cli course --help
+
+Then run:
+  python -m pytest -q .\tests\test_build_lint.py .\tests\test_build_lint_json.py
+  python -m pytest -q

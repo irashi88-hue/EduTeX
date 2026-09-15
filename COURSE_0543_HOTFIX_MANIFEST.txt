@@ -1,0 +1,28 @@
+EduTeX 0.5.43 quality report consistency contract test hotfix
+
+Problem fixed
+Two focused test expectations remained stale after adding Q011:
+- the empty missing-check tuple listed Q011 twice;
+- the partial missing-check tuple omitted Q011;
+- the Q010 position test assumed Q010 was still the last execution check.
+
+Change
+- tests/test_quality_check.py
+  - corrected missing-check expectations to include Q001-Q011 exactly once;
+  - changed the Q010 position assertion to verify Q010 immediately precedes Q011.
+
+No production code changed. Q011, the edutex.quality-baseline.v1 schema, and
+Q001-Q010 behavior remain unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.43_quality_report_consistency_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

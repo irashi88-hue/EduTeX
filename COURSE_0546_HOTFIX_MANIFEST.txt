@@ -1,0 +1,35 @@
+EduTeX 0.5.46 Q014 test expectation hotfix
+
+Problem fixed
+- Three focused tests still used relative execution-plan positions from the
+  twelve-check catalog.
+- After Q013 and Q014, the catalog contains fourteen checks, so those tests
+  selected Q012 or Q013 instead of Q010, Q011, and Q012.
+
+Change
+- tests/test_quality_check.py
+  - Q010 assertion: -3 -> -5.
+  - Q011 assertion: -2 -> -4.
+  - Q012 assertion: -2 -> -3.
+
+Compatibility
+- Test-only change.
+- No production code changed.
+- Q001-Q014 catalog IDs, execution order, report schema, and runtime behavior
+  are unchanged.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the hotfix:
+  tar -xzf .\\edutex_0.5.46_quality_report_identity_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

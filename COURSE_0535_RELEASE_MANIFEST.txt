@@ -1,0 +1,54 @@
+EduTeX 0.5.35 - Normalized per-check status
+
+Scope
+- Add an additive status field to every completed check entry in the JSON report.
+- Emit status=passed when the existing passed boolean is true.
+- Emit status=failed when the existing passed boolean is false.
+- Preserve the existing passed boolean as the backward-compatible authority.
+- Preserve report identity, timing, summary metrics, failed-check identifiers,
+  diagnostics, catalog, check ordering, outcome semantics, text output, and exit
+  codes.
+- Add focused assertions for passed and failed check entries.
+- Document the normalized status contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added additive status to each report check entry.
+- tests/test_quality_check.py
+  - Added passed/failed status assertions.
+- docs/quality_process_spec.md
+  - Documented per-check status semantics in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing per-check passed boolean remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation: PASS.
+- Passed check status: PASS.
+- Failed check status: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.35_quality_check_status.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --json

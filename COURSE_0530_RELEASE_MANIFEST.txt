@@ -1,0 +1,65 @@
+EduTeX 0.5.30 - Quality baseline completion timing
+
+Scope
+- Add additive run_finished_at and duration_seconds fields to every JSON quality
+  baseline report.
+- Capture one UTC RFC 3339 finish timestamp and one monotonic elapsed duration
+  after the quality checks complete.
+- Preserve existing run_id and run_started_at correlation fields.
+- Preserve the existing schema identifier, fields, check ordering, outcome
+  semantics, missing-check behavior, diagnostics, text output, and exit codes.
+- Preserve compatibility for direct quality_baseline_report() callers by allowing
+  optional deterministic finish and duration values.
+- Add focused tests for finish timestamp formatting, supplied timing values, and
+  compatibility defaults.
+- Document completion timing in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added new_quality_run_finished_at().
+  - Added optional run_finished_at and duration_seconds to the report helper.
+  - Added additive completion timing fields.
+  - Updated main() to capture one finish timestamp and real monotonic duration
+    after checks complete.
+- tests/test_quality_check.py
+  - Added finish timestamp and duration report tests.
+- docs/quality_process_spec.md
+  - Documented completion timing in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- Existing calls to quality_baseline_report(results) remain valid.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- UTC/RFC 3339 finish timestamp formatting: PASS.
+- Supplied timing values preservation: PASS.
+- Compatibility defaults: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.30_quality_timing.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

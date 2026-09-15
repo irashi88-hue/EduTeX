@@ -1,0 +1,64 @@
+EduTeX 0.5.25 - Quality execution plan contract
+
+Scope
+- Formalize the ordered mapping from Q001-Q007 catalog IDs to executable checks.
+- Expose quality_check_execution_plan() for inspection and integration tests.
+- Detect execution-plan order and count drift with
+  quality_check_execution_diagnostics().
+- Make execution-plan drift a failed baseline outcome.
+- Report execution_consistent and execution_diagnostics separately from result
+  catalog consistency.
+- Preserve valid complete runs, valid incomplete prefixes, report schema, and
+  existing result fields.
+- Add focused tests for plan order, drift diagnostics, and report separation.
+- Document the execution contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_check_execution_plan().
+  - Added quality_check_execution_diagnostics().
+  - Updated run_quality() to execute through the shared plan.
+  - Added execution_consistent and execution_diagnostics report fields.
+- tests/test_quality_check.py
+  - Added plan/catalog alignment and simulated plan-drift tests.
+  - Added report assertions separating catalog and execution consistency.
+- docs/quality_process_spec.md
+  - Documented the execution-plan contract in QL-013.
+
+Compatibility
+- Q001-Q007 execution order and behavior are unchanged.
+- Valid result/catalog prefixes retain their existing outcomes.
+- Existing edutex.quality-baseline.v1 schema identifier and fields remain.
+- New execution fields are additive.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Plan/catalog order and count: PASS.
+- Simulated execution-plan drift diagnostics: PASS.
+- Result/catalog diagnostics remain separate: PASS.
+- Complete/failed/incomplete outcome compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.25_quality_execution.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

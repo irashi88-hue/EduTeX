@@ -1,0 +1,43 @@
+EduTeX 0.5.56 - Quality execution-plan structure contract
+
+Scope
+- Add Q024, a deterministic contract check for execution-plan structure.
+- Verify malformed-entry, unknown-ID, duplicate-ID, and non-callable diagnostics.
+- Preserve edutex.quality-baseline.v1 and Q001-Q023 behavior.
+- Document QL-031.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q024 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q023 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Twenty-two-check catalog and execution plan: PASS.
+- Q022 synthetic identity-mismatch runner/report fixtures: PASS.
+- Q010 schema through Q023 runner/report contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.56_quality_execution_plan_structure_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

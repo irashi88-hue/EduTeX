@@ -1,0 +1,57 @@
+EduTeX 0.5.31 - Stable failed-check identifier
+
+Scope
+- Add the additive failed_check_id field to every JSON quality baseline report.
+- Derive the ID from the existing quality catalog and preserve failed_check as
+  the human-readable name.
+- Return null when there is no failed check or the failed name is unknown.
+- Preserve run_id, timestamps, duration, schema, all existing fields, check
+  ordering, outcome semantics, diagnostics, text output, and exit codes.
+- Add focused tests for failed Q002, failed Q007, and no-failure report paths.
+- Document the failed-check identifier contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added additive failed_check_id to quality_baseline_report().
+- tests/test_quality_check.py
+  - Added stable failed-check ID assertions.
+- docs/quality_process_spec.md
+  - Documented failed_check_id behavior in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing failed_check names remain unchanged.
+- Existing report fields and outcome semantics remain available.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Failed Q002 ID: PASS.
+- Failed Q007 ID: PASS.
+- No-failure null ID: PASS.
+- Existing timing and report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.31_quality_failed_id.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

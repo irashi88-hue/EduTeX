@@ -21,7 +21,7 @@ from edutex.activator.activator import Activator
 from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
-from edutex.core.errors import EduTeXError
+from edutex.core.errors import EduTeXError, KnowledgeError
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
 from edutex.extension.service import ExtensionService
@@ -51,9 +51,12 @@ def _resolve_path(project_root: Path, configured_path: Path) -> Path:
 
 
 def _require_file(path: Path, description: str) -> None:
-    """Fail early with a user-facing error when an asset is missing."""
+    """Fail early with a typed error when a required asset is missing."""
     if not path.is_file():
-        raise click.ClickException(f"{description} not found: {path}")
+        message = f"{description} not found: {path}"
+        if description == "Knowledge Model":
+            raise KnowledgeError(message)
+        raise click.ClickException(message)
 
 
 def _register_project_assets(config, project_root: Path) -> Registry:
@@ -124,6 +127,24 @@ def _format_build_json(report, *, status: str, output_path: Path | None = None, 
     if message is not None:
         payload["build"]["message"] = message
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _format_build_error_json(message: str, *, error_type: str = "build_error") -> str:
+    """Serialize one build failure without Click's human-readable prefix."""
+    return json.dumps(
+        {
+            "lint": None,
+            "build": {
+                "status": "failed",
+                "error": {
+                    "type": error_type,
+                    "message": message,
+                },
+            },
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 def build_project(
@@ -528,9 +549,17 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
                 raise click.exceptions.Exit(1)
         output_path = build_project(config_path, project_root, config=config)
     except EduTeXError as exc:
-        raise click.ClickException(str(exc)) from exc
+        message = str(exc)
+        if output_format == "json":
+            click.echo(_format_build_error_json(message, error_type=exc.__class__.__name__))
+            raise click.exceptions.Exit(1) from exc
+        raise click.ClickException(message) from exc
     except OSError as exc:
-        raise click.ClickException(f"File operation failed: {exc}") from exc
+        message = f"File operation failed: {exc}"
+        if output_format == "json":
+            click.echo(_format_build_error_json(message, error_type="file_error"))
+            raise click.exceptions.Exit(1) from exc
+        raise click.ClickException(message) from exc
 
     if output_format == "json":
         click.echo(

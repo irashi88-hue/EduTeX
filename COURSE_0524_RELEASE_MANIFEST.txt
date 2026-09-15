@@ -1,0 +1,59 @@
+EduTeX 0.5.24 - Quality result/catalog consistency
+
+Scope
+- Verify that completed quality results form an ordered prefix of Q001-Q007.
+- Detect unknown, duplicated, and out-of-order result names.
+- Expose quality_baseline_catalog_diagnostics(results) for local consumers.
+- Add catalog_consistent and catalog_diagnostics to the existing JSON report.
+- Preserve valid complete runs, valid incomplete prefixes, report schema, and
+  existing result fields.
+- Add focused tests for valid prefixes and each inconsistency type.
+- Document the consistency contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_baseline_catalog_diagnostics().
+  - Made catalog inconsistency a failed baseline outcome.
+  - Added catalog_consistent and catalog_diagnostics report fields.
+- tests/test_quality_check.py
+  - Added valid-prefix, unknown, duplicate, order, too-many-result, and report
+    consistency tests.
+- docs/quality_process_spec.md
+  - Documented the result/catalog consistency contract in QL-013.
+
+Compatibility
+- Valid Q001-Q007 complete runs are unchanged.
+- Valid shorter prefixes remain incomplete.
+- Existing edutex.quality-baseline.v1 schema identifier and fields remain.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Valid prefix diagnostics: PASS.
+- Unknown, duplicate, and order diagnostics: PASS.
+- Too-many-result diagnostics: PASS.
+- Complete/failed/incomplete outcome compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.24_quality_consistency.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

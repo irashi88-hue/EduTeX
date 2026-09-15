@@ -1,0 +1,45 @@
+EduTeX 0.5.37 - Quality summary rates test hotfix
+
+Scope
+- Correct the remaining stale summary assertion in the 0.5.36 report test.
+- Assert completion_rate and failure_rate alongside the existing summary fields.
+- Keep all 0.5.36 production behavior unchanged.
+
+Changed files
+- tests/test_quality_check.py
+  - Updated test_quality_baseline_report_is_json_safe_and_ordered() to expect
+    completion_rate=28.57 and failure_rate=50.0.
+- COURSE_0537_RELEASE_MANIFEST.txt
+  - Documents the test-only correction.
+
+Compatibility
+- No production code changed.
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing CLI behavior, report fields, outcome semantics, and exit codes remain
+  unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation: PASS.
+- Remaining stale assertion removed: PASS.
+- Complete summary assertion present: PASS.
+- JSON report contract spot check: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the hotfix archive:
+  tar -xzf .\edutex_0.5.37_quality_summary_rates_test_fix.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --json

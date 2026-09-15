@@ -1,0 +1,46 @@
+EduTeX 0.5.34 - Quality summary metrics test hotfix
+
+Scope
+- Correct the stale report-summary assertion left in the 0.5.33 focused test.
+- Assert the complete summary contract: passed, failed, pending, total,
+  completed, and pass_rate.
+- Keep production behavior from 0.5.33 unchanged.
+
+Changed files
+- tests/test_quality_check.py
+  - Updated test_quality_baseline_report_is_json_safe_and_ordered() to expect
+    the additive summary metrics introduced in 0.5.33.
+- COURSE_0534_RELEASE_MANIFEST.txt
+  - Documents the test-only compatibility correction.
+
+Compatibility
+- No production code changed.
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing CLI behavior, report fields, outcome semantics, and exit codes remain
+  unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation: PASS.
+- Stale summary assertion removed: PASS.
+- Updated summary assertion present: PASS.
+- JSON report contract spot check: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the hotfix archive:
+  tar -xzf .\edutex_0.5.34_quality_summary_metrics_test_fix.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --json

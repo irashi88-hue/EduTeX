@@ -1,0 +1,67 @@
+EduTeX 0.5.40 - Packaging contract
+
+Scope
+- Add Q008, a static packaging-integrity check for the EduTeX CLI entrypoint.
+- Detect accidental replacement of the complete CLI with an obsolete CLI source.
+- Verify the source packaging files and the public command/option markers needed
+  by init, lint, build, validate, course, and structured build JSON errors.
+- Extend the quality catalog, execution plan, report counts, and focused tests
+  from Q001-Q007 to Q001-Q008.
+- Keep the runtime CLI behavior, quality report schema, existing Q001-Q007
+  semantics, and exit-code behavior unchanged apart from the additive check.
+
+Changed files
+- tools/quality_check.py
+  - Added Q008 Packaging contract to the catalog and execution plan.
+  - Added PACKAGING_CONTRACT and packaging_contract().
+  - Added _check_packaging_contract().
+  - Added obsolete CLI_VERSION 0.1.0 detection.
+- tests/test_quality_check.py
+  - Added packaging contract and obsolete-CLI regression tests.
+  - Updated catalog, execution-plan, summary, and report expectations for Q008.
+- docs/quality_process_spec.md
+  - Added the packaging contract requirement and QL-015.
+
+Contract checked by Q008
+- src/edutex/core/cli.py exists;
+- pyproject.toml exists and points the edutex console script to
+  edutex.core.cli:main;
+- the CLI source contains init, lint, build, validate, and course declarations;
+- the CLI source contains --theme, --language, --lint, --format, the current
+  CLI_VERSION marker, and _format_build_error_json();
+- the obsolete CLI_VERSION 0.1.0 marker is rejected.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Q001-Q007 behavior and identifiers remain unchanged.
+- Q008 is additive and reports static source/metadata diagnostics only.
+- The check does not install packages, invoke a global executable, or modify
+  project files.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Q008 valid packaging fixture: PASS.
+- Q008 obsolete CLI fixture: PASS.
+- Eight-check catalog and execution plan: PASS.
+- Eight-check report summary and catalog: PASS.
+- Repaired 0.5.39 CLI composite fixture: PASS.
+- pytest: not available in the offline agent; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.40_packaging_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused quality tests:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete suite:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

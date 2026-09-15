@@ -6,7 +6,22 @@ import json
 import subprocess
 from pathlib import Path
 
-from tools.quality_check import check_names, run_command
+from tools.quality_check import (
+    check_names,
+    public_cli_contract,
+    quality_baseline_catalog_diagnostics,
+    quality_baseline_missing_checks,
+    quality_baseline_report_diagnostics,
+    quality_baseline_summary,
+    quality_check_id,
+    quality_check_catalog,
+    quality_check_execution_diagnostics,
+    quality_check_execution_plan,
+    packaging_contract,
+    release_metadata_contract,
+    quality_report_contract,
+    run_command,
+)
 
 
 def completed(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess[str]:
@@ -25,9 +40,181 @@ def test_quality_check_names_are_stable_and_unique() -> None:
         "Q005 CLI contract",
         "Q006 Course management contract",
         "Q007 PDF/LaTeX accessibility contract",
+        "Q008 Packaging contract",
+        "Q009 Release metadata contract",
+        "Q010 Quality report schema contract",
+        "Q011 Quality report consistency contract",
+        "Q012 Quality report diagnostics contract",
+        "Q013 Quality report value-types contract",
+        "Q014 Quality report identity contract",
+        "Q015 Quality report catalog metadata contract",
+        "Q016 Quality report serialization contract",
+        "Q017 Quality CLI JSON output contract",
+        "Q018 Quality runner stop-on-failure contract",
+        "Q019 Quality runner/report alignment contract",
+        "Q020 Quality report outcome contract",
+        "Q021 Quality runner exception contract",
+        "Q022 Quality runner identity contract",
+        "Q023 Quality runner return-code contract",
+        "Q024 Quality execution-plan structure contract",
+        "Q025 Quality execution diagnostics/report contract",
+        "Q026 Quality diagnostics channel separation contract",
+        "Q027 Quality report diagnostic outcome contract",
+        "Q028 Quality diagnostic value-types contract",
+        "Q029 Quality diagnostic uniqueness contract",
+        "Q030 Quality diagnostic determinism contract",
+        "Q031 Quality diagnostic completeness contract",
+        "Q032 Quality diagnostic channel isolation contract",
+        "Q033 Quality diagnostic provenance contract",
+        "Q034 Quality runner/report consistency contract",
+        "Q035 Release baseline end-to-end contract",
     )
     assert len(names) == len(set(names))
 
+
+
+def test_quality_check_catalog_is_stable_unique_and_complete() -> None:
+    catalog = quality_check_catalog()
+
+    assert tuple(entry["name"] for entry in catalog) == check_names()
+    assert tuple(entry["id"] for entry in catalog) == (
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035"
+    )
+    assert len({entry["id"] for entry in catalog}) == len(catalog)
+    assert len({entry["name"] for entry in catalog}) == len(catalog)
+    assert all(entry["required"] is True for entry in catalog)
+    assert all(entry["description"] for entry in catalog)
+
+
+def test_quality_execution_plan_matches_catalog_order() -> None:
+    plan = quality_check_execution_plan()
+
+    assert tuple(code for code, _ in plan) == (
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035"
+    )
+    assert quality_check_execution_diagnostics() == ()
+    assert all(callable(check) for _, check in plan)
+
+
+def test_public_cli_contract_is_stable_and_ordered() -> None:
+    assert public_cli_contract() == (
+        (("--help",), ("init", "lint", "build", "validate")),
+        (("init", "--help"), ("--theme", "--language")),
+        (("lint", "--help"), ("--format",)),
+        (("build", "--help"), ("--lint",)),
+        (("validate", "--help"), ("--project", "--config")),
+    )
+
+
+def test_packaging_contract_is_stable_and_covers_cli_surface() -> None:
+    contract = dict(packaging_contract())
+
+    assert "src/edutex/core/cli.py" in contract
+    assert "pyproject.toml" in contract
+    assert 'CLI_VERSION = "0.3.0"' in contract["src/edutex/core/cli.py"]
+    assert '@main.group("course")' in contract["src/edutex/core/cli.py"]
+    assert "def _format_build_error_json" in contract["src/edutex/core/cli.py"]
+
+
+def test_packaging_contract_reports_obsolete_cli(tmp_path: Path) -> None:
+    from tools.quality_check import _check_packaging_contract
+
+    cli = tmp_path / "src" / "edutex" / "core"
+    cli.mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text(
+        '[project.scripts]\n'
+        'edutex = "edutex.core.cli:main"\n'
+        '[tool.setuptools.packages.find]\n',
+        encoding="utf-8",
+    )
+    (cli / "cli.py").write_text(
+        'CLI_VERSION = "0.1.0"\n'
+        '@main.command("init")\n',
+        encoding="utf-8",
+    )
+
+    result = _check_packaging_contract(tmp_path)
+
+    assert not result.passed
+    assert "obsolete CLI_VERSION 0.1.0" in result.detail
+    assert "missing packaging markers" in result.detail
+
+
+def test_release_metadata_contract_is_stable() -> None:
+    assert release_metadata_contract() == (
+        "pyproject.toml",
+        "src/edutex/core/cli.py",
+        'edutex = "edutex.core.cli:main"',
+    )
+
+
+def _write_release_metadata_fixture(root: Path, *, project_version: str = "0.3.0", cli_version: str = "0.3.0", entrypoint: str = "edutex.core.cli:main") -> None:
+    cli = root / "src" / "edutex" / "core"
+    cli.mkdir(parents=True)
+    (root / "pyproject.toml").write_text(
+        "[project]\n"
+        f"version = \"{project_version}\"\n\n"
+        "[project.scripts]\n"
+        f"edutex = \"{entrypoint}\"\n",
+        encoding="utf-8",
+    )
+    (cli / "cli.py").write_text(
+        f"CLI_VERSION = \"{cli_version}\"\n",
+        encoding="utf-8",
+    )
+
+
+def test_release_metadata_contract_accepts_coherent_metadata(tmp_path: Path) -> None:
+    from tools.quality_check import _check_release_metadata_contract
+
+    _write_release_metadata_fixture(tmp_path)
+
+    result = _check_release_metadata_contract(tmp_path)
+
+    assert result.passed
+    assert "version 0.3.0" in result.detail
+
+
+def test_release_metadata_contract_reports_version_mismatch(tmp_path: Path) -> None:
+    from tools.quality_check import _check_release_metadata_contract
+
+    _write_release_metadata_fixture(tmp_path, cli_version="0.3.1")
+
+    result = _check_release_metadata_contract(tmp_path)
+
+    assert not result.passed
+    assert "release version mismatch" in result.detail
+
+
+def test_release_metadata_contract_reports_missing_or_invalid_versions(tmp_path: Path) -> None:
+    from tools.quality_check import _check_release_metadata_contract
+
+    _write_release_metadata_fixture(tmp_path, project_version="not-a-version")
+    result = _check_release_metadata_contract(tmp_path)
+
+    assert not result.passed
+    assert "invalid release version in pyproject.toml" in result.detail
+
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\n\n[project.scripts]\n"
+        'edutex = "edutex.core.cli:main"\n',
+        encoding="utf-8",
+    )
+    result = _check_release_metadata_contract(tmp_path)
+
+    assert not result.passed
+    assert "missing [project] version" in result.detail
+
+
+def test_release_metadata_contract_reports_entrypoint_mismatch(tmp_path: Path) -> None:
+    from tools.quality_check import _check_release_metadata_contract
+
+    _write_release_metadata_fixture(tmp_path, entrypoint="edutex.legacy:main")
+
+    result = _check_release_metadata_contract(tmp_path)
+
+    assert not result.passed
+    assert "project entry point mismatch" in result.detail
 
 
 def test_pdf_latex_source_contract_accepts_accessible_source() -> None:
@@ -392,6 +579,673 @@ def test_pdf_metadata_contract_reports_mismatch() -> None:
     assert error == "PDF metadata mismatch for Title: expected 'Quality Course', got 'Wrong'"
 
 
+def test_quality_check_id_maps_stable_names_and_unknowns() -> None:
+    assert quality_check_id("Q001 Python syntax") == "Q001"
+    assert quality_check_id("Q007 PDF/LaTeX accessibility contract") == "Q007"
+    assert quality_check_id("Q999 Unknown check") is None
+
+
+def test_quality_baseline_missing_checks_tracks_unexecuted_catalog_ids() -> None:
+    from tools.quality_check import CheckResult
+
+    assert quality_baseline_missing_checks([]) == (
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035"
+    )
+    assert quality_baseline_missing_checks(
+        [CheckResult("Q001 Python syntax", True), CheckResult("Q002 pytest suite", False)]
+    ) == ("Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035")
+    assert quality_baseline_missing_checks(
+        [CheckResult(name, True) for name in check_names()]
+    ) == ()
+
+
+def test_quality_baseline_catalog_diagnostics_accept_valid_prefix() -> None:
+    from tools.quality_check import CheckResult
+
+    results = [CheckResult(name, True) for name in check_names()[:3]]
+
+    assert quality_baseline_catalog_diagnostics(results) == ()
+
+
+def test_quality_baseline_catalog_diagnostics_reports_unknown_duplicate_and_order() -> None:
+    from tools.quality_check import CheckResult
+
+    results = [
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q003 CLI lint JSON", True),
+        CheckResult("Q003 CLI lint JSON", True),
+        CheckResult("Q999 Unknown check", True),
+    ]
+
+    diagnostics = quality_baseline_catalog_diagnostics(results)
+
+    assert "quality check order mismatch at position 2: expected Q002 pytest suite, got Q003 CLI lint JSON" in diagnostics
+    assert "duplicate quality check result: Q003 CLI lint JSON" in diagnostics
+    assert "unknown quality check at position 4: Q999 Unknown check" in diagnostics
+
+
+def test_quality_baseline_catalog_diagnostics_reports_too_many_results() -> None:
+    from tools.quality_check import CheckResult
+
+    results = [CheckResult(name, True) for name in check_names()]
+    results.append(CheckResult("Q008 Extra check", True))
+
+    diagnostics = quality_baseline_catalog_diagnostics(results)
+
+    assert any("too many quality check results" in item for item in diagnostics)
+
+
+def test_quality_execution_diagnostics_reports_plan_drift(monkeypatch) -> None:
+    from tools import quality_check
+
+    original = quality_check.quality_check_execution_plan
+    try:
+        monkeypatch.setattr(
+            quality_check,
+            "quality_check_execution_plan",
+            lambda: (("Q001", original()[0][1]), ("Q003", original()[2][1])),
+        )
+        diagnostics = quality_check.quality_check_execution_diagnostics()
+    finally:
+        monkeypatch.setattr(quality_check, "quality_check_execution_plan", original)
+
+    assert diagnostics
+    assert "execution order mismatch" in diagnostics[0]
+    assert "execution count mismatch" in diagnostics[1]
+
+
+def test_quality_baseline_status_distinguishes_outcomes() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_status
+
+    passed_results = [CheckResult(name, True) for name in (
+        "Q001 Python syntax",
+        "Q002 pytest suite",
+        "Q003 CLI lint JSON",
+        "Q004 build lint preflight",
+        "Q005 CLI contract",
+        "Q006 Course management contract",
+        "Q007 PDF/LaTeX accessibility contract",
+        "Q008 Packaging contract",
+        "Q009 Release metadata contract",
+        "Q010 Quality report schema contract",
+        "Q011 Quality report consistency contract",
+        "Q012 Quality report diagnostics contract",
+        "Q013 Quality report value-types contract",
+        "Q014 Quality report identity contract",
+        "Q015 Quality report catalog metadata contract",
+        "Q016 Quality report serialization contract",
+        "Q017 Quality CLI JSON output contract",
+        "Q018 Quality runner stop-on-failure contract",
+        "Q019 Quality runner/report alignment contract",
+        "Q020 Quality report outcome contract",
+        "Q021 Quality runner exception contract",
+        "Q022 Quality runner identity contract",
+        "Q023 Quality runner return-code contract",
+        "Q024 Quality execution-plan structure contract",
+        "Q025 Quality execution diagnostics/report contract",
+        "Q026 Quality diagnostics channel separation contract",
+        "Q027 Quality report diagnostic outcome contract",
+        "Q028 Quality diagnostic value-types contract",
+        "Q029 Quality diagnostic uniqueness contract",
+        "Q030 Quality diagnostic determinism contract",
+        "Q031 Quality diagnostic completeness contract",
+        "Q032 Quality diagnostic channel isolation contract",
+        "Q033 Quality diagnostic provenance contract",
+        "Q034 Quality runner/report consistency contract",
+        "Q035 Release baseline end-to-end contract",
+    )]
+
+    assert quality_baseline_status(passed_results) == "passed"
+    assert quality_baseline_status(passed_results[:-1]) == "incomplete"
+    assert quality_baseline_status([*passed_results[:1], CheckResult("Q002 pytest suite", False)]) == "failed"
+    assert quality_baseline_status([]) == "incomplete"
+
+
+def test_new_quality_run_id_is_unique_uuid4() -> None:
+    import uuid
+
+    from tools.quality_check import new_quality_run_id
+
+    first = new_quality_run_id()
+    second = new_quality_run_id()
+
+    assert first != second
+    assert uuid.UUID(first).version == 4
+    assert uuid.UUID(second).version == 4
+
+
+def test_quality_baseline_report_preserves_supplied_run_id() -> None:
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report([], run_id="run-test-0528")
+
+    assert report["run_id"] == "run-test-0528"
+
+
+def test_quality_baseline_report_generates_run_id_when_omitted() -> None:
+    import uuid
+
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report([])
+
+    assert uuid.UUID(report["run_id"]).version == 4
+
+
+def test_new_quality_run_started_at_is_utc_rfc3339() -> None:
+    from datetime import datetime, timezone
+
+    from tools.quality_check import new_quality_run_started_at
+
+    value = new_quality_run_started_at()
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    assert value.endswith("Z")
+    assert parsed.tzinfo == timezone.utc
+
+
+def test_quality_baseline_report_preserves_supplied_run_started_at() -> None:
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report([], run_started_at="2026-09-11T10:00:00Z")
+
+    assert report["run_started_at"] == "2026-09-11T10:00:00Z"
+
+
+def test_quality_baseline_report_generates_run_started_at_when_omitted() -> None:
+    from datetime import datetime
+
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report([])
+    value = report["run_started_at"]
+
+    assert isinstance(value, str)
+    assert value.endswith("Z")
+    datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def test_new_quality_run_finished_at_is_utc_rfc3339() -> None:
+    from datetime import datetime, timezone
+
+    from tools.quality_check import new_quality_run_finished_at
+
+    value = new_quality_run_finished_at()
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    assert value.endswith("Z")
+    assert parsed.tzinfo == timezone.utc
+
+
+def test_quality_baseline_report_preserves_finish_and_duration() -> None:
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report(
+        [],
+        run_finished_at="2026-09-11T10:00:03Z",
+        duration_seconds=3.25,
+    )
+
+    assert report["run_finished_at"] == "2026-09-11T10:00:03Z"
+    assert report["duration_seconds"] == 3.25
+    assert report["duration_seconds"] >= 0.0
+
+
+def test_quality_baseline_report_generates_finish_and_default_duration() -> None:
+    from datetime import datetime
+
+    from tools.quality_check import quality_baseline_report
+
+    report = quality_baseline_report([])
+
+    assert isinstance(report["run_finished_at"], str)
+    assert report["run_finished_at"].endswith("Z")
+    datetime.fromisoformat(report["run_finished_at"].replace("Z", "+00:00"))
+    assert report["duration_seconds"] == 0.0
+
+
+def test_quality_baseline_summary_counts_passed_failed_and_pending() -> None:
+    from tools.quality_check import CheckResult
+
+    summary = quality_baseline_summary([
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q002 pytest suite", False),
+        CheckResult("Q003 CLI lint JSON", True),
+    ])
+
+    assert summary == {
+        "passed": 2,
+        "failed": 1,
+        "pending": 32,
+        "total": 35,
+        "completed": 3,
+        "pass_rate": 66.67,
+        "completion_rate": 8.57,
+        "failure_rate": 33.33,
+    }
+
+
+def test_quality_baseline_summary_is_non_negative_for_extra_results() -> None:
+    from tools.quality_check import CheckResult
+
+    results = [CheckResult(name, True) for name in (
+        "Q001 Python syntax",
+        "Q002 pytest suite",
+        "Q003 CLI lint JSON",
+        "Q004 build lint preflight",
+        "Q005 CLI contract",
+        "Q006 Course management contract",
+        "Q007 PDF/LaTeX accessibility contract",
+        "Q008 Packaging contract",
+        "Q999 Unknown check",
+    )]
+
+    assert quality_baseline_summary(results) == {
+        "passed": 9,
+        "failed": 0,
+        "pending": 26,
+        "total": 35,
+        "completed": 9,
+        "pass_rate": 100.0,
+        "completion_rate": 25.71,
+        "failure_rate": 0.0,
+    }
+
+
+def test_quality_baseline_report_includes_summary() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_report
+
+    report = quality_baseline_report([
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q002 pytest suite", False),
+    ])
+
+    assert report["summary"] == {
+        "passed": 1,
+        "failed": 1,
+        "pending": 33,
+        "total": 35,
+        "completed": 2,
+        "pass_rate": 50.0,
+        "completion_rate": 5.71,
+        "failure_rate": 50.0,
+    }
+
+
+def test_quality_report_contract_exposes_required_field_groups() -> None:
+    top_level, check_fields, summary_fields = quality_report_contract()
+
+    assert "schema" in top_level
+    assert "checks" in top_level
+    assert check_fields == ("id", "name", "passed", "status", "returncode", "detail")
+    assert summary_fields == (
+        "passed", "failed", "pending", "total", "completed",
+        "pass_rate", "completion_rate", "failure_rate",
+    )
+
+
+def test_quality_report_schema_contract_accepts_complete_failed_and_empty_reports() -> None:
+    from tools.quality_check import _check_quality_report_schema_contract
+
+    result = _check_quality_report_schema_contract(Path("."))
+
+    assert result.passed
+    assert "schema" in result.detail
+
+
+def test_quality_report_schema_contract_is_in_execution_plan() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-26] == "Q010"
+
+
+def test_quality_report_consistency_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_consistency_contract
+
+    result = _check_quality_report_consistency_contract(Path("."))
+
+    assert result.passed
+    assert "counts" in result.detail
+
+
+def test_quality_report_consistency_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-25] == "Q011"
+
+
+def test_quality_report_diagnostics_contract_accepts_valid_and_detects_corruption() -> None:
+    from tools.quality_check import _check_quality_report_diagnostics_contract
+
+    result = _check_quality_report_diagnostics_contract(Path("."))
+
+    assert result.passed
+    assert "deterministic diagnostics" in result.detail
+
+
+def test_quality_report_diagnostics_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-24] == "Q012"
+
+
+def test_quality_report_value_types_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_value_types_contract
+
+    result = _check_quality_report_value_types_contract(Path("."))
+
+    assert result.passed
+    assert "value types" in result.detail
+
+
+def test_quality_report_value_types_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-23] == "Q013"
+
+
+def test_quality_report_identity_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_identity_contract
+
+    result = _check_quality_report_identity_contract(Path("."))
+
+    assert result.passed
+    assert "identifiers" in result.detail
+
+
+def test_quality_report_identity_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-22] == "Q014"
+
+
+def test_quality_report_catalog_metadata_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_catalog_metadata_contract
+
+    result = _check_quality_report_catalog_metadata_contract(Path("."))
+
+    assert result.passed
+    assert "catalog metadata" in result.detail
+
+
+def test_quality_report_catalog_metadata_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-21] == "Q015"
+
+
+def test_quality_report_serialization_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_serialization_contract
+
+    result = _check_quality_report_serialization_contract(Path("."))
+
+    assert result.passed
+    assert "serialize" in result.detail
+
+
+def test_quality_report_serialization_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-20] == "Q016"
+
+
+def test_quality_cli_json_output_contract_accepts_representative_run() -> None:
+    from tools.quality_check import _check_quality_cli_json_output_contract
+
+    result = _check_quality_cli_json_output_contract(Path("."))
+
+    assert result.passed
+    assert "JSON output" in result.detail
+
+
+def test_quality_cli_json_output_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-19] == "Q017"
+
+
+def test_quality_runner_stop_on_failure_contract_accepts_synthetic_plan() -> None:
+    from tools.quality_check import _check_quality_runner_stop_on_failure_contract
+
+    result = _check_quality_runner_stop_on_failure_contract(Path("."))
+
+    assert result.passed
+    assert "first failure" in result.detail
+
+
+def test_quality_runner_stop_on_failure_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-18] == "Q018"
+
+
+def test_quality_runner_report_alignment_contract_accepts_representative_runs() -> None:
+    from tools.quality_check import _check_quality_runner_report_alignment_contract
+
+    result = _check_quality_runner_report_alignment_contract(Path("."))
+
+    assert result.passed
+    assert "remain aligned" in result.detail
+
+
+def test_quality_runner_report_alignment_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-17] == "Q019"
+
+
+def test_quality_report_outcome_contract_accepts_representative_reports() -> None:
+    from tools.quality_check import _check_quality_report_outcome_contract
+
+    result = _check_quality_report_outcome_contract(Path("."))
+
+    assert result.passed
+    assert "exit semantics" in result.detail
+
+
+def test_quality_report_outcome_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-16] == "Q020"
+
+
+def test_quality_runner_exception_contract_accepts_raised_check() -> None:
+    from tools.quality_check import _check_quality_runner_exception_contract
+
+    result = _check_quality_runner_exception_contract(Path("."))
+
+    assert result.passed
+    assert "deterministic failed results" in result.detail
+
+
+def test_quality_runner_exception_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-15] == "Q021"
+
+
+def test_quality_runner_identity_contract_accepts_mismatched_result() -> None:
+    from tools.quality_check import _check_quality_runner_identity_contract
+
+    result = _check_quality_runner_identity_contract(Path("."))
+
+    assert result.passed
+    assert "identity alignment" in result.detail
+
+
+def test_quality_runner_identity_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-14] == "Q022"
+
+
+def test_quality_runner_returncode_contract_accepts_inconsistent_codes() -> None:
+    from tools.quality_check import _check_quality_runner_returncode_contract
+
+    result = _check_quality_runner_returncode_contract(Path("."))
+
+    assert result.passed
+    assert "return-code semantics" in result.detail
+
+
+def test_quality_runner_returncode_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-13] == "Q023"
+
+
+def test_quality_execution_plan_structure_contract_accepts_malformed_plans() -> None:
+    from tools.quality_check import _check_quality_execution_plan_structure_contract
+
+    result = _check_quality_execution_plan_structure_contract(Path("."))
+
+    assert result.passed
+    assert "diagnosed deterministically" in result.detail
+
+
+def test_quality_execution_plan_structure_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-12] == "Q024"
+
+
+def test_quality_execution_diagnostics_report_contract_accepts_malformed_plan() -> None:
+    from tools.quality_check import _check_quality_execution_diagnostics_report_contract
+
+    result = _check_quality_execution_diagnostics_report_contract(Path("."))
+
+    assert result.passed
+    assert "propagate deterministically" in result.detail
+
+
+def test_quality_execution_diagnostics_report_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-11] == "Q025"
+
+
+def test_quality_diagnostics_channel_separation_contract_accepts_combined_diagnostics() -> None:
+    from tools.quality_check import _check_quality_diagnostics_channel_separation_contract
+
+    result = _check_quality_diagnostics_channel_separation_contract(Path("."))
+
+    assert result.passed
+    assert "remain separate" in result.detail
+
+
+def test_quality_diagnostics_channel_separation_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-10] == "Q026"
+
+
+def test_quality_report_diagnostic_outcome_contract_accepts_coherent_reports() -> None:
+    from tools.quality_check import _check_quality_report_diagnostic_outcome_contract
+
+    result = _check_quality_report_diagnostic_outcome_contract(Path("."))
+
+    assert result.passed
+    assert "remain coherent" in result.detail
+
+
+def test_quality_report_diagnostic_outcome_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-9] == "Q027"
+
+
+def test_quality_diagnostic_value_types_contract_accepts_json_safe_reports() -> None:
+    from tools.quality_check import _check_quality_diagnostic_value_types_contract
+
+    result = _check_quality_diagnostic_value_types_contract(Path("."))
+
+    assert result.passed
+    assert "JSON-safe values" in result.detail
+
+
+def test_quality_diagnostic_value_types_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-8] == "Q028"
+
+
+def test_quality_diagnostic_uniqueness_contract_accepts_valid_messages() -> None:
+    from tools.quality_check import _check_quality_diagnostic_uniqueness_contract
+
+    result = _check_quality_diagnostic_uniqueness_contract(Path("."))
+
+    assert result.passed
+    assert "non-empty" in result.detail
+
+
+def test_quality_diagnostic_uniqueness_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-7] == "Q029"
+
+
+def test_quality_diagnostic_determinism_contract_accepts_repeated_reports() -> None:
+    from tools.quality_check import _check_quality_diagnostic_determinism_contract
+
+    result = _check_quality_diagnostic_determinism_contract(Path("."))
+
+    assert result.passed
+    assert "deterministic" in result.detail
+
+
+def test_quality_diagnostic_determinism_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-6] == "Q030"
+
+
+def test_quality_diagnostic_completeness_contract_accepts_complete_propagation() -> None:
+    from tools.quality_check import _check_quality_diagnostic_completeness_contract
+
+    result = _check_quality_diagnostic_completeness_contract(Path("."))
+
+    assert result.passed
+    assert "propagate completely" in result.detail
+
+
+def test_quality_diagnostic_completeness_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-5] == "Q031"
+
+
+def test_quality_diagnostic_channel_isolation_contract_accepts_single_source_failures() -> None:
+    from tools.quality_check import _check_quality_diagnostic_channel_isolation_contract
+
+    result = _check_quality_diagnostic_channel_isolation_contract(Path("."))
+
+    assert result.passed
+    assert "remain isolated" in result.detail
+
+
+def test_quality_diagnostic_channel_isolation_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-4] == "Q032"
+
+
+def test_quality_diagnostic_provenance_contract_accepts_distinct_failure_sources() -> None:
+    from tools.quality_check import _check_quality_diagnostic_provenance_contract
+
+    result = _check_quality_diagnostic_provenance_contract(Path("."))
+
+    assert result.passed
+    assert "distinct" in result.detail
+
+
+def test_quality_diagnostic_provenance_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-3] == "Q033"
+
+
+def test_quality_runner_report_consistency_contract_accepts_source_consistent_reports() -> None:
+    from tools.quality_check import _check_quality_runner_report_consistency_contract
+
+    result = _check_quality_runner_report_consistency_contract(Path("."))
+
+    assert result.passed
+    assert "source-consistent" in result.detail
+
+
+def test_quality_runner_report_consistency_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-2] == "Q034"
+
+
+def test_quality_release_baseline_end_to_end_contract_accepts_public_json_path() -> None:
+    from tools.quality_check import _check_quality_release_baseline_end_to_end_contract
+
+    result = _check_quality_release_baseline_end_to_end_contract(Path("."))
+
+    assert result.passed
+    assert "parseable" in result.detail
+
+
+def test_quality_release_baseline_end_to_end_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-1] == "Q035"
+
+
+def test_quality_baseline_report_diagnostics_accept_valid_report() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_report
+
+    report = quality_baseline_report([
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q002 pytest suite", False),
+    ])
+
+    assert quality_baseline_report_diagnostics(report) == ()
+
+
+def test_quality_baseline_report_diagnostics_detect_status_and_summary_drift() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_report
+
+    report = quality_baseline_report([CheckResult("Q001 Python syntax", True)])
+    report["checks"][0]["status"] = "failed"
+    del report["summary"]["failure_rate"]
+
+    diagnostics = quality_baseline_report_diagnostics(report)
+
+    assert "status mismatch" in diagnostics[0]
+    assert "summary fields missing: failure_rate" in diagnostics[1]
+
+
 def test_quality_baseline_report_is_json_safe_and_ordered() -> None:
     from tools.quality_check import CheckResult, quality_baseline_report
 
@@ -403,23 +1257,86 @@ def test_quality_baseline_report_is_json_safe_and_ordered() -> None:
     report = quality_baseline_report(results)
 
     assert report["schema"] == "edutex.quality-baseline.v1"
+    assert report["run_started_at"]
+    assert report["run_finished_at"]
+    assert report["duration_seconds"] == 0.0
+    assert report["status"] == "failed"
     assert report["passed"] is False
+    assert report["complete"] is False
+    assert report["exit_code"] == 1
+    assert report["catalog_consistent"] is True
+    assert report["catalog_diagnostics"] == []
+    assert report["execution_consistent"] is True
+    assert report["execution_diagnostics"] == []
     assert report["checks_completed"] == 2
-    assert report["checks_expected"] == 7
+    assert report["checks_expected"] == 35
+    assert report["missing_checks"] == ["Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035"]
+    assert report["summary"] == {
+        "passed": 1,
+        "failed": 1,
+        "pending": 33,
+        "total": 35,
+        "completed": 2,
+        "pass_rate": 50.0,
+        "completion_rate": 5.71,
+        "failure_rate": 50.0,
+    }
+    assert [entry["id"] for entry in report["check_catalog"]] == [
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035"
+    ]
     assert report["failed_check"] == "Q002 pytest suite"
+    assert report["failed_check_id"] == "Q002"
+    assert report["checks"][0]["id"] == "Q001"
     assert report["checks"][0]["name"] == "Q001 Python syntax"
+    assert report["checks"][0]["passed"] is True
+    assert report["checks"][0]["status"] == "passed"
+    assert report["checks"][1]["id"] == "Q002"
+    assert report["checks"][1]["passed"] is False
+    assert report["checks"][1]["status"] == "failed"
     assert report["checks"][1]["returncode"] == 7
     json.dumps(report)
 
 
-def test_quality_baseline_report_marks_empty_results_as_failed() -> None:
+def test_quality_baseline_report_exposes_failed_check_id() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_report
+
+    report = quality_baseline_report([
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q007 PDF/LaTeX accessibility contract", False),
+    ])
+
+    assert report["failed_check"] == "Q007 PDF/LaTeX accessibility contract"
+    assert report["failed_check_id"] == "Q007"
+
+
+def test_quality_baseline_report_fails_on_catalog_inconsistency() -> None:
+    from tools.quality_check import CheckResult, quality_baseline_report
+
+    report = quality_baseline_report([
+        CheckResult("Q001 Python syntax", True),
+        CheckResult("Q003 CLI lint JSON", True),
+    ])
+
+    assert report["status"] == "failed"
+    assert report["passed"] is False
+    assert report["catalog_consistent"] is False
+    assert report["catalog_diagnostics"]
+    assert report["exit_code"] == 1
+    json.dumps(report)
+
+
+def test_quality_baseline_report_marks_empty_results_incomplete() -> None:
     from tools.quality_check import quality_baseline_report
 
     report = quality_baseline_report([])
 
+    assert report["status"] == "incomplete"
     assert report["passed"] is False
+    assert report["complete"] is False
+    assert report["exit_code"] == 1
     assert report["checks_completed"] == 0
     assert report["failed_check"] is None
+    assert report["failed_check_id"] is None
 
 
 def test_run_command_passes_for_zero_exit_code(tmp_path: Path) -> None:

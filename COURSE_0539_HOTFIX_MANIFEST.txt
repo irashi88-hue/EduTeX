@@ -1,0 +1,30 @@
+EduTeX 0.5.39 build JSON error hotfix
+
+Problem fixed
+The repaired 0.5.39 CLI correctly exposed --format json, but a missing
+Knowledge Model was still raised as ClickException before the JSON error
+handler. That left the command emitting Click's human-readable diagnostic and
+caused JSONDecodeError in the focused test.
+
+Change
+- src/edutex/core/cli.py
+  - classify a missing Knowledge Model as KnowledgeError;
+  - preserve the existing text-mode message;
+  - allow build --format json to emit the structured error object with
+    error.type=KnowledgeError.
+
+The complete CLI surface from the packaging repair is retained:
+- init --theme --language
+- lint
+- course validate/build
+- build --lint
+- build --format json
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.39_build_json_errors_hotfix.tar.gz -C .
+
+Run the focused validation:
+  python -m pytest -q .\tests\test_build_lint.py .\tests\test_build_lint_json.py
+
+Run the complete suite:
+  python -m pytest -q

@@ -1,0 +1,59 @@
+EduTeX 0.5.36 - Quality baseline completion and failure rates
+
+Scope
+- Extend the 0.5.33 summary metrics with completion_rate and failure_rate.
+- Define completion_rate as completed results divided by catalog size, expressed
+  as a percentage rounded to two decimal places.
+- Define failure_rate as failed results divided by completed results, expressed as
+  a percentage rounded to two decimal places.
+- Use 0.0 when a rate denominator is zero.
+- Preserve passed, failed, pending, total, completed, and pass_rate values.
+- Preserve report identity, timing, per-check status, failure identifiers,
+  diagnostics, check ordering, outcome semantics, text output, and exit codes.
+- Add focused tests for partial, over-complete, empty, and report rate metrics.
+- Document the rate contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Extended quality_baseline_summary() with completion_rate and failure_rate.
+- tests/test_quality_check.py
+  - Added assertions for completion and failure rate metrics.
+- docs/quality_process_spec.md
+  - Documented rate semantics in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing summary fields remain available with unchanged meanings.
+- Existing report fields and outcome semantics remain available.
+- Existing calls to quality_baseline_report(results) remain valid.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation: PASS.
+- Partial completion/failure rates: PASS.
+- Over-complete completion rate: PASS.
+- Empty denominator defaults: PASS.
+- Report rate metrics: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.36_quality_summary_rates.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --json

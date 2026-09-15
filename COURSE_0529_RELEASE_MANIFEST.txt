@@ -1,0 +1,62 @@
+EduTeX 0.5.29 - Quality baseline UTC start timestamp
+
+Scope
+- Add an additive run_started_at field to every JSON quality baseline report.
+- Capture one UTC RFC 3339 timestamp per quality runner invocation.
+- Pass the same timestamp into report construction for one execution.
+- Preserve the existing schema identifier, fields, check ordering, outcome
+  semantics, missing-check behavior, diagnostics, text output, and exit codes.
+- Preserve compatibility for direct quality_baseline_report() callers by allowing
+  an optional deterministic run_started_at and generating one when omitted.
+- Add focused tests for UTC/RFC 3339 formatting, supplied timestamps, and
+  generated timestamps.
+- Document the timestamp contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added new_quality_run_started_at().
+  - Added optional run_started_at to quality_baseline_report().
+  - Added additive run_started_at report field.
+  - Updated main() to capture and pass one timestamp per invocation.
+- tests/test_quality_check.py
+  - Added UTC/RFC 3339 and report-timestamp tests.
+- docs/quality_process_spec.md
+  - Documented the run_started_at contract in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- Existing calls to quality_baseline_report(results) remain valid.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- UTC/RFC 3339 timestamp formatting: PASS.
+- Supplied run_started_at preservation: PASS.
+- Generated run_started_at validation: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.29_quality_timestamp.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

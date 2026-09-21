@@ -7,6 +7,7 @@ Rendering is pure string transformation and does not perform file I/O.
 from __future__ import annotations
 
 import html
+import json
 import re
 
 from edutex.knowledge.models import TextBlock
@@ -49,6 +50,9 @@ _EDUTEX_UI_LABELS = {
         "short_placeholder": "Write your answer", "check_short": "Check answer",
         "reset_short": "Reset answer", "short_correct": "Correct",
         "short_wrong": "Not correct", "short_empty": "Write an answer first",
+        "check_choice": "Check answer", "reset_choice": "Reset exercise",
+        "choice_correct": "Correct", "choice_wrong": "Not correct",
+        "choice_missing": "Select an answer", "choice_result": "Choice result",
         "special_chars": "Special characters",
         "skip": "Skip to content", "document_content": "Document content","contents": "Contents",
     },
@@ -86,6 +90,9 @@ _EDUTEX_UI_LABELS = {
         "short_placeholder": "Scrivi la tua risposta", "check_short": "Verifica risposta",
         "reset_short": "Azzera risposta", "short_correct": "Corretta",
         "short_wrong": "Non corretta", "short_empty": "Scrivi prima una risposta",
+        "check_choice": "Verifica risposta", "reset_choice": "Azzera esercizio",
+        "choice_correct": "Corretta", "choice_wrong": "Non corretta",
+        "choice_missing": "Seleziona una risposta", "choice_result": "Risultato scelta",
         "special_chars": "Caratteri speciali",
         "skip": "Vai al contenuto", "document_content": "Contenuto del documento","contents": "Indice",
     },
@@ -387,6 +394,44 @@ class HtmlRenderer:
     .choice-option input {{
       margin-top: .35rem;
       accent-color: var(--exercise-color);
+    }}
+    .choice-actions {{
+      margin-top: .8rem;
+    }}
+    .choice-check, .choice-reset {{
+      padding: .5rem .8rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .choice-check {{
+      border: 0;
+      border-bottom: 3px solid var(--exercise-color);
+      background: var(--exercise-color);
+      color: #fff;
+    }}
+    .choice-reset {{
+      margin-left: .5rem;
+      border: 1px solid var(--exercise-color);
+      border-bottom: 3px solid var(--exercise-color);
+      background: #fff;
+      color: var(--exercise-color);
+    }}
+    .choice-check:hover, .choice-reset:hover {{
+      filter: brightness(.95);
+    }}
+    .choice-result {{
+      min-height: 1.5em;
+      margin-top: .6rem;
+      font-weight: 700;
+    }}
+    .choice-option.is-correct {{
+      border-color: #15803d;
+      background: #f0fdf4;
+    }}
+    .choice-option.is-wrong {{
+      border-color: #b91c1c;
+      background: #fef2f2;
     }}
     .matching-list {{
       display: grid;
@@ -991,6 +1036,72 @@ class HtmlRenderer:
         .trim()
         .toLocaleLowerCase();
 
+      const normalizeChoiceValue = (value) => String(value || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLocaleLowerCase();
+
+      function sameValues(left, right) {{
+        const normalize = (values) => values
+          .map(normalizeChoiceValue)
+          .filter(Boolean)
+          .sort();
+        const normalizedLeft = normalize(left);
+        const normalizedRight = normalize(right);
+        return normalizedLeft.length === normalizedRight.length
+          && normalizedLeft.every((value, index) => value === normalizedRight[index]);
+      }}
+
+      const initializeChoice = (exercise) => {{
+        const inputs = Array.from(exercise.querySelectorAll("input[name]"));
+        const result = exercise.querySelector(".choice-result");
+        const checkButton = exercise.querySelector("button.choice-check");
+        const resetButton = exercise.querySelector("button.choice-reset");
+        let expected = [];
+        try {{
+          expected = JSON.parse(exercise.dataset.answer || "[]");
+        }} catch (error) {{
+          expected = [];
+        }}
+
+        const clearState = () => {{
+          exercise.classList.remove("is-correct", "is-wrong");
+          inputs.forEach((input) => {{
+            input.closest(".choice-option")?.classList.remove("is-correct", "is-wrong");
+          }});
+          result.textContent = "";
+        }};
+
+        inputs.forEach((input) => input.addEventListener("change", clearState));
+        checkButton.addEventListener("click", () => {{
+          const selected = inputs.filter((input) => input.checked).map((input) => input.value);
+          inputs.forEach((input) => {{
+            input.closest(".choice-option")?.classList.remove("is-correct", "is-wrong");
+          }});
+          if (!selected.length) {{
+            exercise.classList.remove("is-correct", "is-wrong");
+            result.textContent = "{self._labels["choice_missing"]}";
+            return;
+          }}
+          const correct = sameValues(selected, expected);
+          exercise.classList.toggle("is-correct", correct);
+          exercise.classList.toggle("is-wrong", !correct);
+          selected.forEach((value) => {{
+            const input = inputs.find((candidate) => candidate.value === value);
+            input?.closest(".choice-option")?.classList.add(correct ? "is-correct" : "is-wrong");
+          }});
+          result.textContent = correct
+            ? "{self._labels["choice_correct"]}"
+            : "{self._labels["choice_wrong"]}";
+        }});
+
+        resetButton.addEventListener("click", () => {{
+          inputs.forEach((input) => {{ input.checked = false; }});
+          clearState();
+          inputs[0]?.focus();
+        }});
+      }};
+
       const initializeShortAnswer = (exercise) => {{
         const input = exercise.querySelector("input.short-answer-input");
         const result = exercise.querySelector(".short-answer-result");
@@ -1278,6 +1389,7 @@ class HtmlRenderer:
       }});
 
       document.querySelectorAll(".short-answer").forEach(initializeSpecialCharacters);
+      document.querySelectorAll(".choice-exercise").forEach(initializeChoice);
       document.querySelectorAll(".short-answer").forEach(initializeShortAnswer);
       document.querySelectorAll(".cloze-exercise").forEach(initializeCloze);
       document.querySelectorAll(".true-false-exercise").forEach(initializeTrueFalse);
@@ -1928,17 +2040,18 @@ class HtmlRenderer:
         )
 
     def _render_choice_exercise(self, body: str, exercise_id: str) -> str:
-        """Render a choice exercise with accessible radio or checkbox inputs."""
-        lines = [line.rstrip() for line in body.splitlines()]
+        """Render a checked single- or multiple-choice exercise."""
         question_lines: list[str] = []
         option_lines: list[str] = []
+        answers: list[str] = []
         in_options = False
         multiple = False
 
-        for raw_line in lines:
+        for raw_line in body.splitlines():
             line = raw_line.strip()
             lower = line.lower()
-
+            if not line:
+                continue
             if lower == "type: choice":
                 continue
             if lower == "multiple: true":
@@ -1947,45 +2060,80 @@ class HtmlRenderer:
             if lower == "multiple: false":
                 multiple = False
                 continue
-            if lower == "options:":
+            if lower == "options:" or lower.startswith("options:"):
                 in_options = True
+                inline_options = line.split(":", 1)[1].strip()
+                if inline_options:
+                    option_lines.extend(
+                        item.strip() for item in inline_options.split("|") if item.strip()
+                    )
                 continue
-
+            if lower.startswith("answer:"):
+                answers.extend(
+                    item.strip()
+                    for item in line.split(":", 1)[1].strip().split("|")
+                    if item.strip()
+                )
+                in_options = False
+                continue
+            if lower.startswith("question:"):
+                question = line.split(":", 1)[1].strip()
+                if question:
+                    question_lines.append(question)
+                in_options = False
+                continue
             if in_options:
-                # Accept Markdown bullets, checkbox markers, or plain options.
-                option = re.sub(r"^(?:[-*]\s+|\[[ xX]\]\s+)", "", line).strip()
+                option = re.sub(
+                    r"^(?:[-*]\s+|\[[ xX]\]\s+|\d+[.)]\s+)",
+                    "",
+                    line,
+                ).strip()
                 if option:
                     option_lines.append(option)
-            elif line:
-                question_lines.append(raw_line)
+            else:
+                question_lines.append(raw_line.strip())
 
-        rendered: list[str] = []
-        for line in question_lines:
-            rendered.append(f'<div class="body-line">{self._inline(line)}</div>')
-
+        rendered = [
+            f'<div class="choice-question">{self._inline(line)}</div>'
+            for line in question_lines
+        ]
         if not option_lines:
             rendered.append(
                 '<div class="body-line"><em>Nessuna opzione configurata.</em></div>'
             )
             return "\n".join(rendered)
 
+        expected = answers if multiple else answers[:1]
+        answer_json = json.dumps(expected, ensure_ascii=False, separators=(",", ":"))
         input_type = "checkbox" if multiple else "radio"
         name = f"{exercise_id}-choice"
-        option_markup = []
-        for option in option_lines:
+        option_markup: list[str] = []
+        for index, option in enumerate(option_lines, start=1):
+            input_id = f"{name}-{index}"
             option_markup.append(
-                f'<label class="choice-option">'
-                f'<input type="{input_type}" name="{html.escape(name)}" '
-                f'value="{html.escape(option)}">'
+                f'<label class="choice-option" for="{html.escape(input_id)}">'
+                f'<input type="{input_type}" id="{html.escape(input_id)}" '
+                f'name="{html.escape(name)}" value="{html.escape(option, quote=True)}">'
                 f'<span>{self._inline(option)}</span></label>'
             )
 
         legend = self._labels["options"]
         rendered.append(
+            f'<div class="choice-exercise" data-choice-exercise '
+            f'data-answer="{html.escape(answer_json, quote=True)}" '
+            f'data-multiple="{"true" if multiple else "false"}">'
             f'<fieldset class="choice-list">'
             f'<legend class="sr-only">{html.escape(legend)}</legend>'
             + "\n".join(option_markup)
             + '</fieldset>'
+            f'<div class="choice-actions">'
+            f'<button type="button" class="choice-check">'
+            f'{html.escape(self._labels["check_choice"])}</button>'
+            f'<button type="button" class="choice-reset">'
+            f'{html.escape(self._labels["reset_choice"])}</button>'
+            f'<div class="choice-result" role="status" aria-live="polite" '
+            f'aria-label="{html.escape(self._labels["choice_result"])}"></div>'
+            f'</div></div>'
         )
         return "\n".join(rendered)
 

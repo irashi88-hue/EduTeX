@@ -1038,7 +1038,7 @@ class HtmlRenderer:
 
       const normalizeChoiceValue = (value) => String(value || "")
         .trim()
-        .replace(/\s+/g, " ")
+        .replace(/\\s+/g, " ")
         .toLocaleLowerCase();
 
       function sameValues(left, right) {{

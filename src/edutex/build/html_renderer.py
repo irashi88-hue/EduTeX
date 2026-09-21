@@ -192,12 +192,37 @@ class HtmlRenderer:
   <title>{title}</title>
   <style>
     :root {{
-      --page-bg: {palette['page_bg']};
-      --ink: {palette['ink']};
-      --muted: {palette['muted']};
-      --surface: {palette['surface']};
-      --link: {palette['link']};
-      --code-bg: {palette['code_bg']};
+      color-scheme: light;
+      --page-bg: {colors['page_bg']};
+      --canvas-bg: {colors['canvas_bg']};
+      --surface: #ffffff;
+      --surface-subtle: #f8fafc;
+      --ink: {colors['ink']};
+      --muted: {colors['muted']};
+      --control-bg: #ffffff;
+      --control-bg-hover: #eef2ff;
+      --control-bg-strong: #e0e7ff;
+      --control-bg-strong-hover: #c7d2fe;
+      --control-border: rgba(67, 56, 202, .35);
+      --control-border-soft: rgba(67, 56, 202, .22);
+      --control-border-strong: #a5b4fc;
+      --input-bg: rgba(255, 255, 255, .85);
+      --code-bg: rgba(23, 32, 51, .08);
+      --neutral-line: rgba(83, 97, 118, .25);
+      --shadow: rgba(23, 32, 51, .08);
+      --on-accent: #ffffff;
+      --success-border: #15803d;
+      --success-bg: #f0fdf4;
+      --success-bg-strong: #dcfce7;
+      --success-ink: #166534;
+      --danger-border: #b91c1c;
+      --danger-bg: #fef2f2;
+      --danger-bg-strong: #fee2e2;
+      --danger-ink: #991b1b;
+      --warning-border: #b45309;
+      --warning-bg: #fffbeb;
+      --warning-bg-strong: #fef3c7;
+      --print-bg: #ffffff;
       --rule-color: {colors['rule_color']};
       --rule-bg: {colors['rule_bg']};
       --note-color: {colors['note_color']};
@@ -211,7 +236,52 @@ class HtmlRenderer:
       --solution-color: {colors['solution_color']};
       --solution-bg: {colors['solution_bg']};
     }}
-    * {{ box-sizing: border-box; }}
+    @media (prefers-color-scheme: dark) {{
+      :root {{
+        color-scheme: dark;
+        --page-bg: #0f172a;
+        --canvas-bg: #020617;
+        --surface: #111827;
+        --surface-subtle: #1e293b;
+        --ink: #e5e7eb;
+        --muted: #cbd5e1;
+        --control-bg: #0f172a;
+        --control-bg-hover: #1e293b;
+        --control-bg-strong: #312e81;
+        --control-bg-strong-hover: #4338ca;
+        --control-border: rgba(165, 180, 252, .60);
+        --control-border-soft: rgba(165, 180, 252, .38);
+        --control-border-strong: #a5b4fc;
+        --input-bg: rgba(15, 23, 42, .88);
+        --code-bg: rgba(255, 255, 255, .10);
+        --neutral-line: rgba(203, 213, 225, .35);
+        --shadow: rgba(0, 0, 0, .35);
+        --on-accent: #0b1020;
+        --success-border: #86efac;
+        --success-bg: #052e16;
+        --success-bg-strong: #14532d;
+        --success-ink: #bbf7d0;
+        --danger-border: #fca5a5;
+        --danger-bg: #450a0a;
+        --danger-bg-strong: #7f1d1d;
+        --danger-ink: #fecaca;
+        --warning-border: #fbbf24;
+        --warning-bg: #422006;
+        --warning-bg-strong: #713f12;
+        --rule-color: #93c5fd;
+        --rule-bg: #172554;
+        --note-color: #fbbf24;
+        --note-bg: #422006;
+        --example-color: #5eead4;
+        --example-bg: #042f2e;
+        --exercise-color: #a5b4fc;
+        --exercise-bg: #1e1b4b;
+        --vocab-color: #cbd5e1;
+        --vocab-bg: #1e293b;
+        --solution-color: #86efac;
+        --solution-bg: #052e16;
+      }}
+    }}    * {{ box-sizing: border-box; }}
     :focus-visible {{ outline: 3px solid var(--rule-color); outline-offset: 3px; }}
     .skip-link {{
       position: absolute;
@@ -220,14 +290,14 @@ class HtmlRenderer:
       z-index: 10;
       padding: .55rem .8rem;
       background: var(--ink);
-      color: #fff;
+      color: var(--on-accent);
       text-decoration: none;
       font-weight: 700;
     }}
     .skip-link:focus {{ top: 1rem; }}
     body {{
       margin: 0;
-      background: {palette['canvas']};
+      background: var(--canvas-bg);
       color: var(--ink);
       font-family: Inter, "Segoe UI", Arial, sans-serif;
       font-size: 1rem;
@@ -243,7 +313,7 @@ class HtmlRenderer:
       border-top: 8px solid var(--rule-color);
       padding: 2.25rem clamp(1.25rem, 4vw, 3.5rem);
       margin-bottom: 2rem;
-      box-shadow: 0 8px 28px rgba(23, 32, 51, .08);
+      box-shadow: 0 8px 28px var(--shadow);
     }}
     h1, h2, h3, h4 {{ line-height: 1.2; margin-top: 0; }}
     h1 {{ font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.035em; margin-bottom: .45rem; }}
@@ -251,11 +321,11 @@ class HtmlRenderer:
     h3 {{ font-size: 1.2rem; margin-bottom: .55rem; }}
     .author {{ color: var(--muted); margin: 0; }}
     .toc {{
-      background: #fff;
+      background: var(--surface);
       border-left: 5px solid var(--muted);
       padding: 1rem 1.25rem;
       margin: 0 0 2rem;
-      box-shadow: 0 3px 14px rgba(23, 32, 51, .06);
+      box-shadow: 0 3px 14px var(--shadow);
     }}
     .toc-title {{ margin: 0 0 .4rem; font-size: 1rem; }}
     .toc ol {{ margin: 0; padding-left: 1.25rem; }}
@@ -280,7 +350,7 @@ class HtmlRenderer:
       padding: 1.1rem 1.25rem;
       border-left: 5px solid var(--muted);
       background: var(--surface);
-      box-shadow: 0 3px 14px rgba(23, 32, 51, .06);
+      box-shadow: 0 3px 14px var(--shadow);
     }}
     .node.rule {{ border-color: var(--rule-color); background: var(--rule-bg); }}
     .node.note {{ border-color: var(--note-color); background: var(--note-bg); }}
@@ -297,7 +367,7 @@ class HtmlRenderer:
     .kv-grid dt {{ font-weight: 700; }}
     .kv-grid dd {{ margin: 0; }}
     .conjugation-table {{ border-collapse: collapse; width: 100%; max-width: 30rem; margin-top: .5rem; }}
-    .conjugation-table th, .conjugation-table td {{ border-bottom: 1px solid rgba(83, 97, 118, .25); padding: .35rem .5rem; text-align: left; }}
+    .conjugation-table th, .conjugation-table td {{ border-bottom: 1px solid var(--neutral-line); padding: .35rem .5rem; text-align: left; }}
     .conjugation-table th {{ color: var(--muted); font-weight: 600; }}
     .blank {{ display: inline-block; min-width: 7rem; border-bottom: 2px solid currentColor; height: 1.1em; vertical-align: baseline; }}
     .solution-inline {{ margin-top: 1rem; padding-top: .7rem; border-top: 1px dashed currentColor; }}
@@ -319,7 +389,7 @@ class HtmlRenderer:
     .solution-toggle .solution-toggle-body {{
       margin-top: .65rem;
       padding: .75rem 1rem;
-      background: var(--solution-bg);
+      background: var(--canvas-bg);
       border-left: 3px solid var(--solution-color);
     }}
     .blank-input {{
@@ -331,7 +401,7 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 2px solid var(--exercise-color);
       border-radius: 0;
-      background: rgba(255, 255, 255, .75);
+      background: var(--input-bg);
       color: var(--ink);
       font: inherit;
       vertical-align: baseline;
@@ -339,13 +409,13 @@ class HtmlRenderer:
     .blank-input:focus-visible {{
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
-      background: #fff;
+      background: var(--control-bg);
     }}
     .translation-source {{
       margin: .7rem 0;
       padding: .8rem 1rem;
       border-left: 3px solid var(--exercise-color);
-      background: rgba(255, 255, 255, .72);
+      background: var(--input-bg);
     }}
     .translation-label {{
       display: block;
@@ -359,9 +429,9 @@ class HtmlRenderer:
       min-height: 5rem;
       margin-top: .8rem;
       padding: .65rem .75rem;
-      border: 1px solid rgba(67, 56, 202, .35);
+      border: 1px solid var(--control-border);
       border-bottom: 3px solid var(--exercise-color);
-      background: rgba(255, 255, 255, .85);
+      background: var(--input-bg);
       color: var(--ink);
       font: inherit;
       line-height: 1.5;
@@ -370,7 +440,7 @@ class HtmlRenderer:
     .translation-answer:focus-visible {{
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
-      background: #fff;
+      background: var(--control-bg);
     }}
     .choice-list {{
       display: grid;
@@ -384,12 +454,12 @@ class HtmlRenderer:
       align-items: flex-start;
       gap: .55rem;
       padding: .55rem .7rem;
-      border: 1px solid rgba(67, 56, 202, .22);
-      background: rgba(255, 255, 255, .7);
+      border: 1px solid var(--control-border-soft);
+      background: var(--input-bg);
       cursor: pointer;
     }}
     .choice-option:hover {{
-      background: #fff;
+      background: var(--control-bg);
     }}
     .choice-option input {{
       margin-top: .35rem;
@@ -408,13 +478,13 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .choice-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
     }}
     .choice-check:hover, .choice-reset:hover {{
@@ -426,12 +496,12 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .choice-option.is-correct {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .choice-option.is-wrong {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .matching-list {{
       display: grid;
@@ -444,8 +514,8 @@ class HtmlRenderer:
       align-items: center;
       gap: .8rem;
       padding: .65rem .75rem;
-      border: 1px solid rgba(67, 56, 202, .22);
-      background: rgba(255, 255, 255, .7);
+      border: 1px solid var(--control-border-soft);
+      background: var(--input-bg);
     }}
     .matching-word {{
       font-weight: 700;
@@ -454,9 +524,9 @@ class HtmlRenderer:
       width: 100%;
       min-width: 0;
       padding: .45rem .55rem;
-      border: 1px solid rgba(67, 56, 202, .35);
+      border: 1px solid var(--control-border);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--ink);
       font: inherit;
     }}
@@ -470,7 +540,7 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
       font: inherit;
       font-weight: 700;
       cursor: pointer;
@@ -484,14 +554,14 @@ class HtmlRenderer:
       padding: .5rem .8rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
       font: inherit;
       font-weight: 700;
       cursor: pointer;
     }}
     .matching-reset:hover {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
     }}
     .matching-result {{
       min-height: 1.5em;
@@ -505,24 +575,24 @@ class HtmlRenderer:
       font-weight: 600;
     }}
     .matching-row.is-correct {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .matching-row.is-wrong {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .matching-row.is-missing {{
-      border-color: #b45309;
-      background: #fffbeb;
+      border-color: var(--warning-border);
+      background: var(--warning-bg);
     }}
     .builder-answer {{
       min-height: 3rem;
       margin-top: .7rem;
       padding: .7rem .8rem;
-      border: 1px solid rgba(67, 56, 202, .28);
+      border: 1px solid var(--control-border);
       border-bottom: 3px solid var(--exercise-color);
-      background: rgba(255, 255, 255, .82);
+      background: var(--input-bg);
     }}
     .builder-answer-label, .builder-tokens-label {{
       display: block;
@@ -538,15 +608,15 @@ class HtmlRenderer:
       display: inline-block;
       margin: .12rem .18rem .12rem 0;
       padding: .12rem .35rem;
-      border: 1px solid #a5b4fc;
-      background: #e0e7ff;
+      border: 1px solid var(--control-border-strong);
+      background: var(--control-bg-strong);
       border-radius: .2rem;
       color: var(--ink);
       font: inherit;
       cursor: pointer;
     }}
     .builder-answer-token:hover {{
-      background: #c7d2fe;
+      background: var(--control-bg-strong-hover);
     }}
     .builder-tokens {{
       display: flex;
@@ -556,14 +626,14 @@ class HtmlRenderer:
     }}
     .builder-token {{
       padding: .4rem .65rem;
-      border: 1px solid rgba(67, 56, 202, .35);
-      background: #fff;
+      border: 1px solid var(--control-border);
+      background: var(--control-bg);
       color: var(--ink);
       font: inherit;
       cursor: pointer;
     }}
     .builder-token:hover:not(:disabled) {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
     }}
     .builder-token:disabled {{
       opacity: .45;
@@ -580,13 +650,13 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .builder-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
     }}
     .builder-check:hover, .builder-reset:hover {{
@@ -598,12 +668,12 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .builder.is-correct .builder-answer {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .builder.is-wrong .builder-answer {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .short-answer-special {{
       display: flex;
@@ -621,16 +691,16 @@ class HtmlRenderer:
     .special-char-button {{
       min-width: 2.2rem;
       padding: .28rem .45rem;
-      border: 1px solid rgba(67, 56, 202, .35);
+      border: 1px solid var(--control-border);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--ink);
       font: inherit;
       font-weight: 700;
       cursor: pointer;
     }}
     .special-char-button:hover {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
     }}
     .short-answer-prompt {{
       margin: .7rem 0;
@@ -642,16 +712,16 @@ class HtmlRenderer:
       max-width: 34rem;
       margin-top: .5rem;
       padding: .65rem .75rem;
-      border: 1px solid rgba(67, 56, 202, .35);
+      border: 1px solid var(--control-border);
       border-bottom: 3px solid var(--exercise-color);
-      background: rgba(255, 255, 255, .85);
+      background: var(--input-bg);
       color: var(--ink);
       font: inherit;
     }}
     .short-answer-input:focus-visible {{
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
-      background: #fff;
+      background: var(--control-bg);
     }}
     .short-answer-actions {{
       margin-top: .8rem;
@@ -666,13 +736,13 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .short-answer-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
     }}
     .short-answer-result {{
@@ -681,12 +751,12 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .short-answer.is-correct .short-answer-input {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .short-answer.is-wrong .short-answer-input {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .cloze-sentence-label, .cloze-tokens-label {{
       display: block;
@@ -697,8 +767,8 @@ class HtmlRenderer:
     .cloze-sentence {{
       margin-top: .5rem;
       padding: .8rem;
-      border: 1px solid rgba(67, 56, 202, .22);
-      background: rgba(255, 255, 255, .72);
+      border: 1px solid var(--control-border-soft);
+      background: var(--input-bg);
       line-height: 2.2;
     }}
     .cloze-blank {{
@@ -707,7 +777,7 @@ class HtmlRenderer:
       padding: .12rem .4rem;
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--muted);
       font: inherit;
       font-style: italic;
@@ -720,21 +790,21 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .cloze-blank:hover {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
     }}
     .cloze-blank.is-correct {{
-      border-bottom-color: #15803d;
-      background: #dcfce7;
-      color: #166534;
+      border-bottom-color: var(--success-border);
+      background: var(--success-bg-strong);
+      color: var(--success-ink);
     }}
     .cloze-blank.is-wrong {{
-      border-bottom-color: #b91c1c;
-      background: #fee2e2;
-      color: #991b1b;
+      border-bottom-color: var(--danger-border);
+      background: var(--danger-bg-strong);
+      color: var(--danger-ink);
     }}
     .cloze-blank.is-missing {{
-      border-bottom-color: #b45309;
-      background: #fef3c7;
+      border-bottom-color: var(--warning-border);
+      background: var(--warning-bg-strong);
     }}
     .cloze-tokens {{
       display: flex;
@@ -744,14 +814,14 @@ class HtmlRenderer:
     }}
     .cloze-token {{
       padding: .4rem .65rem;
-      border: 1px solid rgba(67, 56, 202, .35);
-      background: #fff;
+      border: 1px solid var(--control-border);
+      background: var(--control-bg);
       color: var(--ink);
       font: inherit;
       cursor: pointer;
     }}
     .cloze-token:hover:not(:disabled) {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
     }}
     .cloze-token:disabled {{
       opacity: .45;
@@ -770,13 +840,13 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .cloze-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
     }}
     .cloze-result {{
@@ -795,8 +865,8 @@ class HtmlRenderer:
       gap: .8rem;
       align-items: center;
       padding: .75rem;
-      border: 1px solid rgba(67, 56, 202, .22);
-      background: rgba(255, 255, 255, .72);
+      border: 1px solid var(--control-border-soft);
+      background: var(--input-bg);
     }}
     .true-false-statement {{
       font-weight: 600;
@@ -811,8 +881,8 @@ class HtmlRenderer:
       align-items: center;
       gap: .35rem;
       padding: .35rem .6rem;
-      border: 1px solid rgba(67, 56, 202, .35);
-      background: #fff;
+      border: 1px solid var(--control-border);
+      background: var(--control-bg);
       color: var(--ink);
       font: inherit;
       font-weight: 700;
@@ -824,19 +894,19 @@ class HtmlRenderer:
     }}
     .true-false-option.is-selected {{
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .true-false-option:has(input:focus-visible) {{
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
     }}
     .true-false-option:hover {{
-      background: #eef2ff;
+      background: var(--control-bg-hover);
       color: var(--ink);
     }}
     .true-false-option.is-selected:hover {{
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .true-false-feedback {{
       grid-column: 1 / -1;
@@ -845,16 +915,16 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .true-false-row.is-correct {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .true-false-row.is-wrong {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .true-false-row.is-missing {{
-      border-color: #b45309;
-      background: #fffbeb;
+      border-color: var(--warning-border);
+      background: var(--warning-bg);
     }}
     .true-false-actions {{
       margin-top: .8rem;
@@ -869,13 +939,13 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .true-false-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: #fff;
+      background: var(--control-bg);
       color: var(--exercise-color);
     }}
     .true-false-result {{
@@ -885,9 +955,9 @@ class HtmlRenderer:
     }}
     .solutions {{ break-before: page; page-break-before: always; margin-top: 3rem; padding-top: 1rem; border-top: 3px solid var(--solution-color); }}
     .page-break-before {{ break-before: page; page-break-before: always; }}
-    code {{ font-family: "JetBrains Mono", Consolas, monospace; font-size: .92em; background: rgba(23,32,51,.08); padding: .1em .3em; border-radius: .2em; }}
+    code {{ font-family: "JetBrains Mono", Consolas, monospace; font-size: .92em; background: var(--code-bg); padding: .1em .3em; border-radius: .2em; }}
     @media print {{
-      body {{ background: #fff; }}
+      body {{ background: var(--canvas-bg); }}
       main {{ max-width: none; padding: 0; }}
       .masthead, .node {{ box-shadow: none; }}
       .node, .solutions {{ break-inside: avoid; page-break-inside: avoid; }}
@@ -2483,6 +2553,8 @@ class HtmlRenderer:
 
     def _theme_colors(self, theme: ThemeModel) -> dict[str, str]:
         defaults = {
+            "page_bg": "#ffffff", "canvas_bg": "#eef1f5",
+            "ink": "#172033", "muted": "#536176",
             "rule_color": "#2a4a7f", "rule_bg": "#eef2f9",
             "note_color": "#b45309", "note_bg": "#fefce8",
             "example_color": "#0f766e", "example_bg": "#f0fdfa",
@@ -2490,6 +2562,20 @@ class HtmlRenderer:
             "vocab_color": "#64748b", "vocab_bg": "#f8fafc",
             "solution_color": "#15803d", "solution_bg": "#f0fdf4",
         }
+        palette = getattr(theme, "palette", None)
+        if palette is None:
+            palette = getattr(theme, "colors", None)
+        if palette is not None:
+            def palette_value(name: str) -> object:
+                if isinstance(palette, dict):
+                    return palette.get(name)
+                return getattr(palette, name, None)
+
+            for palette_key in ("page_bg", "canvas", "canvas_bg", "ink", "muted"):
+                palette_value_for_key = palette_value(palette_key)
+                if palette_value_for_key:
+                    normalized_key = "canvas_bg" if palette_key == "canvas" else palette_key
+                    defaults[normalized_key] = str(palette_value_for_key)
         mapping = {
             "rule": ("rule_color", "rule_bg"), "note": ("note_color", "note_bg"),
             "example": ("example_color", "example_bg"), "exercise": ("exercise_color", "exercise_bg"),

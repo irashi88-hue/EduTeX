@@ -91,10 +91,26 @@ _EDUTEX_UI_LABELS = {
     },
 }
 
+# Japanese interface labels. Untranslated exercise-specific labels intentionally
+# fall back to English until the complete Japanese UI catalogue is added.
+_EDUTEX_UI_LABELS["ja"] = {
+    **_EDUTEX_UI_LABELS["en"],
+    "rule": "規則",
+    "example": "例",
+    "exercise": "練習",
+    "solution": "解答",
+    "solutions": "解答",
+    "contents": "目次",
+    "skip": "コンテンツへ移動",
+    "document_content": "文書の内容",
+}
+
 
 def _ui_language(value: object) -> str:
     code = str(value or "en").lower().replace("_", "-").split("-", 1)[0]
     # German is the learning language; the instructional interface is Italian.
+    if code == "ja":
+        return "ja"
     return "it" if code in {"it", "de"} else "en"
 
 
@@ -837,14 +853,14 @@ class HtmlRenderer:
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#content">Skip to content</a>
+  <a class="skip-link" href="#content">{html.escape(self._labels["skip"])}</a>
   <main>
     <header class="masthead">
       <h1>{title}</h1>
       {author_html}
     </header>
     {toc_html}
-    <article id="content" tabindex="-1" aria-label="Document content">
+    <article id="content" tabindex="-1" aria-label="{html.escape(self._labels["document_content"])}">
 {body}
     </article>
   </main>

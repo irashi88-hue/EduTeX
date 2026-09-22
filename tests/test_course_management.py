@@ -610,3 +610,72 @@ def test_course_html_has_structural_accessibility_and_local_link_contract(tmp_pa
             if href.startswith(("#", "http://", "https://", "mailto:")):
                 continue
             assert (page.parent / href).resolve().is_file(), (page.name, href)
+
+def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+
+    import pytest
+
+    if not (shutil.which("latexmk") or shutil.which("pdflatex")):
+        pytest.skip("No LaTeX compiler available")
+    if not all(shutil.which(tool) for tool in ("pdfinfo", "pdftotext", "pdftoppm")):
+        pytest.skip("PDF inspection tools are not available")
+
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "pdf"],
+    )
+    assert result.exit_code == 0, result.output
+
+    pdf_path = tmp_path / "output" / "course.pdf"
+    assert pdf_path.is_file()
+
+    info = subprocess.run(
+        [shutil.which("pdfinfo"), str(pdf_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    fields = {
+        line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
+        for line in info.splitlines()
+        if ":" in line
+    }
+    assert int(fields["Pages"]) >= 1
+    assert fields.get("Title") == "German A1"
+    assert fields.get("Author") == "EduTeX"
+    assert fields.get("Subject") == "Beginner course"
+
+    text_path = tmp_path / "course.txt"
+    subprocess.run(
+        [shutil.which("pdftotext"), str(pdf_path), str(text_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    text = text_path.read_text(encoding="utf-8", errors="replace")
+    assert "German A1" in text
+    assert "Greetings" in text
+    assert "Hello" in text
+    assert text.index("Greetings") < text.index("Hello")
+
+    preview_dir = tmp_path / "pdf-preview"
+    preview_dir.mkdir()
+    subprocess.run(
+        [
+            shutil.which("pdftoppm"),
+            "-f",
+            "1",
+            "-l",
+            "1",
+            "-png",
+            str(pdf_path),
+            str(preview_dir / "page"),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert any(preview_dir.glob("page-*.png"))

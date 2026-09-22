@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
+from html.parser import HTMLParser
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -555,3 +557,56 @@ presentation:
     assert result.exit_code != 0
     assert "course.presentation.theme must be one of" in result.output
     assert "six-digit hexadecimal color" in result.output
+
+def test_course_html_has_structural_accessibility_and_local_link_contract(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    output = tmp_path / "output"
+    index = (output / "course.html").read_text(encoding="utf-8")
+    lesson_pages = [
+        output / "lessons" / "lesson-01.html",
+        output / "lessons" / "lesson-02.html",
+    ]
+
+    for page in [output / "course.html", *lesson_pages]:
+        source_page = page.read_text(encoding="utf-8")
+        HTMLParser().feed(source_page)
+
+        ids = re.findall(r'\bid="([^"]+)', source_page)
+        assert len(ids) == len(set(ids)), page.name
+        for labelled_by in re.findall(r'aria-labelledby="([^"]+)"', source_page):
+            assert f'id="{labelled_by}"' in source_page, (page.name, labelled_by)
+
+    assert '<main id="course-content" tabindex="-1" aria-labelledby="course-title">' in index
+    assert '<h1 id="course-title">German A1</h1>' in index
+    assert '<main id="lesson-content" tabindex="-1" aria-label="Lesson content">' in (
+        lesson_pages[0].read_text(encoding="utf-8")
+    )
+    assert 'aria-label="Course navigation"' in lesson_pages[0].read_text(encoding="utf-8")
+    assert 'aria-label="Course index"' in lesson_pages[0].read_text(encoding="utf-8")
+
+    for href in re.findall(r'href="([^"]+)"', index):
+        if href.startswith(("#", "http://", "https://", "mailto:")):
+            continue
+        assert (output / href).is_file(), href
+
+    for page in lesson_pages:
+        source_page = page.read_text(encoding="utf-8")
+        for href in re.findall(r'href="([^"]+)"', source_page):
+            if href.startswith(("#", "http://", "https://", "mailto:")):
+                continue
+            assert (page.parent / href).resolve().is_file(), (page.name, href)

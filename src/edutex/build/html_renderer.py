@@ -330,7 +330,7 @@ class HtmlRenderer:
     .toc-title {{ margin: 0 0 .4rem; font-size: 1rem; }}
     .toc ol {{ margin: 0; padding-left: 1.25rem; }}
     .toc li {{ margin: .15rem 0; }}
-    .toc .toc-level-3 {{ margin-left: 1rem; }}
+    .toc ol ol {{ margin-top: .15rem; }}
     .toc a {{ color: var(--rule-color); font-weight: 600; }}
     .sr-only {{
       position: absolute;
@@ -2494,20 +2494,64 @@ class HtmlRenderer:
     def _render_toc(self) -> str:
         if not self._heading_entries:
             return ""
-        items = []
+
+        # Preserve legitimate repeated titles, but remove an accidental duplicate
+        # emitted consecutively for the same heading level.
+        entries: list[tuple[int, str, str]] = []
+        previous_key: tuple[int, str] | None = None
         for level, heading_id, label in self._heading_entries:
-            css_class = f"toc-level-{level}"
-            items.append(
-                f'<li class="{css_class}"><a href="#{heading_id}">{html.escape(label)}</a></li>'
-            )
+            normalized_label = " ".join(label.split()).casefold()
+            key = (level, normalized_label)
+            if key == previous_key:
+                continue
+            entries.append((level, heading_id, label))
+            previous_key = key
+
+        if not entries:
+            return ""
+
+        # Build a small heading tree so the generated navigation reflects the
+        # heading hierarchy instead of rendering every entry in one flat list.
+        roots: list[dict[str, object]] = []
+        stack: list[tuple[int, dict[str, object]]] = []
+        for raw_level, heading_id, label in entries:
+            level = max(2, min(raw_level, 4))
+            while stack and level <= stack[-1][0]:
+                stack.pop()
+            siblings = roots if not stack else stack[-1][1]["children"]
+            node: dict[str, object] = {
+                "level": level,
+                "id": heading_id,
+                "label": label,
+                "children": [],
+            }
+            siblings.append(node)
+            stack.append((level, node))
+
+        def render_nodes(nodes: list[dict[str, object]]) -> str:
+            parts = ["<ol>"]
+            for node in nodes:
+                level = int(node["level"])
+                heading_id = str(node["id"])
+                label = str(node["label"])
+                parts.append(
+                    f'<li class="toc-level-{level}">'
+                    f'<a href="#{html.escape(heading_id, quote=True)}">'
+                    f'{html.escape(label)}</a>'
+                )
+                children = node["children"]
+                if children:
+                    parts.append(render_nodes(children))
+                parts.append("</li>")
+            parts.append("</ol>")
+            return "".join(parts)
+
         return (
             '<nav class="toc" aria-labelledby="toc-title">'
             f'<h2 id="toc-title" class="toc-title">{html.escape(self._labels["contents"])}</h2>'
-            '<ol>\n'
-            + "\n".join(items)
-            + "</ol></nav>"
+            + render_nodes(roots)
+            + "</nav>"
         )
-
     def _kv_table(self, rows: list[tuple[str, str]]) -> str:
         result = ['<dl class="kv-grid">']
 

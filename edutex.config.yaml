@@ -7,12 +7,12 @@ edutex:
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
-  model: "assets/knowledge_models/de-a1-unit-01.md"
+  model: "assets/knowledge_models/choice-verifica.md"
 
 # --- Theme selection ---
 theme:
   # Name of the theme to apply (must match a directory under assets/themes/)
-  name: "default"
+  name: "dark"
 
 # --- Layout selection ---
 layout:
@@ -26,7 +26,7 @@ build:
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)
-  output_file: "document"
+  output_file: "choice-verifica"
 
 # --- Extension configuration ---
 extensions:

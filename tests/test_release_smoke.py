@@ -96,3 +96,49 @@ def test_renderer_preserves_solution_and_localization_contract() -> None:
         "special_chars",
     ):
         assert marker in source
+
+def test_renderer_preserves_recent_accessibility_and_layout_contracts() -> None:
+    """Protect the renderer contracts added after the 0.3.0 smoke baseline."""
+    source = _read(RENDERER)
+
+    # Dark-mode contract: semantic light tokens plus a dark preference override.
+    for marker in (
+        "--canvas-bg:",
+        "--surface:",
+        "--ink:",
+        "--muted:",
+        "@media (prefers-color-scheme: dark)",
+        "color-scheme: dark;",
+    ):
+        assert marker in source
+
+    # Hierarchical table of contents contract.
+    for marker in (
+        "def render_nodes(nodes: list[dict[str, object]]) -> str:",
+        "parts.append(render_nodes(children))",
+        ".toc ol ol {{ margin-top: .15rem; }}",
+    ):
+        assert marker in source
+
+    # Responsive exercise contract.
+    for marker in (
+        "@media (max-width: 640px)",
+        ".matching-row {{",
+        ".true-false-row {{",
+        "grid-template-columns: 1fr;",
+        "width: 100%;",
+    ):
+        assert marker in source
+
+    # Keyboard-focus contract must not depend on :has().
+    assert ".true-false-option:focus-within {{" in source
+    assert ".true-false-option:has(input:focus-visible)" not in source
+
+
+def test_renderer_keeps_duplicate_id_and_remote_dependency_guards() -> None:
+    source = _read(RENDERER)
+    assert "_used_ids" in source
+    assert "def _unique_id" in source
+    assert "<script src=" not in source
+    assert "http://" not in source
+    assert "https://" not in source

@@ -896,7 +896,7 @@ class HtmlRenderer:
       background: var(--exercise-color);
       color: var(--on-accent);
     }}
-    .true-false-option:has(input:focus-visible) {{
+    .true-false-option:focus-within {{
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
     }}

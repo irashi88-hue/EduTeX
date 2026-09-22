@@ -964,7 +964,36 @@ class HtmlRenderer:
       .skip-link, .toc {{ display: none; }}
       a {{ color: inherit; text-decoration: none; }}
     }}
-    @media (max-width: 520px) {{ main {{ padding: 1rem .75rem 3rem; }} .masthead {{ padding: 1.5rem 1rem; }} .kv-grid {{ grid-template-columns: 1fr; gap: .05rem; }} }}
+    /* EduTeX responsive exercise contract */
+    @media (max-width: 640px) {{
+      .matching-row {{
+        grid-template-columns: 1fr;
+        gap: .45rem;
+      }}
+      .true-false-row {{
+        grid-template-columns: 1fr;
+        gap: .55rem;
+      }}
+      .true-false-controls {{
+        width: 100%;
+      }}
+      .true-false-choice {{
+        flex: 1 1 8rem;
+      }}
+      .matching-check,
+      .matching-reset,
+      .builder-check,
+      .builder-reset,
+      .short-answer-check,
+      .short-answer-reset,
+      .cloze-check,
+      .cloze-reset,
+      .true-false-check,
+      .true-false-reset {{
+        margin-left: 0;
+        width: 100%;
+      }}
+    }}    @media (max-width: 520px) {{ main {{ padding: 1rem .75rem 3rem; }} .masthead {{ padding: 1.5rem 1rem; }} .node {{ padding: .9rem .85rem; }} .kv-grid {{ grid-template-columns: 1fr; gap: .05rem; }} }}
   </style>
 </head>
 <body>

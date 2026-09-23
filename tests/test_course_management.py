@@ -982,3 +982,50 @@ def test_course_lesson_navigation_is_multilingual(tmp_path: Path) -> None:
         assert "Mark lesson complete" not in lesson
         assert "Ã" not in lesson
         assert "ã" not in lesson
+
+def test_course_lesson_navigation_language_variants(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    expected = {
+        "it-IT": {
+            "navigation": "Navigazione del corso",
+            "index": "Indice del corso",
+            "complete": "Segna come completata",
+        },
+        "ja-JP": {
+            "navigation": "コースナビゲーション",
+            "index": "コース目次",
+            "complete": "レッスンを完了にする",
+        },
+        "fr": {
+            "navigation": "Course navigation",
+            "index": "Course index",
+            "complete": "Mark lesson complete",
+        },
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        lesson = (
+            tmp_path / "output" / "lessons" / "lesson-01.html"
+        ).read_text(encoding="utf-8")
+
+        assert '<html lang="en">' in lesson
+        assert f'aria-label="{labels["navigation"]}"' in lesson
+        assert f'aria-label="{labels["index"]}"' in lesson
+        assert labels["complete"] in lesson
+        assert 'aria-pressed="false"' in lesson
+        assert 'aria-live="polite"' in lesson
+        assert "Ã" not in lesson
+        assert "ã" not in lesson

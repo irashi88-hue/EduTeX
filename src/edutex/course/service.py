@@ -678,7 +678,8 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
                 f" data-duration-minutes=\"{lesson.duration_minutes or 0}\">{link_label}</a>"
                 f"<button type=\"button\" class=\"lesson-complete\""
                 f" data-mark-complete=\"{html.escape(lesson.lesson_id, quote=True)}\""
-                f" aria-label=\"{html.escape(labels['mark_complete'], quote=True)}\">"
+                f" aria-label=\"{html.escape(labels['mark_complete'], quote=True)}\""
+                f" aria-pressed=\"false\">"
                 f"{html.escape(labels['mark_complete'])}</button>"
                 f"<span class=\"lesson-lock\" aria-live=\"polite\"></span></div></li>"
             )
@@ -750,6 +751,8 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
             "remaining": labels["remaining"],
             "percent": labels["percent"],
             "minutes": labels["minutes"],
+            "mark_complete": labels["mark_complete"],
+            "mark_incomplete": labels["mark_incomplete"],
         },
         ensure_ascii=False,
     )
@@ -796,13 +799,27 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
         status.classList.toggle("is-visible", true);
       }}
     }});
+    document.querySelectorAll("[data-mark-complete]").forEach((button) => {{
+      const isCompleted = completed.has(button.dataset.markComplete);
+      const label = isCompleted ? labels.mark_incomplete : labels.mark_complete;
+      button.textContent = label;
+      button.setAttribute("aria-label", label);
+      button.setAttribute("aria-pressed", String(isCompleted));
+    }});
   }};
   document.querySelectorAll(".lesson-link").forEach((link) => link.addEventListener("click", (event) => {{
     const prerequisites = JSON.parse(link.dataset.prerequisites || "[]");
     if (prerequisites.some((item) => !completed.has(item))) event.preventDefault();
   }}));
   document.querySelectorAll("[data-mark-complete]").forEach((button) => button.addEventListener("click", () => {{
-    completed.add(button.dataset.markComplete); save(); refresh();
+    const lessonId = button.dataset.markComplete;
+      if (completed.has(lessonId)) {{
+        completed.delete(lessonId);
+      }} else {{
+        completed.add(lessonId);
+      }}
+      save();
+      refresh();
   }}));
   refresh();
 }})();

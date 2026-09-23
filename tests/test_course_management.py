@@ -413,7 +413,8 @@ def test_course_index_contains_dependency_gate_and_progress_script(tmp_path: Pat
     assert 'localStorage.setItem(storageKey, JSON.stringify([...completed]))' in index
     assert 'const missing = prerequisites.filter((item) => !completed.has(item));' in index
     assert 'if (prerequisites.some((item) => !completed.has(item))) event.preventDefault();' in index
-    assert 'completed.add(button.dataset.markComplete); save(); refresh();' in index
+    assert "completed.add(lessonId);" in index
+    assert "completed.delete(lessonId);" in index
     assert 'data-course-progress-bar' in index
 
 
@@ -727,6 +728,7 @@ def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
             "Indice del corso",
             "Progressi",
             "Segna come completata",
+            "Segna come non completata",
         ),
         "en": (
             "Modules",
@@ -734,6 +736,7 @@ def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
             "Course contents",
             "Progress",
             "Mark lesson complete",
+            "Mark as incomplete",
         ),
         "ja": (
             "モジュール",
@@ -741,6 +744,7 @@ def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
             "コース目次",
             "進捗",
             "レッスンを完了にする",
+            "完了を取り消す",
         ),
     }
 
@@ -761,6 +765,9 @@ def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
         HTMLParser().feed(source)
 
         assert f'<html lang="{language}">' in source
+        assert 'aria-pressed="false"' in source
+        assert 'button.setAttribute("aria-pressed", String(isCompleted));' in source
+        assert "completed.delete(lessonId)" in source
         for label in labels:
             assert label in source, (
                 f"missing label {label!r} for language={language}"

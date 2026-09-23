@@ -586,7 +586,7 @@ def _labels(language: str) -> dict[str, str]:
     if code == "it":
         return {
             "modules": "Moduli", "lessons": "Lezioni", "duration": "Durata",
-            "minutes": "min", "contents": "Indice del corso", "prerequisites": "Prerequisiti",
+            "minutes": "min", "open_lesson": "Apri lezione", "open_lesson_source": "Apri sorgente della lezione", "skip_to_content": "Vai al contenuto del corso", "course_kicker": "Corso EduTeX", "self_paced": "Autogestito", "level": "Livello", "contents": "Indice del corso", "prerequisites": "Prerequisiti",
             "locked": "Bloccata", "available": "Disponibile", "completed": "Completata",
             "mark_complete": "Segna come completata", "mark_incomplete": "Segna come non completata",
             "complete_first": "Completa prima", "lesson_gate": "Questa lezione è bloccata.",
@@ -596,7 +596,7 @@ def _labels(language: str) -> dict[str, str]:
     if code == "ja":
         return {
             "modules": "モジュール", "lessons": "レッスン", "duration": "時間",
-            "minutes": "分", "contents": "コース目次", "prerequisites": "前提レッスン",
+            "minutes": "分", "open_lesson": "レッスンを開く", "open_lesson_source": "レッスンソースを開く", "skip_to_content": "コース内容へ移動", "course_kicker": "EduTeX コース", "self_paced": "自分のペース", "level": "レベル", "contents": "コース目次", "prerequisites": "前提レッスン",
             "locked": "ロック中", "available": "利用可能", "completed": "完了",
             "mark_complete": "レッスンを完了にする", "mark_incomplete": "完了を取り消す",
             "complete_first": "先に完了してください", "lesson_gate": "このレッスンはロックされています。",
@@ -605,7 +605,7 @@ def _labels(language: str) -> dict[str, str]:
         }
     return {
         "modules": "Modules", "lessons": "Lessons", "duration": "Duration",
-        "minutes": "min", "contents": "Course contents", "prerequisites": "Prerequisites",
+        "minutes": "min", "open_lesson": "Open lesson", "open_lesson_source": "Open lesson source", "skip_to_content": "Skip to course content", "course_kicker": "EduTeX course", "self_paced": "Self-paced", "level": "Level", "contents": "Course contents", "prerequisites": "Prerequisites",
         "locked": "Locked", "available": "Available", "completed": "Completed",
         "mark_complete": "Mark lesson complete", "mark_incomplete": "Mark as incomplete",
         "complete_first": "Complete first", "lesson_gate": "This lesson is locked.",
@@ -653,7 +653,7 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
                     + "</ul>"
                 )
             href = lesson_links.get(lesson.lesson_id, "../" + lesson.source)
-            link_label = "Open lesson" if lesson.lesson_id in lesson_links else "Open lesson source"
+            link_label = labels["open_lesson"] if lesson.lesson_id in lesson_links else labels["open_lesson_source"]
             link_href = html.escape(href, quote=True)
             prerequisite_ids = html.escape(
                 json.dumps(list(lesson.prerequisites), ensure_ascii=False), quote=True
@@ -694,7 +694,7 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
         )
     duration = (
         f"{manifest.duration_minutes} {html.escape(labels['minutes'])}"
-        if manifest.duration_minutes else "Self-paced"
+        if manifest.duration_minutes else html.escape(labels["self_paced"])
     )
     author = f"<p class=\"author\">{html.escape(manifest.author)}</p>" if manifest.author else ""
     level = f"<span>{html.escape(manifest.level)}</span>" if manifest.level else ""
@@ -842,9 +842,9 @@ h1 {{ max-width:760px; margin:.35rem 0 .8rem; font-size:clamp(2.25rem,6vw,4.7rem
 @media (max-width:600px) {{ .lesson {{ grid-template-columns:2rem 1fr; gap:.6rem; }} .module {{ padding:1rem; }} }}
 </style>
 </head>
-<body><a class="skip-link" href="#course-content">Skip to course content</a><main id="course-content" tabindex="-1" aria-labelledby="course-title">
-<header class="hero"><p class="kicker">EduTeX course</p><h1 id="course-title">{html.escape(manifest.title)}</h1>{author}
-<div class="summary"><div><strong>{manifest.module_count}</strong>{html.escape(labels['modules'])}</div><div><strong>{manifest.lesson_count}</strong>{html.escape(labels['lessons'])}</div><div><strong>{html.escape(duration)}</strong>{html.escape(labels['duration'])}</div>{f'<div><strong>{level}</strong>Level</div>' if level else ''}</div></header>
+<body><a class="skip-link" href="#course-content">{html.escape(labels["skip_to_content"])}</a><main id="course-content" tabindex="-1" aria-labelledby="course-title">
+<header class="hero"><p class="kicker">{html.escape(labels["course_kicker"])}</p><h1 id="course-title">{html.escape(manifest.title)}</h1>{author}
+<div class="summary"><div><strong>{manifest.module_count}</strong>{html.escape(labels['modules'])}</div><div><strong>{manifest.lesson_count}</strong>{html.escape(labels['lessons'])}</div><div><strong>{html.escape(duration)}</strong>{html.escape(labels['duration'])}</div>{f'<div><strong>{level}</strong>{html.escape(labels["level"])}</div>' if level else ''}</div></header>
 {contents_html}
 {progress_html}
 {goals_html}<article>{''.join(module_html)}</article>

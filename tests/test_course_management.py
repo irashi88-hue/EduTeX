@@ -408,6 +408,13 @@ def test_course_index_contains_dependency_gate_and_progress_script(tmp_path: Pat
     assert "edutex:course:german-a1:completed" in index
     assert "data-course-complete" in lesson
     assert "Mark lesson complete" in lesson
+    assert 'const storageKey = "edutex:course:german-a1:completed";' in index
+    assert 'JSON.parse(localStorage.getItem(storageKey) || "[]")' in index
+    assert 'localStorage.setItem(storageKey, JSON.stringify([...completed]))' in index
+    assert 'const missing = prerequisites.filter((item) => !completed.has(item));' in index
+    assert 'if (prerequisites.some((item) => !completed.has(item))) event.preventDefault();' in index
+    assert 'completed.add(button.dataset.markComplete); save(); refresh();' in index
+    assert 'data-course-progress-bar' in index
 
 
 def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:

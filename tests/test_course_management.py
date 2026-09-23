@@ -1029,3 +1029,53 @@ def test_course_lesson_navigation_language_variants(tmp_path: Path) -> None:
         assert 'aria-live="polite"' in lesson
         assert "Ã" not in lesson
         assert "ã" not in lesson
+
+def test_course_lesson_completion_runtime_contract(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    expected = {
+        "it": {
+            "complete": "Segna come completata",
+            "incomplete": "Segna come non completata",
+            "completed": "Completata",
+        },
+        "ja": {
+            "complete": "レッスンを完了にする",
+            "incomplete": "完了を取り消す",
+            "completed": "完了",
+        },
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        lesson = (
+            tmp_path / "output" / "lessons" / "lesson-01.html"
+        ).read_text(encoding="utf-8")
+
+        assert "edutex:course:german-a1:completed" in lesson
+        assert "localStorage.getItem(key)" in lesson
+        assert "localStorage.setItem(key, JSON.stringify([...items]))" in lesson
+        assert "completed.has(lessonId)" in lesson
+        assert "completed.delete(lessonId)" in lesson
+        assert "completed.add(lessonId)" in lesson
+        assert "labels.mark_incomplete" in lesson
+        assert "labels.mark_complete" in lesson
+        assert 'button.setAttribute("aria-label", button.textContent);' in lesson
+        assert 'button.setAttribute("aria-pressed", String(isComplete));' in lesson
+        assert f">{labels['complete']}</button>" in lesson
+        assert labels["incomplete"] in lesson
+        assert labels["completed"] in lesson
+        assert 'aria-pressed="false"' in lesson
+        assert "Ã" not in lesson
+        assert "ã" not in lesson

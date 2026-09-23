@@ -776,3 +776,36 @@ def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
         assert "edutex:course:german-a1:completed" in source
         assert "Ã" not in source
         assert "ã" not in source
+
+def test_course_html_language_variants_and_fallback(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    expected = {
+        "it-IT": ("Moduli", "Indice del corso"),
+        "ja-JP": ("モジュール", "コース目次"),
+        "fr": ("Modules", "Course contents"),
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        source = (tmp_path / "output" / "course.html").read_text(
+            encoding="utf-8"
+        )
+        assert f'<html lang="{language}">' in source
+        for label in labels:
+            assert label in source, (
+                f"missing label {label!r} for language={language}"
+            )
+        assert "Ã" not in source
+        assert "ã" not in source

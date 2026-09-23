@@ -440,6 +440,19 @@ def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:
     assert 'class="course-lesson-nav"' in stale_source
     assert 'aria-label="Navigazione del corso"' in stale_source
 
+    manual = tmp_path / "output/lessons/manual.html"
+    manual.write_text(
+        '<meta name="generator" content="EduTeX"><html>Manual</html>',
+        encoding="utf-8",
+    )
+    foreign = tmp_path / "output/lessons/foreign.html"
+    foreign.write_text(
+        '<nav class="course-lesson-nav">Foreign</nav>',
+        encoding="utf-8",
+    )
+    plain = tmp_path / "output/lessons/notes.html"
+    plain.write_text("<html>Unrelated</html>", encoding="utf-8")
+
     (tmp_path / "course.yaml").write_text(MANIFEST, encoding="utf-8")
     result = runner.invoke(
         main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
@@ -447,6 +460,9 @@ def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert not stale.exists()
     assert (tmp_path / "output/lessons/lesson-01.html").is_file()
+    assert manual.is_file()
+    assert foreign.is_file()
+    assert plain.is_file()
 
 
 def test_course_metadata_is_optional_for_legacy_manifest(tmp_path: Path) -> None:

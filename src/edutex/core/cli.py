@@ -277,6 +277,54 @@ def _add_course_lesson_navigation(
     lesson_number: int,
 ) -> None:
     """Add course navigation to a generated standalone lesson page."""
+    language_code = (
+        manifest.language.lower().replace("_", "-").split("-", 1)[0]
+    )
+    labels = {
+        "course_navigation": "Course navigation",
+        "course_index": "Course index",
+        "module": "Module",
+        "lesson": "Lesson",
+        "previous": "Previous",
+        "next": "Next",
+        "mark_complete": "Mark lesson complete",
+        "mark_incomplete": "Mark as incomplete",
+        "completed": "Completed",
+        "skip_to_lesson": "Skip to lesson content",
+        "lesson_content": "Lesson content",
+    }
+    if language_code == "it":
+        labels.update(
+            {
+                "course_navigation": "Navigazione del corso",
+                "course_index": "Indice del corso",
+                "module": "Modulo",
+                "lesson": "Lezione",
+                "previous": "Precedente",
+                "next": "Successiva",
+                "mark_complete": "Segna come completata",
+                "mark_incomplete": "Segna come non completata",
+                "completed": "Completata",
+                "skip_to_lesson": "Vai al contenuto della lezione",
+                "lesson_content": "Contenuto della lezione",
+            }
+        )
+    elif language_code == "ja":
+        labels.update(
+            {
+                "course_navigation": "コースナビゲーション",
+                "course_index": "コース目次",
+                "module": "モジュール",
+                "lesson": "レッスン",
+                "previous": "前へ",
+                "next": "次へ",
+                "mark_complete": "レッスンを完了にする",
+                "mark_incomplete": "完了を取り消す",
+                "completed": "完了",
+                "skip_to_lesson": "レッスン内容へ移動",
+                "lesson_content": "レッスン内容",
+            }
+        )
     lessons = [item for module in manifest.modules for item in module.lessons]
     index = next(i for i, item in enumerate(lessons) if item.lesson_id == lesson.lesson_id)
     previous = lessons[index - 1] if index > 0 else None
@@ -292,18 +340,20 @@ def _add_course_lesson_navigation(
     storage_key = json.dumps(f"edutex:course:{manifest.course_id}:completed")
     lesson_id_json = json.dumps(lesson.lesson_id)
     completion_ui = (
-        "<button type=\"button\" class=\"course-complete\" "
-        f"data-course-complete=\"{html.escape(lesson.lesson_id, quote=True)}\">"
-        "Mark lesson complete</button>"
+        f"<button type=\"button\" class=\"course-complete\" "
+        f"data-course-complete=\"{html.escape(lesson.lesson_id, quote=True)}\" "
+        f"aria-label=\"{html.escape(labels['mark_complete'], quote=True)}\" "
+        f"aria-pressed=\"false\">"
+        f"{html.escape(labels['mark_complete'])}</button>"
         "<span class=\"course-complete-status\" aria-live=\"polite\"></span>"
     )
     if manifest.presentation.show_lesson_navigation:
         nav = (
-            "<nav class=\"course-lesson-nav\" aria-label=\"Course navigation\">"
-            "<a href=\"../course.html\" aria-label=\"Course index\">Course index</a>"
-            f"<span>Module {module_number} · Lesson {lesson_number}</span>"
-            f"{link(previous, 'Previous')}"
-            f"{link(following, 'Next')}"
+            f"<nav class=\"course-lesson-nav\" aria-label=\"{html.escape(labels['course_navigation'], quote=True)}\">"
+            f"<a href=\"../course.html\" aria-label=\"{html.escape(labels['course_index'], quote=True)}\">{html.escape(labels['course_index'])}</a>"
+            f"<span>{html.escape(labels['module'])} {module_number} · {html.escape(labels['lesson'])} {lesson_number}</span>"
+            f"{link(previous, labels['previous'])}"
+            f"{link(following, labels['next'])}"
             f"{completion_ui}"
             "</nav>"
         )
@@ -320,8 +370,17 @@ def _add_course_lesson_navigation(
 .course-complete-status{{color:{manifest.presentation.accent_secondary}}}
 .course-complete-only{{max-width:980px;margin:0 auto 1.25rem;padding:.8rem 1rem;background:{manifest.presentation.surface};color:{manifest.presentation.ink};font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}
 </style>"""
+    script_labels = json.dumps(
+        {
+            "mark_complete": labels["mark_complete"],
+            "mark_incomplete": labels["mark_incomplete"],
+            "completed": labels["completed"],
+        },
+        ensure_ascii=False,
+    )
     script = f"""<script>
 (() => {{
+  const labels = {script_labels};
   const key = {storage_key};
   const lessonId = {lesson_id_json};
   const button = document.querySelector('[data-course-complete]');
@@ -336,8 +395,10 @@ def _add_course_lesson_navigation(
   const refresh = () => {{
     const completed = read();
     const isComplete = completed.has(lessonId);
-    button.textContent = isComplete ? 'Mark as incomplete' : 'Mark lesson complete';
-    if (status) status.textContent = isComplete ? 'Completed' : '';
+    button.textContent = isComplete ? labels.mark_incomplete : labels.mark_complete;
+    button.setAttribute("aria-label", button.textContent);
+    button.setAttribute("aria-pressed", String(isComplete));
+    if (status) status.textContent = isComplete ? labels.completed : "";
   }};
   if (button) button.addEventListener('click', () => {{
     const completed = read();
@@ -348,8 +409,8 @@ def _add_course_lesson_navigation(
 }})();
 </script>"""
     source = source.replace("</head>", style + "</head>", 1)
-    source = source.replace("<body>", "<body><a class=\"skip-link\" href=\"#lesson-content\">Skip to lesson content</a>" + nav, 1)
-    source = source.replace("<main>", "<main id=\"lesson-content\" tabindex=\"-1\" aria-label=\"Lesson content\">", 1)
+    source = source.replace("<body>", f"<body><a class=\"skip-link\" href=\"#lesson-content\">{html.escape(labels['skip_to_lesson'])}</a>" + nav, 1)
+    source = source.replace("<main>", f"<main id=\"lesson-content\" tabindex=\"-1\" aria-label=\"{html.escape(labels['lesson_content'], quote=True)}\">", 1)
     source = source.replace("</body>", script + "</body>", 1)
     html_path.write_text(source, encoding="utf-8")
 

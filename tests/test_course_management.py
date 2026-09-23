@@ -923,3 +923,62 @@ def test_course_html_localized_lesson_link_labels(tmp_path: Path) -> None:
     assert '>Apri sorgente della lezione</a>' in index
     assert ">Open lesson</a>" not in index
     assert ">Open lesson source</a>" not in index
+
+def test_course_lesson_navigation_is_multilingual(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    expected = {
+        "it": {
+            "navigation": "Navigazione del corso",
+            "index": "Indice del corso",
+            "module": "Modulo 1 · Lezione 1",
+            "previous": "Precedente",
+            "next": "Successiva",
+            "complete": "Segna come completata",
+            "skip": "Vai al contenuto della lezione",
+            "content": "Contenuto della lezione",
+        },
+        "ja": {
+            "navigation": "コースナビゲーション",
+            "index": "コース目次",
+            "module": "モジュール 1 · レッスン 1",
+            "previous": "前へ",
+            "next": "次へ",
+            "complete": "レッスンを完了にする",
+            "skip": "レッスン内容へ移動",
+            "content": "レッスン内容",
+        },
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        lesson = (
+            tmp_path / "output" / "lessons" / "lesson-01.html"
+        ).read_text(encoding="utf-8")
+
+        assert f'aria-label="{labels["navigation"]}"' in lesson
+        assert f'aria-label="{labels["index"]}"' in lesson
+        assert labels["module"] in lesson
+        assert labels["previous"] in lesson
+        assert labels["next"] in lesson
+        assert labels["complete"] in lesson
+        assert labels["skip"] in lesson
+        assert f'aria-label="{labels["content"]}"' in lesson
+        assert 'aria-pressed="false"' in lesson
+        assert 'aria-live="polite"' in lesson
+        assert "Course navigation" not in lesson
+        assert "Course index" not in lesson
+        assert "Mark lesson complete" not in lesson
+        assert "Ã" not in lesson
+        assert "ã" not in lesson

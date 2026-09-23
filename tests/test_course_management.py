@@ -887,3 +887,39 @@ def test_course_html_multilingual_semantic_accessibility(tmp_path: Path) -> None
         assert "Self-paced" not in source
         assert "Ã" not in source
         assert "ã" not in source
+
+def test_course_html_localized_lesson_link_labels(tmp_path: Path) -> None:
+    from edutex.course.service import load_course_manifest, render_course_html
+
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        GOODBYE_LESSON,
+        encoding="utf-8",
+    )
+
+    manifest = MANIFEST.replace(
+        "language: de\n",
+        "language: it\n",
+    ).replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    report = load_course_manifest(tmp_path / "course.yaml", tmp_path)
+    assert report.manifest is not None
+
+    index = render_course_html(
+        report.manifest,
+        {"lesson-01": "lessons/lesson-01.html"},
+    )
+
+    assert 'href="lessons/lesson-01.html"' in index
+    assert '>Apri lezione</a>' in index
+    assert 'href="../lessons/goodbye.md"' in index
+    assert '>Apri sorgente della lezione</a>' in index
+    assert ">Open lesson</a>" not in index
+    assert ">Open lesson source</a>" not in index

@@ -421,7 +421,7 @@ def test_course_index_contains_dependency_gate_and_progress_script(tmp_path: Pat
 def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:
     make_project(tmp_path)
     (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
-    two_lessons = MANIFEST.replace(
+    two_lessons = MANIFEST.replace("language: de\n", "language: it\n").replace(
         "        objectives: [Introduce yourself]\n",
         "        objectives: [Introduce yourself]\n"
         "      - id: lesson-02\n"
@@ -436,6 +436,9 @@ def test_course_build_removes_stale_lesson_pages(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     stale = tmp_path / "output/lessons/lesson-02.html"
     assert stale.is_file()
+    stale_source = stale.read_text(encoding="utf-8")
+    assert 'class="course-lesson-nav"' in stale_source
+    assert 'aria-label="Navigazione del corso"' in stale_source
 
     (tmp_path / "course.yaml").write_text(MANIFEST, encoding="utf-8")
     result = runner.invoke(

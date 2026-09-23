@@ -1006,7 +1006,7 @@ def _clean_stale_lesson_pages(output_dir: Path, expected_lesson_ids: set[str]) -
         except (OSError, UnicodeDecodeError):
             continue
         generated_marker = '<meta name="generator" content="EduTeX">'
-        navigation_marker = 'aria-label="Course navigation"'
+        navigation_marker = 'class="course-lesson-nav"'
         if generated_marker in source and navigation_marker in source:
             page.unlink()
 

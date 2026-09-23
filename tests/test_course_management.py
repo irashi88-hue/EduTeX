@@ -713,3 +713,59 @@ def test_course_build_pdf_accessibility_contract(tmp_path: Path) -> None:
         ).stdout
         assert "Greetings" in outline
         assert "Hello" in outline
+
+def test_course_html_multilingual_labels_and_unicode(tmp_path: Path) -> None:
+    from html.parser import HTMLParser
+
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    expected = {
+        "it": (
+            "Moduli",
+            "Lezioni",
+            "Indice del corso",
+            "Progressi",
+            "Segna come completata",
+        ),
+        "en": (
+            "Modules",
+            "Lessons",
+            "Course contents",
+            "Progress",
+            "Mark lesson complete",
+        ),
+        "ja": (
+            "モジュール",
+            "レッスン",
+            "コース目次",
+            "進捗",
+            "レッスンを完了にする",
+        ),
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        source = (tmp_path / "output" / "course.html").read_text(
+            encoding="utf-8"
+        )
+        HTMLParser().feed(source)
+
+        assert f'<html lang="{language}">' in source
+        for label in labels:
+            assert label in source, (
+                f"missing label {label!r} for language={language}"
+            )
+
+        assert "edutex:course:german-a1:completed" in source
+        assert "Ã" not in source
+        assert "ã" not in source

@@ -676,6 +676,10 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
                 f" data-prerequisites=\"{prerequisite_ids}\""
                 f" data-prerequisite-names=\"{prerequisite_names_json}\""
                 f" data-duration-minutes=\"{lesson.duration_minutes or 0}\">{link_label}</a>"
+                f"<button type=\"button\" class=\"lesson-complete\""
+                f" data-mark-complete=\"{html.escape(lesson.lesson_id, quote=True)}\""
+                f" aria-label=\"{html.escape(labels['mark_complete'], quote=True)}\">"
+                f"{html.escape(labels['mark_complete'])}</button>"
                 f"<span class=\"lesson-lock\" aria-live=\"polite\"></span></div></li>"
             )
         module_description = (

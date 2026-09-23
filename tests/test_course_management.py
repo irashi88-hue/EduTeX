@@ -611,15 +611,17 @@ def test_course_html_has_structural_accessibility_and_local_link_contract(tmp_pa
                 continue
             assert (page.parent / href).resolve().is_file(), (page.name, href)
 
-def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -> None:
+
+def test_course_build_pdf_accessibility_contract(tmp_path: Path) -> None:
     import shutil
     import subprocess
 
     import pytest
 
+    required = ("pdfinfo", "pdftotext", "pdftoppm")
     if not (shutil.which("latexmk") or shutil.which("pdflatex")):
         pytest.skip("No LaTeX compiler available")
-    if not all(shutil.which(tool) for tool in ("pdfinfo", "pdftotext", "pdftoppm")):
+    if not all(shutil.which(tool) for tool in required):
         pytest.skip("PDF inspection tools are not available")
 
     make_project(tmp_path)
@@ -628,6 +630,20 @@ def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -
         ["course", "build", "--project", str(tmp_path), "--format", "pdf"],
     )
     assert result.exit_code == 0, result.output
+
+    tex = (tmp_path / "output" / "course.tex").read_text(encoding="utf-8")
+    for expected in (
+        r"\usepackage{cmap}",
+        r"\pdfgentounicode=1",
+        r"pdflang={de-DE}",
+        "unicode=true",
+        "bookmarks=true",
+        "bookmarksopen=true",
+        "bookmarksnumbered=true",
+        r"\tableofcontents",
+        r"\section{Greetings}",
+    ):
+        assert expected in tex
 
     pdf_path = tmp_path / "output" / "course.pdf"
     assert pdf_path.is_file()
@@ -648,7 +664,7 @@ def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -
     assert fields.get("Author") == "EduTeX"
     assert fields.get("Subject") == "Beginner course"
 
-    text_path = tmp_path / "course.txt"
+    text_path = tmp_path / "course-accessibility.txt"
     subprocess.run(
         [shutil.which("pdftotext"), str(pdf_path), str(text_path)],
         capture_output=True,
@@ -661,7 +677,7 @@ def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -
     assert "Hello" in text
     assert text.index("Greetings") < text.index("Hello")
 
-    preview_dir = tmp_path / "pdf-preview"
+    preview_dir = tmp_path / "pdf-accessibility-preview"
     preview_dir.mkdir()
     subprocess.run(
         [
@@ -679,3 +695,14 @@ def test_course_build_pdf_smoke_validates_metadata_and_roadmap(tmp_path: Path) -
         check=True,
     )
     assert any(preview_dir.glob("page-*.png"))
+
+    inspector = shutil.which("mutool")
+    if inspector:
+        outline = subprocess.run(
+            [inspector, "show", str(pdf_path), "outline"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        assert "Greetings" in outline
+        assert "Hello" in outline

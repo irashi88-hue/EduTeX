@@ -1098,3 +1098,47 @@ def test_course_lesson_completion_runtime_contract(tmp_path: Path) -> None:
         assert 'aria-pressed="false"' in lesson
         assert "Ã" not in lesson
         assert "ã" not in lesson
+
+def test_course_lesson_navigation_aria_labels_are_localized(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        GOODBYE_LESSON,
+        encoding="utf-8",
+    )
+
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    manifest = manifest.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+
+    expected = {
+        "it": 'aria-label="Successiva lezione: Goodbye"',
+        "ja": 'aria-label="次へ レッスン: Goodbye"',
+        "fr": 'aria-label="Next lesson: Goodbye"',
+    }
+
+    for language, expected_label in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        first = (
+            tmp_path / "output" / "lessons" / "lesson-01.html"
+        ).read_text(encoding="utf-8")
+
+        assert expected_label in first
+        assert 'aria-label="Successiva lesson: Goodbye"' not in first
+        assert 'aria-label="次へ lesson: Goodbye"' not in first
+        assert "Ã" not in first
+        assert "ã" not in first

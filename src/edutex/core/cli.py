@@ -284,6 +284,7 @@ def _add_course_lesson_navigation(
         "course_navigation": "Course navigation",
         "course_index": "Course index",
         "module": "Module",
+        "lesson_aria": "lesson",
         "lesson": "Lesson",
         "previous": "Previous",
         "next": "Next",
@@ -299,6 +300,7 @@ def _add_course_lesson_navigation(
                 "course_navigation": "Navigazione del corso",
                 "course_index": "Indice del corso",
                 "module": "Modulo",
+                "lesson_aria": "lezione",
                 "lesson": "Lezione",
                 "previous": "Precedente",
                 "next": "Successiva",
@@ -315,6 +317,7 @@ def _add_course_lesson_navigation(
                 "course_navigation": "コースナビゲーション",
                 "course_index": "コース目次",
                 "module": "モジュール",
+                "lesson_aria": "レッスン",
                 "lesson": "レッスン",
                 "previous": "前へ",
                 "next": "次へ",
@@ -335,7 +338,7 @@ def _add_course_lesson_navigation(
         title = html.escape(item.title, quote=True)
         return (
             f"<a href=\"{item.lesson_id}.html\" "
-            f"aria-label=\"{label} lesson: {title}\">{label}: {html.escape(item.title)}</a>"
+            f"aria-label=\"{label} {labels['lesson_aria']}: {title}\">{label}: {html.escape(item.title)}</a>"
         )
     storage_key = json.dumps(f"edutex:course:{manifest.course_id}:completed")
     lesson_id_json = json.dumps(lesson.lesson_id)

@@ -809,3 +809,81 @@ def test_course_html_language_variants_and_fallback(tmp_path: Path) -> None:
             )
         assert "Ã" not in source
         assert "ã" not in source
+
+def test_course_html_multilingual_semantic_accessibility(tmp_path: Path) -> None:
+    from html.parser import HTMLParser
+
+    class AccessibilityParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.html_lang = ""
+            self.buttons: list[dict[str, str]] = []
+            self.live_regions: list[dict[str, str]] = []
+
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            attributes = {
+                name: value or "" for name, value in attrs
+            }
+            if tag == "html":
+                self.html_lang = attributes.get("lang", "")
+            if tag == "button":
+                self.buttons.append(attributes)
+            if "aria-live" in attributes:
+                self.live_regions.append(attributes)
+
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    expected = {
+        "it": {
+            "skip": "Vai al contenuto del corso",
+            "kicker": "Corso EduTeX",
+            "complete": "Segna come completata",
+        },
+        "ja": {
+            "skip": "コース内容へ移動",
+            "kicker": "EduTeX コース",
+            "complete": "レッスンを完了にする",
+        },
+    }
+
+    for language, labels in expected.items():
+        manifest_path.write_text(
+            manifest.replace("language: de\n", f"language: {language}\n"),
+            encoding="utf-8",
+        )
+        result = CliRunner().invoke(
+            main,
+            ["course", "build", "--project", str(tmp_path), "--format", "html"],
+        )
+        assert result.exit_code == 0, f"language={language}: {result.output}"
+
+        source = (tmp_path / "output" / "course.html").read_text(
+            encoding="utf-8"
+        )
+        parser = AccessibilityParser()
+        parser.feed(source)
+
+        assert parser.html_lang == language
+        assert labels["skip"] in source
+        assert labels["kicker"] in source
+        assert labels["complete"] in source
+
+        assert parser.buttons
+        for button in parser.buttons:
+            assert button.get("type") == "button"
+            assert button.get("aria-label")
+            assert button.get("aria-pressed") == "false"
+            assert button.get("data-mark-complete")
+
+        assert parser.live_regions
+        assert 'aria-live="polite"' in source
+
+        assert "Skip to course content" not in source
+        assert "EduTeX course" not in source
+        assert "Self-paced" not in source
+        assert "Ã" not in source
+        assert "ã" not in source

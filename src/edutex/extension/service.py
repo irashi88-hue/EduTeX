@@ -44,6 +44,11 @@ class ExtensionService:
         """Validated extensions loaded during the last processing pass."""
         return tuple(self._loaded)
 
+    def terminate(self) -> None:
+        """Release extension-processing state during runtime termination."""
+        self._document = None
+        self._loaded = []
+
     @property
     def extension_points(self) -> ExtensionPointRegistry:
         """The EXT-002 registry of declared extension points."""

@@ -12,6 +12,7 @@ from edutex.core.cli import main
 from edutex.core.errors import ExtensionError
 from edutex.extension.loader import ExtensionLoader
 from edutex.extension.registry import ExtensionPointRegistry
+from edutex.extension.service import ExtensionService
 from edutex.extension.models import ExtensionPoint
 
 
@@ -57,6 +58,19 @@ def test_loader_rejects_missing_manifest_fields(tmp_path: Path) -> None:
 
     with pytest.raises(ExtensionError, match="missing required fields"):
         ExtensionLoader().load(manifest)
+
+
+def test_extension_service_termination_is_idempotent() -> None:
+    service = ExtensionService()
+    service._loaded = [object()]  # type: ignore[list-item]
+    service._document = object()  # type: ignore[assignment]
+
+    service.terminate()
+    service.terminate()
+
+    assert service.loaded_extensions == ()
+    with pytest.raises(ExtensionError, match=r"process\(\) has not been called"):
+        _ = service.document
 
 
 def test_enabled_extension_contributes_before_build(tmp_path: Path) -> None:

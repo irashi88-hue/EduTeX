@@ -179,18 +179,21 @@ def build_project(
     layout.process(state, theme, project_root)
 
     extensions = ExtensionService()
-    extensions.process(state, layout, project_root)
+    try:
+        extensions.process(state, layout, project_root)
 
-    build = BuildService()
-    build.build(
-        config,
-        knowledge,
-        theme,
-        layout,
-        project_root,
-        document=extensions.document,
-    )
-    return build.output_path
+        build = BuildService()
+        build.build(
+            config,
+            knowledge,
+            theme,
+            layout,
+            project_root,
+            document=extensions.document,
+        )
+        return build.output_path
+    finally:
+        extensions.terminate()
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -672,7 +675,10 @@ def validate_command(project_root: Path, config_file: Path) -> None:
         layout = LayoutService()
         layout.process(state, theme, project_root)
         extensions = ExtensionService()
-        extensions.process(state, layout, project_root)
+        try:
+            extensions.process(state, layout, project_root)
+        finally:
+            extensions.terminate()
     except EduTeXError as exc:
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:

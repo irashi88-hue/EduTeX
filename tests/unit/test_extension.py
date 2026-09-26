@@ -73,6 +73,52 @@ def test_extension_service_termination_is_idempotent() -> None:
         _ = service.document
 
 
+def test_extensions_follow_configured_order(tmp_path: Path) -> None:
+    make_project(tmp_path, extension_ids=["second_tip", "first_tip"])
+    extensions_root = tmp_path / "assets" / "extensions"
+
+    for extension_id, label in (
+        ("first_tip", "ORDERFIRST"),
+        ("second_tip", "ORDERSECOND"),
+    ):
+        directory = extensions_root / extension_id
+        directory.mkdir()
+        (directory / "extension.yaml").write_text(
+            "\n".join(
+                [
+                    f"id: {extension_id}",
+                    f"name: {extension_id}",
+                    "version: 1.0.0",
+                    "target: layout.post_structure",
+                    "module: extension.py",
+                    "entrypoint: apply",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (directory / "extension.py").write_text(
+            "from copy import deepcopy\n"
+            "from edutex.extension.models import ExtensionContext\n"
+            "from edutex.knowledge.models import TextBlock\n\n"
+            "def apply(context: ExtensionContext):\n"
+            "    document = deepcopy(context.document)\n"
+            "    document.prose_blocks.append(\n"
+            "        (10, TextBlock(content={!r}))\n"
+            "    )\n"
+            "    return document\n".format(label),
+            encoding="utf-8",
+        )
+
+    result = CliRunner().invoke(main, ["build", "--project", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    tex = (tmp_path / "output" / "extension_test.tex").read_text(
+        encoding="utf-8"
+    )
+    assert tex.index("ORDERSECOND") < tex.index("ORDERFIRST")
+
+
 def test_enabled_extension_contributes_before_build(tmp_path: Path) -> None:
     make_project(tmp_path, extension_ids=["reading_tip"])
     result = CliRunner().invoke(main, ["build", "--project", str(tmp_path)])

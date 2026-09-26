@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+from typing import Sequence
 
 from edutex.activator.activator import ActivatedState
 from edutex.core.errors import ExtensionError
@@ -59,13 +60,25 @@ class ExtensionService:
         state: ActivatedState,
         layout: LayoutService,
         project_root: Path,
+        *,
+        extension_order: Sequence[str] | None = None,
     ) -> None:
         """Load, validate, order, and apply all activated extensions."""
         current = deepcopy(layout.document)
         self._loaded = []
         loader = ExtensionLoader()
 
-        extension_entities = state.get_by_type(EntityType.EXTENSION)
+        configured_order = {
+            extension_id: index
+            for index, extension_id in enumerate(extension_order or ())
+        }
+        extension_entities = sorted(
+            state.get_by_type(EntityType.EXTENSION),
+            key=lambda entity: (
+                configured_order.get(entity.entity_id, len(configured_order)),
+                entity.entity_id,
+            ),
+        )
         for entity in extension_entities:
             loaded = loader.load(entity.source_path, expected_id=entity.entity_id)
             point = self._points.get(loaded.manifest.target)

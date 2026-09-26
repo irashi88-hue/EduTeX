@@ -180,7 +180,12 @@ def build_project(
 
     extensions = ExtensionService()
     try:
-        extensions.process(state, layout, project_root)
+        extensions.process(
+            state,
+            layout,
+            project_root,
+            extension_order=config.extensions.enabled,
+        )
 
         build = BuildService()
         build.build(
@@ -676,7 +681,12 @@ def validate_command(project_root: Path, config_file: Path) -> None:
         layout.process(state, theme, project_root)
         extensions = ExtensionService()
         try:
-            extensions.process(state, layout, project_root)
+            extensions.process(
+                state,
+                layout,
+                project_root,
+                extension_order=config.extensions.enabled,
+            )
         finally:
             extensions.terminate()
     except EduTeXError as exc:

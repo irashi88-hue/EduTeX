@@ -910,7 +910,7 @@ def render_course_latex(manifest: CourseManifest) -> str:
     """Render a printable course roadmap as LaTeX source."""
     cjk = manifest.language.lower().split("-", 1)[0] in {"ja", "zh", "ko"}
     if cjk:
-        packages = r"\usepackage{fontspec}" + "\n" + r"\usepackage{xeCJK}"
+        packages = r"\usepackage{fontspec}" + "\n" + r"\usepackage{xeCJK}" + "\n" + r"\setCJKmainfont{Source Han Sans JP}"
     else:
         # cmap gives pdfLaTeX a usable ToUnicode map for copy/search operations.
         packages = "\n".join(

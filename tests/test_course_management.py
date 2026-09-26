@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
+import pytest
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -191,6 +193,78 @@ def test_course_build_latex_uses_metadata_fallbacks(tmp_path: Path) -> None:
     assert "pdfauthor={EduTeX}" in source
     assert "pdfsubject={EduTeX course roadmap}" in source
 
+
+def test_course_build_latex_uses_cjk_preamble_for_japanese_manifest(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest = (tmp_path / "course.yaml").read_text(encoding="utf-8")
+    manifest = (
+        manifest.replace("title: German A1", "title: 日本語 A1")
+        .replace("language: de", "language: ja-JP")
+        .replace("title: Greetings", "title: あいさつ")
+        .replace("title: Hello", "title: こんにちは")
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "latex"]
+    )
+
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output" / "course.tex").read_text(encoding="utf-8")
+    assert r"\usepackage{fontspec}" in source
+    assert r"\usepackage{xeCJK}" in source
+    assert r"\setCJKmainfont{Source Han Sans JP}" in source
+    assert r"\usepackage[utf8]{inputenc}" not in source
+    assert "日本語 A1" in source
+    assert "こんにちは" in source
+
+
+def test_course_build_cjk_pdf_preserves_japanese_text(tmp_path: Path) -> None:
+    if shutil.which("xelatex") is None:
+        pytest.skip("XeLaTeX is unavailable")
+    if shutil.which("pdftotext") is None:
+        pytest.skip("pdftotext is unavailable")
+
+    make_project(tmp_path)
+    manifest = (tmp_path / "course.yaml").read_text(encoding="utf-8")
+    manifest = (
+        manifest.replace("title: German A1", "title: 日本語 A1")
+        .replace("language: de", "language: ja-JP")
+        .replace("title: Greetings", "title: あいさつ")
+        .replace("title: Hello", "title: こんにちは")
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "pdf"]
+    )
+
+    assert result.exit_code == 0, result.output
+
+    pdf_path = tmp_path / "output" / "course.pdf"
+    assert pdf_path.is_file()
+
+    text_path = tmp_path / "course-pdf.txt"
+    extracted = subprocess.run(
+        [
+            shutil.which("pdftotext"),
+            "-enc",
+            "UTF-8",
+            str(pdf_path),
+            str(text_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert extracted.returncode == 0, extracted.stderr or extracted.stdout
+
+    pdf_text = text_path.read_text(encoding="utf-8", errors="replace")
+    assert "日本語 A1" in pdf_text
+    assert "こんにちは" in pdf_text
+    assert "Ã" not in pdf_text
+    assert "ã" not in pdf_text
 
 def test_course_validate_json_reports_structured_source_diagnostic(tmp_path: Path) -> None:
     make_project(tmp_path)

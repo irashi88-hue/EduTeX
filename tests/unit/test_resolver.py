@@ -64,6 +64,38 @@ def test_circular_dependency_raises():
     except ResolverError as e:
         assert "circular" in str(e).lower()
 
+def test_resolved_graph_freezes_collections():
+    graph = Resolver(
+        make_registry(
+            EntityRecord(
+                "km-001",
+                EntityType.KNOWLEDGE_MODEL,
+                Path("assets/km/example.md"),
+            )
+        )
+    ).resolve()
+
+    try:
+        graph.entities.append(
+            EntityRecord(
+                "km-002",
+                EntityType.KNOWLEDGE_MODEL,
+                Path("assets/km/other.md"),
+            )
+        )
+    except (AttributeError, TypeError):
+        pass
+    else:
+        raise AssertionError("ResolvedGraph.entities remains mutable after freeze")
+
+    try:
+        graph.edges.clear()
+    except (AttributeError, TypeError):
+        pass
+    else:
+        raise AssertionError("ResolvedGraph.edges remains mutable after freeze")
+
+
 def test_resolve_before_window_closes_raises():
     reg = Registry()
     reg.register(EntityRecord("km-001", EntityType.KNOWLEDGE_MODEL, Path("a.md")))

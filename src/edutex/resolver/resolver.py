@@ -22,6 +22,26 @@ from edutex.registry.models import EntityRecord, EntityType
 from edutex.registry.registry import Registry
 
 
+class _FrozenList(list):
+    """List-compatible collection that rejects all mutations."""
+
+    def _reject(self, *args, **kwargs):
+        raise TypeError("ResolvedGraph collections are immutable.")
+
+    __setitem__ = _reject
+    __delitem__ = _reject
+    __iadd__ = _reject
+    __imul__ = _reject
+    append = _reject
+    clear = _reject
+    extend = _reject
+    insert = _reject
+    pop = _reject
+    remove = _reject
+    reverse = _reject
+    sort = _reject
+
+
 @dataclass
 class ResolvedEdge:
     """A resolved directional relationship between two entities."""
@@ -45,7 +65,11 @@ class ResolvedGraph:
     _frozen:  bool = field(default=False, init=False, repr=False)
 
     def freeze(self) -> None:
-        """Freeze the graph — no further modifications allowed."""
+        """Freeze the graph; no further modifications are allowed."""
+        if self._frozen:
+            return
+        self.entities = _FrozenList(self.entities)
+        self.edges = _FrozenList(self.edges)
         self._frozen = True
 
     def get(self, entity_type: EntityType, entity_id: str) -> EntityRecord | None:

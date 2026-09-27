@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 import shutil
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
-from edutex.core.cli import main
+from edutex.activator.activator import Activator
+from edutex.configuration.loader import load_config
+from edutex.core.cli import _register_project_assets, main
 from edutex.core.errors import ExtensionError
+from edutex.extension.models import ExtensionPoint
 from edutex.extension.loader import ExtensionLoader
 from edutex.extension.registry import ExtensionPointRegistry
 from edutex.extension.service import ExtensionService
-from edutex.extension.models import ExtensionPoint
+from edutex.knowledge.service import KnowledgeService
+from edutex.layout.service import LayoutService
+from edutex.resolver.resolver import Resolver
+from edutex.theme.service import ThemeService
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -108,6 +115,59 @@ def test_loader_rejects_module_path_escape(tmp_path: Path) -> None:
 
     with pytest.raises(ExtensionError, match="inside the extension directory"):
         ExtensionLoader().load(manifest)
+
+
+def test_extension_mutation_is_isolated_from_layout(tmp_path: Path) -> None:
+    make_project(tmp_path, extension_ids=["mutator"])
+
+    extension_dir = tmp_path / "assets" / "extensions" / "mutator"
+    extension_dir.mkdir()
+    (extension_dir / "extension.yaml").write_text(
+        "id: mutator\n"
+        "name: Mutator\n"
+        "version: 1.0.0\n"
+        "target: layout.post_structure\n"
+        "module: extension.py\n"
+        "entrypoint: apply\n",
+        encoding="utf-8",
+    )
+    (extension_dir / "extension.py").write_text(
+        "from edutex.extension.models import ExtensionContext\n"
+        "from edutex.knowledge.models import TextBlock\n\n"
+        "def apply(context: ExtensionContext):\n"
+        "    context.document.prose_blocks.append(\n"
+        "        (10, TextBlock(content='ISOLATION_MARKER'))\n"
+        "    )\n"
+        "    return context.document\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(tmp_path / "edutex.config.yaml")
+    registry = _register_project_assets(config, tmp_path)
+    state = Activator().activate(Resolver(registry).resolve())
+
+    knowledge = KnowledgeService()
+    knowledge.process(state, tmp_path)
+    theme = ThemeService()
+    theme.process(state, knowledge, tmp_path)
+    layout = LayoutService()
+    layout.process(state, theme, tmp_path)
+
+    original_prose_blocks = deepcopy(layout.document.prose_blocks)
+
+    extensions = ExtensionService()
+    extensions.process(
+        state,
+        layout,
+        tmp_path,
+        extension_order=config.extensions.enabled,
+    )
+
+    assert layout.document.prose_blocks == original_prose_blocks
+    assert any(
+        "ISOLATION_MARKER" in block.content
+        for _, block in extensions.document.prose_blocks
+    )
 
 
 def test_extension_service_termination_is_idempotent() -> None:

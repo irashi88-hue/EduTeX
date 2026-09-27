@@ -17,6 +17,22 @@ def make_graph(*records):
     reg.close_registration_window()
     return Resolver(reg).resolve()
 
+def test_activated_state_does_not_expose_mutable_entities():
+    graph = make_graph(
+        EntityRecord("km-001", EntityType.KNOWLEDGE_MODEL, Path("a.md"))
+    )
+    state = Activator().activate(graph)
+
+    exposed = state.get(EntityType.KNOWLEDGE_MODEL, "km-001")
+    assert exposed is not None
+
+    exposed.is_active = False
+
+    stored = state.get(EntityType.KNOWLEDGE_MODEL, "km-001")
+    assert stored is not None
+    assert stored.is_active
+
+
 def test_activate_single_entity():
     graph = make_graph(EntityRecord("km-001", EntityType.KNOWLEDGE_MODEL, Path("a.md")))
     state = Activator().activate(graph)

@@ -11,6 +11,7 @@ Determines activation order by performing a topological sort on the graph.
 from __future__ import annotations
 
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -57,17 +58,22 @@ class ActivatedState:
         }
 
     def get(self, entity_type: EntityType, entity_id: str) -> ActivatedEntity | None:
-        return self._entities.get((entity_type, entity_id))
+        entity = self._entities.get((entity_type, entity_id))
+        return deepcopy(entity) if entity is not None else None
 
     def get_by_type(self, entity_type: EntityType) -> list[ActivatedEntity]:
-        return [e for (t, _), e in self._entities.items() if t == entity_type]
+        return [
+            deepcopy(entity)
+            for (entity_type_key, _), entity in self._entities.items()
+            if entity_type_key == entity_type
+        ]
 
     def get_first(self, entity_type: EntityType) -> ActivatedEntity | None:
         results = self.get_by_type(entity_type)
         return results[0] if results else None
 
     def all(self) -> list[ActivatedEntity]:
-        return list(self._entities.values())
+        return [deepcopy(entity) for entity in self._entities.values()]
 
     def __len__(self) -> int:
         return len(self._entities)

@@ -6,12 +6,14 @@ from edutex.extension.models import (
     ExtensionPoint,
     LoadedExtension,
 )
+from edutex.extension.registry import ExtensionPointRegistry
 from edutex.extension.service import ExtensionService
 
 __all__ = [
     "ExtensionContext",
     "ExtensionManifest",
     "ExtensionPoint",
+    "ExtensionPointRegistry",
     "ExtensionService",
     "LoadedExtension",
 ]

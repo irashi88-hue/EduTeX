@@ -56,6 +56,13 @@ logging:
     )
 
 
+def test_public_extension_api_exports_registry() -> None:
+    import edutex.extension as public_extension
+
+    assert public_extension.ExtensionPointRegistry is ExtensionPointRegistry
+    assert "ExtensionPointRegistry" in public_extension.__all__
+
+
 def test_extension_point_registry_rejects_duplicates() -> None:
     registry = ExtensionPointRegistry()
     point = ExtensionPoint("test.point", "Test", "Test point")

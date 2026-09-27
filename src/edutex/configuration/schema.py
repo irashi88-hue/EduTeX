@@ -5,7 +5,34 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class _ImmutableConfigModel(BaseModel):
+    """Base model enforcing configuration immutability."""
+
+    model_config = ConfigDict(frozen=True)
+
+
+class _ImmutableList(list[str]):
+    """List-compatible container that rejects all in-place mutations."""
+
+    @staticmethod
+    def _reject_mutation(*args: object, **kwargs: object) -> None:
+        raise TypeError("configuration collections are immutable")
+
+    __setitem__ = _reject_mutation
+    __delitem__ = _reject_mutation
+    __iadd__ = _reject_mutation
+    __imul__ = _reject_mutation
+    append = _reject_mutation
+    clear = _reject_mutation
+    extend = _reject_mutation
+    insert = _reject_mutation
+    pop = _reject_mutation
+    remove = _reject_mutation
+    reverse = _reject_mutation
+    sort = _reject_mutation
 
 
 class OutputFormat(str, Enum):
@@ -21,7 +48,7 @@ class LogLevel(str, Enum):
     error = "ERROR"
 
 
-class KnowledgeConfig(BaseModel):
+class KnowledgeConfig(_ImmutableConfigModel):
     model: Path = Field(..., description="Path to the Knowledge Model source file.")
 
     @field_validator("model", mode="before")
@@ -32,7 +59,7 @@ class KnowledgeConfig(BaseModel):
         return value
 
 
-class ThemeConfig(BaseModel):
+class ThemeConfig(_ImmutableConfigModel):
     name: str = Field(..., description="Name of the theme to apply.")
 
     @field_validator("name")
@@ -44,7 +71,7 @@ class ThemeConfig(BaseModel):
         return value
 
 
-class LayoutConfig(BaseModel):
+class LayoutConfig(_ImmutableConfigModel):
     name: str = Field(..., description="Name of the layout to apply.")
 
     @field_validator("name")
@@ -56,7 +83,7 @@ class LayoutConfig(BaseModel):
         return value
 
 
-class BuildConfig(BaseModel):
+class BuildConfig(_ImmutableConfigModel):
     output_format: OutputFormat = Field(OutputFormat.pdf, description="Output format.")
     output_dir: Path = Field(Path("output"), description="Output directory.")
     output_file: str = Field("document", min_length=1, description="Output filename without extension.")
@@ -70,7 +97,7 @@ class BuildConfig(BaseModel):
         return value
 
 
-class ExtensionsConfig(BaseModel):
+class ExtensionsConfig(_ImmutableConfigModel):
     enabled: list[str] = Field(default_factory=list, description="Enabled extension names.")
 
     @field_validator("enabled")
@@ -79,14 +106,14 @@ class ExtensionsConfig(BaseModel):
         cleaned = [item.strip() for item in value]
         if any(not item for item in cleaned):
             raise ValueError("extension names must not be empty")
-        return cleaned
+        return _ImmutableList(cleaned)
 
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(_ImmutableConfigModel):
     level: LogLevel = Field(LogLevel.info, description="Logging level.")
 
 
-class EduTexVersionConfig(BaseModel):
+class EduTexVersionConfig(_ImmutableConfigModel):
     version: str = Field(..., min_length=1, description="EduTeX framework version.")
 
     @field_validator("version")
@@ -98,7 +125,7 @@ class EduTexVersionConfig(BaseModel):
         return value
 
 
-class EduTexConfig(BaseModel):
+class EduTexConfig(_ImmutableConfigModel):
     """Root configuration model for the EduTeX framework."""
 
     edutex: EduTexVersionConfig

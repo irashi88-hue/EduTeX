@@ -6,7 +6,7 @@ sys.path.insert(0, "/home/user/edutex/src")
 from pathlib import Path
 from edutex.registry.models import EntityRecord, EntityType, EntityReference
 from edutex.registry.registry import Registry
-from edutex.resolver.resolver import Resolver, ResolvedGraph
+from edutex.resolver.resolver import Resolver, ResolvedEdge, ResolvedGraph
 from edutex.core.errors import ResolverError
 
 def make_registry(*records):
@@ -15,6 +15,15 @@ def make_registry(*records):
         reg.register(r)
     reg.close_registration_window()
     return reg
+
+def test_public_resolver_api_exports_contract():
+    import edutex.resolver as public_resolver
+
+    assert public_resolver.Resolver is Resolver
+    assert public_resolver.ResolvedGraph is ResolvedGraph
+    assert public_resolver.ResolvedEdge is ResolvedEdge
+    assert "Resolver" in public_resolver.__all__
+
 
 def test_resolve_no_references():
     reg = make_registry(

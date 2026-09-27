@@ -8,6 +8,16 @@ from edutex.registry.models import EntityRecord, EntityType, EntityReference
 from edutex.registry.registry import Registry
 from edutex.core.errors import RegistryError
 
+def test_public_registry_api_exports_contract():
+    import edutex.registry as public_registry
+
+    assert public_registry.Registry is Registry
+    assert public_registry.EntityRecord is EntityRecord
+    assert public_registry.EntityReference is EntityReference
+    assert public_registry.EntityType is EntityType
+    assert "Registry" in public_registry.__all__
+
+
 def test_register_and_retrieve():
     reg = Registry()
     rec = EntityRecord("km-001", EntityType.KNOWLEDGE_MODEL, Path("assets/km/example.md"))

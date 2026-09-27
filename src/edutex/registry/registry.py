@@ -14,6 +14,8 @@ Lifecycle:
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from edutex.core.errors import RegistryError
 from edutex.registry.models import EntityRecord, EntityType
 
@@ -39,19 +41,24 @@ class Registry:
         Return all registered entities.
         Available to the Resolver after the registration window closes (REG-001).
         """
-        return list(self._entities.values())
+        return [deepcopy(entity) for entity in self._entities.values()]
 
     def get(self, entity_type: EntityType, entity_id: str) -> EntityRecord | None:
         """
         Return a single entity by type and ID, or None if not found.
         """
-        return self._entities.get((entity_type, entity_id))
+        record = self._entities.get((entity_type, entity_id))
+        return deepcopy(record) if record is not None else None
 
     def get_by_type(self, entity_type: EntityType) -> list[EntityRecord]:
         """
         Return all entities of a given type.
         """
-        return [e for (t, _), e in self._entities.items() if t == entity_type]
+        return [
+            deepcopy(entity)
+            for (entity_type_key, _), entity in self._entities.items()
+            if entity_type_key == entity_type
+        ]
 
     def exists(self, entity_type: EntityType, entity_id: str) -> bool:
         """Return True if an entity with the given type and ID is registered."""
@@ -85,7 +92,7 @@ class Registry:
                 f"'{record.entity_id}' of type '{record.entity_type.name}' is already registered."
             )
 
-        self._entities[key] = record
+        self._entities[key] = deepcopy(record)
 
     def close_registration_window(self) -> None:
         """

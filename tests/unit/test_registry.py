@@ -13,7 +13,7 @@ def test_register_and_retrieve():
     rec = EntityRecord("km-001", EntityType.KNOWLEDGE_MODEL, Path("assets/km/example.md"))
     reg.register(rec)
     assert reg.exists(EntityType.KNOWLEDGE_MODEL, "km-001")
-    assert reg.get(EntityType.KNOWLEDGE_MODEL, "km-001") is rec
+    assert reg.get(EntityType.KNOWLEDGE_MODEL, "km-001") == rec
     assert len(reg) == 1
 
 def test_get_all():
@@ -29,6 +29,28 @@ def test_get_by_type():
     reg.register(EntityRecord("theme-default", EntityType.THEME, Path("c")))
     kms = reg.get_by_type(EntityType.KNOWLEDGE_MODEL)
     assert len(kms) == 2
+
+def test_closed_registry_does_not_expose_mutable_records():
+    registry = Registry()
+    record = EntityRecord(
+        "km-001",
+        EntityType.KNOWLEDGE_MODEL,
+        Path("assets/km/example.md"),
+    )
+    registry.register(record)
+    registry.close_registration_window()
+
+    exposed = registry.get(EntityType.KNOWLEDGE_MODEL, "km-001")
+    assert exposed is not None
+
+    exposed.entity_id = "changed"
+    exposed.metadata["changed"] = True
+
+    stored = registry.get(EntityType.KNOWLEDGE_MODEL, "km-001")
+    assert stored is not None
+    assert stored.entity_id == "km-001"
+    assert "changed" not in stored.metadata
+
 
 def test_duplicate_raises():
     reg = Registry()

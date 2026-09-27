@@ -130,10 +130,18 @@ class Activator:
         key_to_record: dict[EntityKey, EntityRecord] = {
             (e.entity_type, e.entity_id): e for e in graph.entities
         }
-        all_keys: set[EntityKey] = set(key_to_record)
+        ordered_keys = sorted(
+            key_to_record,
+            key=lambda key: (key[0].name, key[1]),
+        )
+        all_keys: set[EntityKey] = set(ordered_keys)
 
-        in_degree:  dict[EntityKey, int]        = {k: 0 for k in all_keys}
-        dependents: dict[EntityKey, list[EntityKey]] = {k: [] for k in all_keys}
+        in_degree: dict[EntityKey, int] = {
+            key: 0 for key in ordered_keys
+        }
+        dependents: dict[EntityKey, list[EntityKey]] = {
+            key: [] for key in ordered_keys
+        }
 
         for edge in graph.edges:
             src = (edge.source_type, edge.source_id)
@@ -143,7 +151,12 @@ class Activator:
                 in_degree[src] += 1
                 dependents[tgt].append(src)
 
-        queue: deque[EntityKey] = deque(k for k, deg in in_degree.items() if deg == 0)
+        for dependent_keys in dependents.values():
+            dependent_keys.sort(key=lambda key: (key[0].name, key[1]))
+
+        queue: deque[EntityKey] = deque(
+            key for key in ordered_keys if in_degree[key] == 0
+        )
         sorted_keys: list[EntityKey] = []
 
         while queue:

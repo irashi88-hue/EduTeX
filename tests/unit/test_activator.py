@@ -42,6 +42,20 @@ def test_activate_single_entity():
     assert e is not None
     assert e.is_active
 
+def test_activation_order_is_deterministic_for_independent_entities():
+    graph = make_graph(
+        EntityRecord("component-b", EntityType.COMPONENT, Path("b")),
+        EntityRecord("component-a", EntityType.COMPONENT, Path("a")),
+        EntityRecord("component-c", EntityType.COMPONENT, Path("c")),
+    )
+
+    activator = Activator()
+    activator.activate(graph)
+
+    ids = [entity.entity_id for entity in activator._activated]
+    assert ids == ["component-a", "component-b", "component-c"]
+
+
 def test_activation_order_dependency_first():
     # b depends on a → a must be activated first
     a = EntityRecord("a", EntityType.COMPONENT, Path("a"))

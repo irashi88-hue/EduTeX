@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from click.testing import CliRunner
@@ -13,8 +14,12 @@ from edutex.activator.activator import Activator
 from edutex.configuration.loader import load_config
 from edutex.core.cli import _register_project_assets, main
 from edutex.core.errors import ExtensionError
-from edutex.extension.models import ExtensionPoint
 from edutex.extension.loader import ExtensionLoader
+from edutex.extension.models import (
+    ExtensionManifest,
+    ExtensionPoint,
+    LoadedExtension,
+)
 from edutex.extension.registry import ExtensionPointRegistry
 from edutex.extension.service import ExtensionService
 from edutex.knowledge.service import KnowledgeService
@@ -168,6 +173,84 @@ def test_extension_mutation_is_isolated_from_layout(tmp_path: Path) -> None:
         "ISOLATION_MARKER" in block.content
         for _, block in extensions.document.prose_blocks
     )
+
+
+def test_loader_rejects_non_callable_entrypoint(tmp_path: Path) -> None:
+    module = tmp_path / "extension.py"
+    module.write_text("VALUE = 42\n", encoding="utf-8")
+
+    manifest = tmp_path / "extension.yaml"
+    manifest.write_text(
+        "id: invalid_entrypoint\n"
+        "name: Invalid Entrypoint\n"
+        "version: 1.0.0\n"
+        "target: layout.post_structure\n"
+        "module: extension.py\n"
+        "entrypoint: VALUE\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ExtensionError, match="not a callable"):
+        ExtensionLoader().load(manifest)
+
+
+def _make_extension_error_fixture(monkeypatch, handler, target="layout.post_structure"):
+    manifest = ExtensionManifest(
+        extension_id="test_extension",
+        name="Test Extension",
+        version="1.0.0",
+        target=target,
+        module="extension.py",
+        entrypoint="apply",
+    )
+    loaded = LoadedExtension(manifest=manifest, handler=handler)
+
+    def fake_load(_loader, _manifest_path, expected_id=None):
+        return loaded
+
+    monkeypatch.setattr(ExtensionLoader, "load", fake_load)
+
+    state = SimpleNamespace(
+        get_by_type=lambda _entity_type: [
+            SimpleNamespace(
+                entity_id="test_extension",
+                source_path=Path("extension.yaml"),
+            )
+        ]
+    )
+    layout = SimpleNamespace(document=object())
+    return state, layout
+
+
+def test_extension_rejects_undeclared_extension_point(monkeypatch) -> None:
+    state, layout = _make_extension_error_fixture(
+        monkeypatch,
+        lambda context: context.document,
+        target="missing.point",
+    )
+
+    with pytest.raises(ExtensionError, match="undeclared"):
+        ExtensionService().process(state, layout, Path("."))
+
+
+def test_extension_handler_failure_is_fatal(monkeypatch) -> None:
+    def fail(_context):
+        raise RuntimeError("handler boom")
+
+    state, layout = _make_extension_error_fixture(monkeypatch, fail)
+
+    with pytest.raises(ExtensionError, match="failed at.*handler boom"):
+        ExtensionService().process(state, layout, Path("."))
+
+
+def test_extension_rejects_invalid_contribution_type(monkeypatch) -> None:
+    state, layout = _make_extension_error_fixture(
+        monkeypatch,
+        lambda _context: None,
+    )
+
+    with pytest.raises(ExtensionError, match="expected DocumentStructure"):
+        ExtensionService().process(state, layout, Path("."))
 
 
 def test_extension_service_termination_is_idempotent() -> None:

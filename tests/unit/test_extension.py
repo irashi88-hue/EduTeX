@@ -60,6 +60,56 @@ def test_loader_rejects_missing_manifest_fields(tmp_path: Path) -> None:
         ExtensionLoader().load(manifest)
 
 
+def test_loader_rejects_non_string_target(tmp_path: Path) -> None:
+    module = tmp_path / "extension.py"
+    module.write_text(
+        "def apply(context):\n"
+        "    return context\n",
+        encoding="utf-8",
+    )
+
+    manifest = tmp_path / "extension.yaml"
+    manifest.write_text(
+        "id: typed_extension\n"
+        "name: Typed Extension\n"
+        "version: 1.0.0\n"
+        "target:\n"
+        "  - layout.post_structure\n"
+        "module: extension.py\n"
+        "entrypoint: apply\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ExtensionError, match="non-empty string"):
+        ExtensionLoader().load(manifest)
+
+
+def test_loader_rejects_module_path_escape(tmp_path: Path) -> None:
+    extension_dir = tmp_path / "extension"
+    extension_dir.mkdir()
+
+    outside_module = tmp_path / "outside.py"
+    outside_module.write_text(
+        "def apply(context):\n"
+        "    return context\n",
+        encoding="utf-8",
+    )
+
+    manifest = extension_dir / "extension.yaml"
+    manifest.write_text(
+        "id: escaped_extension\n"
+        "name: Escaped Extension\n"
+        "version: 1.0.0\n"
+        "target: layout.post_structure\n"
+        "module: ../outside.py\n"
+        "entrypoint: apply\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ExtensionError, match="inside the extension directory"):
+        ExtensionLoader().load(manifest)
+
+
 def test_extension_service_termination_is_idempotent() -> None:
     service = ExtensionService()
     service._loaded = [object()]  # type: ignore[list-item]

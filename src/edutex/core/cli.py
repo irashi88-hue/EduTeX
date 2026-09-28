@@ -13,7 +13,7 @@ import json
 import logging
 import shutil
 from importlib.resources import as_file, files
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import click
@@ -24,9 +24,10 @@ from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
 from edutex.core.errors import EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
+from edutex.extension.models import ExtensionDiagnostic
+from edutex.extension.service import ExtensionService
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
-from edutex.extension.service import ExtensionService
 from edutex.layout.service import LayoutService
 from edutex.registry.models import EntityRecord, EntityType
 from edutex.registry.registry import Registry
@@ -131,17 +132,29 @@ def _format_build_json(report, *, status: str, output_path: Path | None = None, 
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def _format_build_error_json(message: str, *, error_type: str = "build_error") -> str:
+def _format_build_error_json(
+    message: str,
+    *,
+    error_type: str = "build_error",
+    diagnostics: Sequence[ExtensionDiagnostic] | None = None,
+) -> str:
     """Serialize one build failure without Click's human-readable prefix."""
+    error = {
+        "type": error_type,
+        "message": message,
+    }
+    if diagnostics:
+        error["diagnostics"] = [
+            asdict(diagnostic)
+            for diagnostic in diagnostics
+        ]
+
     return json.dumps(
         {
             "lint": None,
             "build": {
                 "status": "failed",
-                "error": {
-                    "type": error_type,
-                    "message": message,
-                },
+                "error": error,
             },
         },
         ensure_ascii=False,
@@ -214,6 +227,7 @@ def build_project(
     project_root: Path,
     *,
     config=None,
+    extension_diagnostics: list[ExtensionDiagnostic] | None = None,
 ) -> Path:
     """
     Execute the complete EduTeX pipeline for a project.
@@ -253,6 +267,10 @@ def build_project(
             )
             output_path = build.output_path
         finally:
+            if extension_diagnostics is not None:
+                extension_diagnostics.extend(
+                    getattr(extensions, "diagnostics", ())
+                )
             extensions.terminate()
 
         context.advance(LifecyclePhase.COMPLETE)
@@ -665,6 +683,7 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
 
     output_format = output_format.lower()
     lint_report = None
+    extension_diagnostics: list[ExtensionDiagnostic] = []
     try:
         config = None
         if run_lint:
@@ -681,11 +700,22 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
                 else:
                     click.echo(message)
                 raise click.exceptions.Exit(1)
-        output_path = build_project(config_path, project_root, config=config)
+        output_path = build_project(
+            config_path,
+            project_root,
+            config=config,
+            extension_diagnostics=extension_diagnostics,
+        )
     except EduTeXError as exc:
         message = str(exc)
         if output_format == "json":
-            click.echo(_format_build_error_json(message, error_type=exc.__class__.__name__))
+            click.echo(
+                _format_build_error_json(
+                    message,
+                    error_type=exc.__class__.__name__,
+                    diagnostics=extension_diagnostics,
+                )
+            )
             raise click.exceptions.Exit(1) from exc
         raise click.ClickException(message) from exc
     except OSError as exc:

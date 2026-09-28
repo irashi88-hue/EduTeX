@@ -232,3 +232,91 @@ def test_build_json_reports_missing_config_as_structured_error(tmp_path: Path) -
     assert payload["build"]["error"]["type"] == "ConfigurationError"
     assert "Configuration file not found" in payload["build"]["error"]["message"]
     assert "Error:" not in result.output
+
+def test_build_error_json_serializes_extension_diagnostics():
+    import json
+
+    from edutex.core.cli import _format_build_error_json
+    from edutex.extension.models import ExtensionDiagnostic
+
+    diagnostics = (
+        ExtensionDiagnostic(
+            extension_id="reading_tip",
+            point_id="layout.post_structure",
+            phase="handler",
+            message="handler boom",
+        ),
+    )
+
+    payload = json.loads(
+        _format_build_error_json(
+            "Extension processing failed",
+            error_type="ExtensionError",
+            diagnostics=diagnostics,
+        )
+    )
+
+    assert payload["build"]["status"] == "failed"
+    assert payload["build"]["error"]["type"] == "ExtensionError"
+    assert payload["build"]["error"]["diagnostics"] == [
+        {
+            "extension_id": "reading_tip",
+            "point_id": "layout.post_structure",
+            "phase": "handler",
+            "message": "handler boom",
+        }
+    ]
+
+def test_build_json_reports_extension_diagnostics(tmp_path: Path) -> None:
+    project = make_project(tmp_path / "project", VALID_SOURCE)
+
+    extension_dir = project / "assets" / "extensions" / "failing_extension"
+    extension_dir.mkdir()
+    (extension_dir / "extension.yaml").write_text(
+        "id: failing_extension\n"
+        "name: Failing Extension\n"
+        "version: 1.0.0\n"
+        "target: layout.post_structure\n"
+        "module: extension.py\n"
+        "entrypoint: apply\n",
+        encoding="utf-8",
+    )
+    (extension_dir / "extension.py").write_text(
+        "def apply(context):\n"
+        "    raise RuntimeError('diagnostic boom')\n",
+        encoding="utf-8",
+    )
+
+    config_path = project / "edutex.config.yaml"
+    config = config_path.read_text(encoding="utf-8")
+    if "enabled: []" not in config:
+        raise AssertionError("Configurazione extensions attesa non trovata.")
+    config_path.write_text(
+        config.replace(
+            "enabled: []",
+            'enabled: ["failing_extension"]',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["build", "--project", str(project), "--format", "json"],
+    )
+
+    assert result.exit_code == 1, result.output
+    payload = parse_build_json(result)
+    error = payload["build"]["error"]
+
+    assert payload["build"]["status"] == "failed"
+    assert error["type"] == "ExtensionError"
+    assert "diagnostic boom" in error["message"]
+    assert error["diagnostics"] == [
+        {
+            "extension_id": "failing_extension",
+            "point_id": "layout.post_structure",
+            "phase": "handler",
+            "message": error["diagnostics"][0]["message"],
+        }
+    ]

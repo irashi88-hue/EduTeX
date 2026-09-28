@@ -22,6 +22,7 @@ from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
 from edutex.core.errors import EduTeXError, KnowledgeError
+from edutex.core.context import LifecyclePhase, RuntimeContext
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
 from edutex.extension.service import ExtensionService
@@ -160,45 +161,68 @@ def build_project(
     subprocess and reused by future frontends. An already-loaded config may
     be supplied by callers that need to perform a preflight first.
     """
-    if config is None:
-        config = load_config(config_path)
-    _configure_logging(config.logging.level.value)
+    context = RuntimeContext(project_root)
 
-    registry = _register_project_assets(config, project_root)
-    graph = Resolver(registry).resolve()
-    activator = Activator()
-    state = activator.activate(graph)
-
-    knowledge = KnowledgeService()
-    knowledge.process(state, project_root)
-
-    theme = ThemeService()
-    theme.process(state, knowledge, project_root)
-
-    layout = LayoutService()
-    layout.process(state, theme, project_root)
-
-    extensions = ExtensionService()
     try:
-        extensions.process(
-            state,
-            layout,
-            project_root,
-            extension_order=config.extensions.enabled,
-        )
+        if config is None:
+            config = load_config(config_path)
+        _configure_logging(config.logging.level.value)
+        context.advance(LifecyclePhase.CONFIGURING)
 
-        build = BuildService()
-        build.build(
-            config,
-            knowledge,
-            theme,
-            layout,
-            project_root,
-            document=extensions.document,
-        )
-        return build.output_path
-    finally:
-        extensions.terminate()
+        registry = _register_project_assets(config, project_root)
+        context.advance(LifecyclePhase.REGISTERING)
+
+        graph = Resolver(registry).resolve()
+        context.advance(LifecyclePhase.RESOLVING)
+
+        activator = Activator()
+        state = activator.activate(graph)
+        context.advance(LifecyclePhase.ACTIVATING)
+
+        context.advance(LifecyclePhase.PROCESSING)
+
+        knowledge = KnowledgeService()
+        knowledge.process(state, project_root)
+
+        theme = ThemeService()
+        theme.process(state, knowledge, project_root)
+
+        layout = LayoutService()
+        layout.process(state, theme, project_root)
+
+        extensions = ExtensionService()
+        try:
+            extensions.process(
+                state,
+                layout,
+                project_root,
+                extension_order=config.extensions.enabled,
+            )
+
+            build = BuildService()
+            context.advance(LifecyclePhase.BUILDING)
+            build.build(
+                config,
+                knowledge,
+                theme,
+                layout,
+                project_root,
+                document=extensions.document,
+            )
+            output_path = build.output_path
+        finally:
+            extensions.terminate()
+
+        context.advance(LifecyclePhase.COMPLETE)
+        return output_path
+    except Exception:
+        if context.phase not in {
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }:
+            context.advance(LifecyclePhase.FAILED)
+        raise
+
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})

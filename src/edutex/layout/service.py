@@ -17,6 +17,7 @@ Layout SHALL NOT modify the StyledContent produced by Theme.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 
 import yaml
@@ -60,7 +61,7 @@ class LayoutService:
             raise LayoutError(
                 "Document structure is not available — process() has not been called."
             )
-        return self._document
+        return deepcopy(self._document)
 
     # ------------------------------------------------------------------
     # LAYOUT-002 — Layout Rules Contract
@@ -73,7 +74,7 @@ class LayoutService:
             raise LayoutError(
                 "Layout model is not available — process() has not been called."
             )
-        return self._layout_model
+        return deepcopy(self._layout_model)
 
     # ------------------------------------------------------------------
     # Processing entry point

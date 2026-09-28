@@ -64,54 +64,68 @@ class ExtensionService:
         extension_order: Sequence[str] | None = None,
     ) -> None:
         """Load, validate, order, and apply all activated extensions."""
-        current = deepcopy(layout.document)
+        self._document = None
         self._loaded = []
-        loader = ExtensionLoader()
 
-        configured_order = {
-            extension_id: index
-            for index, extension_id in enumerate(extension_order or ())
-        }
-        extension_entities = sorted(
-            state.get_by_type(EntityType.EXTENSION),
-            key=lambda entity: (
-                configured_order.get(entity.entity_id, len(configured_order)),
-                entity.entity_id,
-            ),
-        )
-        for entity in extension_entities:
-            loaded = loader.load(entity.source_path, expected_id=entity.entity_id)
-            point = self._points.get(loaded.manifest.target)
-            if point is None:
-                raise ExtensionError(
-                    f"Extension {loaded.manifest.extension_id!r} targets undeclared "
-                    f"extension point {loaded.manifest.target!r}."
-                )
-            self._loaded.append(loaded)
+        try:
+            current = deepcopy(layout.document)
+            loader = ExtensionLoader()
 
-            if point.point_id != "layout.post_structure":
-                raise ExtensionError(
-                    f"Extension point {point.point_id!r} is declared but not yet "
-                    "supported by this processing stage."
-                )
-
-            context = ExtensionContext(
-                extension_point=point,
-                document=deepcopy(current),
+            configured_order = {
+                extension_id: index
+                for index, extension_id in enumerate(extension_order or ())
+            }
+            extension_entities = sorted(
+                state.get_by_type(EntityType.EXTENSION),
+                key=lambda entity: (
+                    configured_order.get(
+                        entity.entity_id,
+                        len(configured_order),
+                    ),
+                    entity.entity_id,
+                ),
             )
-            try:
-                result = loaded.handler(context)
-            except Exception as exc:
-                raise ExtensionError(
-                    f"Extension {loaded.manifest.extension_id!r} failed at "
-                    f"{point.point_id!r}: {exc}"
-                ) from exc
-
-            if not isinstance(result, DocumentStructure):
-                raise ExtensionError(
-                    f"Extension {loaded.manifest.extension_id!r} returned "
-                    f"{type(result).__name__}; expected DocumentStructure."
+            for entity in extension_entities:
+                loaded = loader.load(
+                    entity.source_path,
+                    expected_id=entity.entity_id,
                 )
-            current = deepcopy(result)
+                point = self._points.get(loaded.manifest.target)
+                if point is None:
+                    raise ExtensionError(
+                        f"Extension {loaded.manifest.extension_id!r} targets "
+                        f"undeclared extension point "
+                        f"{loaded.manifest.target!r}."
+                    )
+                self._loaded.append(loaded)
 
-        self._document = current
+                if point.point_id != "layout.post_structure":
+                    raise ExtensionError(
+                        f"Extension point {point.point_id!r} is declared but "
+                        f"not yet supported by this processing stage."
+                    )
+
+                context = ExtensionContext(
+                    extension_point=point,
+                    document=deepcopy(current),
+                )
+                try:
+                    result = loaded.handler(context)
+                except Exception as exc:
+                    raise ExtensionError(
+                        f"Extension {loaded.manifest.extension_id!r} failed "
+                        f"at {point.point_id!r}: {exc}"
+                    ) from exc
+
+                if not isinstance(result, DocumentStructure):
+                    raise ExtensionError(
+                        f"Extension {loaded.manifest.extension_id!r} returned "
+                        f"{type(result).__name__}; expected DocumentStructure."
+                    )
+                current = deepcopy(result)
+
+            self._document = current
+        except Exception:
+            self._document = None
+            self._loaded = []
+            raise

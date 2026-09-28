@@ -335,3 +335,60 @@ def test_disabled_extension_does_not_contribute(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     tex = (tmp_path / "output" / "extension_test.tex").read_text(encoding="utf-8")
     assert "Reading tip" not in tex
+
+def test_extension_service_clears_stale_state_after_failed_process(monkeypatch):
+    from types import SimpleNamespace
+
+    from edutex.extension.models import ExtensionManifest, LoadedExtension
+    from edutex.layout.models import DocumentStructure
+
+    document = DocumentStructure(
+        elements=[],
+        prose_blocks=[],
+        layout_model=object(),
+    )
+    calls = []
+
+    manifest = ExtensionManifest(
+        extension_id="test_extension",
+        name="Test Extension",
+        version="1.0.0",
+        target="layout.post_structure",
+        module="extension.py",
+        entrypoint="apply",
+    )
+
+    def handler(context):
+        calls.append(True)
+        if len(calls) > 1:
+            raise RuntimeError("second pass failed")
+        return context.document
+
+    loaded = LoadedExtension(manifest=manifest, handler=handler)
+
+    def fake_load(_loader, _manifest_path, expected_id=None):
+        return loaded
+
+    monkeypatch.setattr(ExtensionLoader, "load", fake_load)
+
+    state = SimpleNamespace(
+        get_by_type=lambda _entity_type: [
+            SimpleNamespace(
+                entity_id="test_extension",
+                source_path=Path("extension.yaml"),
+            )
+        ]
+    )
+    layout = SimpleNamespace(document=document)
+    service = ExtensionService()
+
+    service.process(state, layout, Path("."))
+    assert service.document is not None
+    assert len(service.loaded_extensions) == 1
+
+    with pytest.raises(ExtensionError, match="second pass failed"):
+        service.process(state, layout, Path("."))
+
+    assert service.loaded_extensions == ()
+    with pytest.raises(ExtensionError, match=r"process\(\) has not been called"):
+        _ = service.document

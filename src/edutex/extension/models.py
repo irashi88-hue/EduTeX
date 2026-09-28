@@ -48,3 +48,12 @@ class LoadedExtension:
 
     manifest: ExtensionManifest
     handler: Callable[[ExtensionContext], Any]
+
+@dataclass(frozen=True)
+class ExtensionDiagnostic:
+    """Structured diagnostic emitted by extension processing."""
+
+    extension_id: str | None
+    point_id: str | None
+    phase: str
+    message: str

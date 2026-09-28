@@ -427,3 +427,27 @@ def test_extension_service_extension_points_are_isolated():
 
     assert service.extension_points.get("external.point") is None
     assert service.extension_points.get("layout.post_structure") is not None
+
+def test_extension_handler_failure_exposes_structured_diagnostic(monkeypatch):
+    def fail(_context):
+        raise RuntimeError("handler boom")
+
+    state, layout = _make_extension_error_fixture(monkeypatch, fail)
+    service = ExtensionService()
+
+    with pytest.raises(ExtensionError, match="failed at.*handler boom"):
+        service.process(state, layout, Path("."))
+
+    assert len(service.diagnostics) == 1
+    diagnostic = service.diagnostics[0]
+    assert diagnostic.extension_id == "test_extension"
+    assert diagnostic.point_id == "layout.post_structure"
+    assert diagnostic.phase == "handler"
+    assert "handler boom" in diagnostic.message
+
+def test_public_extension_api_exports_diagnostic():
+    import edutex.extension as public_extension
+    from edutex.extension.models import ExtensionDiagnostic
+
+    assert public_extension.ExtensionDiagnostic is ExtensionDiagnostic
+    assert "ExtensionDiagnostic" in public_extension.__all__

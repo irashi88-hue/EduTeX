@@ -16,7 +16,11 @@ from typing import Sequence
 from edutex.activator.activator import ActivatedState
 from edutex.core.errors import ExtensionError
 from edutex.extension.loader import ExtensionLoader
-from edutex.extension.models import ExtensionContext, LoadedExtension
+from edutex.extension.models import (
+    ExtensionContext,
+    ExtensionDiagnostic,
+    LoadedExtension,
+)
 from edutex.extension.registry import ExtensionPointRegistry
 from edutex.layout.models import DocumentStructure
 from edutex.layout.service import LayoutService
@@ -29,6 +33,7 @@ class ExtensionService:
     def __init__(self) -> None:
         self._document: DocumentStructure | None = None
         self._loaded: list[LoadedExtension] = []
+        self._diagnostics: list[ExtensionDiagnostic] = []
         self._points = ExtensionPointRegistry.default()
 
     @property
@@ -45,10 +50,16 @@ class ExtensionService:
         """Validated extensions loaded during the last processing pass."""
         return tuple(self._loaded)
 
+    @property
+    def diagnostics(self) -> tuple[ExtensionDiagnostic, ...]:
+        """Structured diagnostics from the last processing pass."""
+        return tuple(self._diagnostics)
+
     def terminate(self) -> None:
         """Release extension-processing state during runtime termination."""
         self._document = None
         self._loaded = []
+        self._diagnostics = []
 
     @property
     def extension_points(self) -> ExtensionPointRegistry:
@@ -69,8 +80,14 @@ class ExtensionService:
         """Load, validate, order, and apply all activated extensions."""
         self._document = None
         self._loaded = []
+        self._diagnostics = []
+
+        current_extension_id: str | None = None
+        current_point_id: str | None = None
+        current_phase = "initialization"
 
         try:
+            current_phase = "input"
             current = deepcopy(layout.document)
             loader = ExtensionLoader()
 
@@ -89,12 +106,16 @@ class ExtensionService:
                 ),
             )
             for entity in extension_entities:
+                current_extension_id = entity.entity_id
+                current_phase = "loading"
                 loaded = loader.load(
                     entity.source_path,
                     expected_id=entity.entity_id,
                 )
-                point = self._points.get(loaded.manifest.target)
+                current_point_id = loaded.manifest.target
+                point = self._points.get(current_point_id)
                 if point is None:
+                    current_phase = "validation"
                     raise ExtensionError(
                         f"Extension {loaded.manifest.extension_id!r} targets "
                         f"undeclared extension point "
@@ -102,6 +123,7 @@ class ExtensionService:
                     )
                 self._loaded.append(loaded)
 
+                current_phase = "validation"
                 if point.point_id != "layout.post_structure":
                     raise ExtensionError(
                         f"Extension point {point.point_id!r} is declared but "
@@ -112,6 +134,7 @@ class ExtensionService:
                     extension_point=point,
                     document=deepcopy(current),
                 )
+                current_phase = "handler"
                 try:
                     result = loaded.handler(context)
                 except Exception as exc:
@@ -120,6 +143,7 @@ class ExtensionService:
                         f"at {point.point_id!r}: {exc}"
                     ) from exc
 
+                current_phase = "contribution_validation"
                 if not isinstance(result, DocumentStructure):
                     raise ExtensionError(
                         f"Extension {loaded.manifest.extension_id!r} returned "
@@ -127,8 +151,17 @@ class ExtensionService:
                     )
                 current = deepcopy(result)
 
+            current_phase = "complete"
             self._document = current
-        except Exception:
+        except Exception as exc:
+            self._diagnostics = [
+                ExtensionDiagnostic(
+                    extension_id=current_extension_id,
+                    point_id=current_point_id,
+                    phase=current_phase,
+                    message=str(exc),
+                )
+            ]
             self._document = None
             self._loaded = []
             raise

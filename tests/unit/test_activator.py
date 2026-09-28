@@ -108,3 +108,21 @@ test_get_by_type();                   print("  OK test_get_by_type")
 test_get_first();                     print("  OK test_get_first")
 test_get_first_missing_returns_none();print("  OK test_get_first_missing_returns_none")
 print("Activator: 6/6 passed")
+
+def test_public_activator_api_exports_contract():
+    import edutex.activator as public_activator
+    from edutex.activator.activator import (
+        ActivatedEntity,
+        ActivatedState,
+        Activator,
+    )
+
+    expected = {
+        "ActivatedEntity": ActivatedEntity,
+        "ActivatedState": ActivatedState,
+        "Activator": Activator,
+    }
+
+    for name, expected_value in expected.items():
+        assert getattr(public_activator, name) is expected_value
+        assert name in public_activator.__all__

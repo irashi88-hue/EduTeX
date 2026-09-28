@@ -16,6 +16,7 @@ Note: the shortcode parser (parser.py) returns plain dicts, not dataclass instan
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 
 from edutex.activator.activator import ActivatedState
@@ -56,7 +57,7 @@ class KnowledgeService:
             raise KnowledgeError(
                 "Knowledge content is not available — process() has not been called."
             )
-        return self._content
+        return deepcopy(self._content)
 
     # ------------------------------------------------------------------
     # KNOW-002 — Knowledge Model Contract
@@ -72,7 +73,7 @@ class KnowledgeService:
             raise KnowledgeError(
                 "Knowledge metadata is not available — process() has not been called."
             )
-        return self._meta
+        return deepcopy(self._meta)
 
     # ------------------------------------------------------------------
     # Processing entry point

@@ -13,6 +13,7 @@ import json
 import logging
 import shutil
 from importlib.resources import as_file, files
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
@@ -148,6 +149,15 @@ def _format_build_error_json(message: str, *, error_type: str = "build_error") -
     )
 
 
+@dataclass(frozen=True)
+class _PreparedPipeline:
+    config: object
+    state: object
+    knowledge: KnowledgeService
+    theme: ThemeService
+    layout: LayoutService
+
+
 def _prepare_project_pipeline(
     config_path: Path,
     project_root: Path,
@@ -181,7 +191,13 @@ def _prepare_project_pipeline(
     layout = LayoutService()
     layout.process(state, theme, project_root)
 
-    return config, state, knowledge, theme, layout
+    return _PreparedPipeline(
+        config=config,
+        state=state,
+        knowledge=knowledge,
+        theme=theme,
+        layout=layout,
+    )
 
 
 def _mark_lifecycle_failed(context: RuntimeContext) -> None:
@@ -209,7 +225,7 @@ def build_project(
     context = RuntimeContext(project_root)
 
     try:
-        config, state, knowledge, theme, layout = _prepare_project_pipeline(
+        pipeline = _prepare_project_pipeline(
             config_path,
             project_root,
             context,
@@ -219,19 +235,19 @@ def build_project(
         extensions = ExtensionService()
         try:
             extensions.process(
-                state,
-                layout,
+                pipeline.state,
+                pipeline.layout,
                 project_root,
-                extension_order=config.extensions.enabled,
+                extension_order=pipeline.config.extensions.enabled,
             )
 
             build = BuildService()
             context.advance(LifecyclePhase.BUILDING)
             build.build(
-                config,
-                knowledge,
-                theme,
-                layout,
+                pipeline.config,
+                pipeline.knowledge,
+                pipeline.theme,
+                pipeline.layout,
                 project_root,
                 document=extensions.document,
             )
@@ -715,7 +731,7 @@ def validate_command(project_root: Path, config_file: Path) -> None:
     context = RuntimeContext(project_root)
 
     try:
-        config, state, _, _, layout = _prepare_project_pipeline(
+        pipeline = _prepare_project_pipeline(
             config_path,
             project_root,
             context,
@@ -724,10 +740,10 @@ def validate_command(project_root: Path, config_file: Path) -> None:
         extensions = ExtensionService()
         try:
             extensions.process(
-                state,
-                layout,
+                pipeline.state,
+                pipeline.layout,
                 project_root,
-                extension_order=config.extensions.enabled,
+                extension_order=pipeline.config.extensions.enabled,
             )
         finally:
             extensions.terminate()

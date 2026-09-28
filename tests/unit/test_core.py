@@ -560,5 +560,5 @@ def test_prepare_project_pipeline_returns_activated_state(tmp_path, monkeypatch)
         config=config,
     )
 
-    assert prepared[0] is config
-    assert prepared[1] is activated_state
+    assert prepared.config is config
+    assert prepared.state is activated_state

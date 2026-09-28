@@ -148,6 +148,15 @@ def _format_build_error_json(message: str, *, error_type: str = "build_error") -
     )
 
 
+def _mark_lifecycle_failed(context: RuntimeContext) -> None:
+    """Move a non-terminal runtime context to FAILED."""
+    if context.phase not in {
+        LifecyclePhase.COMPLETE,
+        LifecyclePhase.FAILED,
+    }:
+        context.advance(LifecyclePhase.FAILED)
+
+
 def build_project(
     config_path: Path,
     project_root: Path,
@@ -216,11 +225,7 @@ def build_project(
         context.advance(LifecyclePhase.COMPLETE)
         return output_path
     except Exception:
-        if context.phase not in {
-            LifecyclePhase.COMPLETE,
-            LifecyclePhase.FAILED,
-        }:
-            context.advance(LifecyclePhase.FAILED)
+        _mark_lifecycle_failed(context)
         raise
 
 
@@ -731,25 +736,13 @@ def validate_command(project_root: Path, config_file: Path) -> None:
         context.advance(LifecyclePhase.COMPLETE)
         click.echo("Configuration, assets, and processing pipeline are valid.")
     except EduTeXError as exc:
-        if context.phase not in {
-            LifecyclePhase.COMPLETE,
-            LifecyclePhase.FAILED,
-        }:
-            context.advance(LifecyclePhase.FAILED)
+        _mark_lifecycle_failed(context)
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:
-        if context.phase not in {
-            LifecyclePhase.COMPLETE,
-            LifecyclePhase.FAILED,
-        }:
-            context.advance(LifecyclePhase.FAILED)
+        _mark_lifecycle_failed(context)
         raise click.ClickException(f"File operation failed: {exc}") from exc
     except Exception:
-        if context.phase not in {
-            LifecyclePhase.COMPLETE,
-            LifecyclePhase.FAILED,
-        }:
-            context.advance(LifecyclePhase.FAILED)
+        _mark_lifecycle_failed(context)
         raise
 
 

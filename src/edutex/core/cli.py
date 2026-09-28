@@ -690,19 +690,33 @@ def validate_command(project_root: Path, config_file: Path) -> None:
     """Validate configuration and runtime asset resolution without building."""
     project_root = project_root.resolve()
     config_path = _resolve_path(project_root, config_file)
+    context = RuntimeContext(project_root)
 
     try:
         config = load_config(config_path)
+        _configure_logging(config.logging.level.value)
+        context.advance(LifecyclePhase.CONFIGURING)
+
         registry = _register_project_assets(config, project_root)
+        context.advance(LifecyclePhase.REGISTERING)
+
         graph = Resolver(registry).resolve()
+        context.advance(LifecyclePhase.RESOLVING)
+
         state = Activator().activate(graph)
+        context.advance(LifecyclePhase.ACTIVATING)
+
+        context.advance(LifecyclePhase.PROCESSING)
 
         knowledge = KnowledgeService()
         knowledge.process(state, project_root)
+
         theme = ThemeService()
         theme.process(state, knowledge, project_root)
+
         layout = LayoutService()
         layout.process(state, theme, project_root)
+
         extensions = ExtensionService()
         try:
             extensions.process(
@@ -713,12 +727,31 @@ def validate_command(project_root: Path, config_file: Path) -> None:
             )
         finally:
             extensions.terminate()
+
+        context.advance(LifecyclePhase.COMPLETE)
+        click.echo("Configuration, assets, and processing pipeline are valid.")
     except EduTeXError as exc:
+        if context.phase not in {
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }:
+            context.advance(LifecyclePhase.FAILED)
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:
+        if context.phase not in {
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }:
+            context.advance(LifecyclePhase.FAILED)
         raise click.ClickException(f"File operation failed: {exc}") from exc
+    except Exception:
+        if context.phase not in {
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }:
+            context.advance(LifecyclePhase.FAILED)
+        raise
 
-    click.echo("Configuration, assets, and processing pipeline are valid.")
 
 
 if __name__ == "__main__":

@@ -51,7 +51,11 @@ _ALLOWED_LIFECYCLE_TRANSITIONS: dict[
         {LifecyclePhase.PROCESSING, LifecyclePhase.FAILED}
     ),
     LifecyclePhase.PROCESSING: frozenset(
-        {LifecyclePhase.BUILDING, LifecyclePhase.FAILED}
+        {
+            LifecyclePhase.BUILDING,
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }
     ),
     LifecyclePhase.BUILDING: frozenset(
         {LifecyclePhase.COMPLETE, LifecyclePhase.FAILED}

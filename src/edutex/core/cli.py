@@ -161,6 +161,34 @@ def _format_build_error_json(
         indent=2,
     )
 
+def _format_validate_json(
+    *,
+    status: str,
+    error_type: str | None = None,
+    message: str | None = None,
+    diagnostics: Sequence[ExtensionDiagnostic] | None = None,
+) -> str:
+    """Serialize one validation result without Click's human-readable prefix."""
+    validation = {"status": status}
+    if error_type is not None:
+        error = {
+            "type": error_type,
+            "message": message or "",
+        }
+        if diagnostics:
+            error["diagnostics"] = [
+                asdict(diagnostic)
+                for diagnostic in diagnostics
+            ]
+        validation["error"] = error
+
+    return json.dumps(
+        {"validation": validation},
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
 
 @dataclass(frozen=True)
 class _PreparedPipeline:
@@ -754,11 +782,24 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
     show_default=True,
     help="Configuration file, relative to the project directory unless absolute.",
 )
-def validate_command(project_root: Path, config_file: Path) -> None:
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Output format.",
+)
+def validate_command(
+    project_root: Path,
+    config_file: Path,
+    output_format: str = "text",
+) -> None:
     """Validate configuration and runtime asset resolution without building."""
     project_root = project_root.resolve()
     config_path = _resolve_path(project_root, config_file)
     context = RuntimeContext(project_root)
+    extension_diagnostics: list[ExtensionDiagnostic] = []
 
     try:
         pipeline = _prepare_project_pipeline(
@@ -776,18 +817,55 @@ def validate_command(project_root: Path, config_file: Path) -> None:
                 extension_order=pipeline.config.extensions.enabled,
             )
         finally:
+            extension_diagnostics.extend(
+                getattr(extensions, "diagnostics", ())
+            )
             extensions.terminate()
 
         context.advance(LifecyclePhase.COMPLETE)
-        click.echo("Configuration, assets, and processing pipeline are valid.")
+        if output_format == "json":
+            click.echo(_format_validate_json(status="completed"))
+        else:
+            click.echo("Configuration, assets, and processing pipeline are valid.")
     except EduTeXError as exc:
         _mark_lifecycle_failed(context)
+        if output_format == "json":
+            click.echo(
+                _format_validate_json(
+                    status="failed",
+                    error_type=exc.__class__.__name__,
+                    message=str(exc),
+                    diagnostics=extension_diagnostics,
+                )
+            )
+            raise click.exceptions.Exit(1) from exc
         raise click.ClickException(str(exc)) from exc
     except OSError as exc:
         _mark_lifecycle_failed(context)
-        raise click.ClickException(f"File operation failed: {exc}") from exc
-    except Exception:
+        message = f"File operation failed: {exc}"
+        if output_format == "json":
+            click.echo(
+                _format_validate_json(
+                    status="failed",
+                    error_type=exc.__class__.__name__,
+                    message=message,
+                    diagnostics=extension_diagnostics,
+                )
+            )
+            raise click.exceptions.Exit(1) from exc
+        raise click.ClickException(message) from exc
+    except Exception as exc:
         _mark_lifecycle_failed(context)
+        if output_format == "json":
+            click.echo(
+                _format_validate_json(
+                    status="failed",
+                    error_type=exc.__class__.__name__,
+                    message=str(exc),
+                    diagnostics=extension_diagnostics,
+                )
+            )
+            raise click.exceptions.Exit(1) from exc
         raise
 
 

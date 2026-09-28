@@ -148,6 +148,42 @@ def _format_build_error_json(message: str, *, error_type: str = "build_error") -
     )
 
 
+def _prepare_project_pipeline(
+    config_path: Path,
+    project_root: Path,
+    context: RuntimeContext,
+    *,
+    config=None,
+):
+    """Prepare the shared runtime pipeline up to the processing phase."""
+    if config is None:
+        config = load_config(config_path)
+    _configure_logging(config.logging.level.value)
+    context.advance(LifecyclePhase.CONFIGURING)
+
+    registry = _register_project_assets(config, project_root)
+    context.advance(LifecyclePhase.REGISTERING)
+
+    graph = Resolver(registry).resolve()
+    context.advance(LifecyclePhase.RESOLVING)
+
+    state = Activator().activate(graph)
+    context.advance(LifecyclePhase.ACTIVATING)
+
+    context.advance(LifecyclePhase.PROCESSING)
+
+    knowledge = KnowledgeService()
+    knowledge.process(state, project_root)
+
+    theme = ThemeService()
+    theme.process(state, knowledge, project_root)
+
+    layout = LayoutService()
+    layout.process(state, theme, project_root)
+
+    return config, state, knowledge, theme, layout
+
+
 def _mark_lifecycle_failed(context: RuntimeContext) -> None:
     """Move a non-terminal runtime context to FAILED."""
     if context.phase not in {
@@ -173,31 +209,12 @@ def build_project(
     context = RuntimeContext(project_root)
 
     try:
-        if config is None:
-            config = load_config(config_path)
-        _configure_logging(config.logging.level.value)
-        context.advance(LifecyclePhase.CONFIGURING)
-
-        registry = _register_project_assets(config, project_root)
-        context.advance(LifecyclePhase.REGISTERING)
-
-        graph = Resolver(registry).resolve()
-        context.advance(LifecyclePhase.RESOLVING)
-
-        activator = Activator()
-        state = activator.activate(graph)
-        context.advance(LifecyclePhase.ACTIVATING)
-
-        context.advance(LifecyclePhase.PROCESSING)
-
-        knowledge = KnowledgeService()
-        knowledge.process(state, project_root)
-
-        theme = ThemeService()
-        theme.process(state, knowledge, project_root)
-
-        layout = LayoutService()
-        layout.process(state, theme, project_root)
+        config, state, knowledge, theme, layout = _prepare_project_pipeline(
+            config_path,
+            project_root,
+            context,
+            config=config,
+        )
 
         extensions = ExtensionService()
         try:
@@ -698,29 +715,11 @@ def validate_command(project_root: Path, config_file: Path) -> None:
     context = RuntimeContext(project_root)
 
     try:
-        config = load_config(config_path)
-        _configure_logging(config.logging.level.value)
-        context.advance(LifecyclePhase.CONFIGURING)
-
-        registry = _register_project_assets(config, project_root)
-        context.advance(LifecyclePhase.REGISTERING)
-
-        graph = Resolver(registry).resolve()
-        context.advance(LifecyclePhase.RESOLVING)
-
-        state = Activator().activate(graph)
-        context.advance(LifecyclePhase.ACTIVATING)
-
-        context.advance(LifecyclePhase.PROCESSING)
-
-        knowledge = KnowledgeService()
-        knowledge.process(state, project_root)
-
-        theme = ThemeService()
-        theme.process(state, knowledge, project_root)
-
-        layout = LayoutService()
-        layout.process(state, theme, project_root)
+        config, state, _, _, layout = _prepare_project_pipeline(
+            config_path,
+            project_root,
+            context,
+        )
 
         extensions = ExtensionService()
         try:

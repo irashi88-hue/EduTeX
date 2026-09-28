@@ -505,3 +505,60 @@ def test_runtime_context_allows_validation_completion_without_build():
     context.advance(LifecyclePhase.COMPLETE)
 
     assert context.phase is LifecyclePhase.COMPLETE
+
+def test_prepare_project_pipeline_returns_activated_state(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    import edutex.core.cli as cli_module
+
+    activated_state = object()
+
+    class FakeResolver:
+        def __init__(self, registry):
+            self.registry = registry
+
+        def resolve(self):
+            return object()
+
+    class FakeActivator:
+        def activate(self, graph):
+            return activated_state
+
+    class FakeKnowledge:
+        def process(self, state, project_root):
+            return None
+
+    class FakeTheme:
+        def process(self, state, knowledge, project_root):
+            return None
+
+    class FakeLayout:
+        def process(self, state, theme, project_root):
+            return None
+
+    config = SimpleNamespace(
+        logging=SimpleNamespace(level=SimpleNamespace(value="INFO")),
+    )
+    context = SimpleNamespace(advance=lambda phase: None)
+
+    monkeypatch.setattr(cli_module, "_configure_logging", lambda level: None)
+    monkeypatch.setattr(
+        cli_module,
+        "_register_project_assets",
+        lambda config, root: object(),
+    )
+    monkeypatch.setattr(cli_module, "Resolver", FakeResolver)
+    monkeypatch.setattr(cli_module, "Activator", FakeActivator)
+    monkeypatch.setattr(cli_module, "KnowledgeService", FakeKnowledge)
+    monkeypatch.setattr(cli_module, "ThemeService", FakeTheme)
+    monkeypatch.setattr(cli_module, "LayoutService", FakeLayout)
+
+    prepared = cli_module._prepare_project_pipeline(
+        tmp_path / "edutex.config.yaml",
+        tmp_path,
+        context,
+        config=config,
+    )
+
+    assert prepared[0] is config
+    assert prepared[1] is activated_state

@@ -38,7 +38,7 @@ class ExtensionService:
             raise ExtensionError(
                 "Extended document is not available — process() has not been called."
             )
-        return self._document
+        return deepcopy(self._document)
 
     @property
     def loaded_extensions(self) -> tuple[LoadedExtension, ...]:
@@ -53,7 +53,10 @@ class ExtensionService:
     @property
     def extension_points(self) -> ExtensionPointRegistry:
         """The EXT-002 registry of declared extension points."""
-        return self._points
+        snapshot = ExtensionPointRegistry()
+        for point in self._points.all():
+            snapshot.declare(point)
+        return snapshot
 
     def process(
         self,

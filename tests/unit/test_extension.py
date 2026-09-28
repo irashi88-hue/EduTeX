@@ -392,3 +392,38 @@ def test_extension_service_clears_stale_state_after_failed_process(monkeypatch):
     assert service.loaded_extensions == ()
     with pytest.raises(ExtensionError, match=r"process\(\) has not been called"):
         _ = service.document
+
+def test_extension_service_document_property_is_isolated():
+    from edutex.extension.service import ExtensionService
+    from edutex.layout.models import DocumentStructure
+
+    service = ExtensionService()
+    service._document = DocumentStructure(
+        elements=[],
+        prose_blocks=[],
+        layout_model=object(),
+    )
+
+    exposed = service.document
+    exposed.prose_blocks.append(("mutated", object()))
+
+    assert service.document.prose_blocks == []
+
+
+def test_extension_service_extension_points_are_isolated():
+    from edutex.extension.models import ExtensionPoint
+    from edutex.extension.service import ExtensionService
+
+    service = ExtensionService()
+    exposed = service.extension_points
+
+    exposed.declare(
+        ExtensionPoint(
+            point_id="external.point",
+            component="External",
+            description="External mutation",
+        )
+    )
+
+    assert service.extension_points.get("external.point") is None
+    assert service.extension_points.get("layout.post_structure") is not None

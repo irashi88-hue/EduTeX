@@ -15,6 +15,7 @@ Theme SHALL NOT define document structure (owned by Layout).
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 
 import yaml
@@ -54,7 +55,7 @@ class ThemeService:
             raise ThemeError(
                 "Styled content is not available — process() has not been called."
             )
-        return self._styled_content
+        return deepcopy(self._styled_content)
 
     # ------------------------------------------------------------------
     # THEME-002 — Style Contract
@@ -67,7 +68,7 @@ class ThemeService:
             raise ThemeError(
                 "Theme model is not available — process() has not been called."
             )
-        return self._theme_model
+        return deepcopy(self._theme_model)
 
     # ------------------------------------------------------------------
     # Processing entry point

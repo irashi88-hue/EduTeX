@@ -55,6 +55,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q033", "Quality diagnostic provenance contract", "Validate provenance of diagnostics versus failed checks."),
     ("Q034", "Quality runner/report consistency contract", "Validate exact consistency between runner results and final reports."),
     ("Q035", "Release baseline end-to-end contract", "Validate the complete public quality baseline JSON path."),
+    ("Q036", "Build/Validate JSON contract", "Validate structured JSON success and Extension-diagnostic failure paths for Build and Validate."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -69,7 +70,7 @@ PUBLIC_CLI_CONTRACT = (
     (("init", "--help"), ("--theme", "--language")),
     (("lint", "--help"), ("--format",)),
     (("build", "--help"), ("--lint",)),
-    (("validate", "--help"), ("--project", "--config")),
+    (("validate", "--help"), ("--project", "--config", "--format")),
 )
 
 
@@ -2064,7 +2065,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -3318,6 +3319,146 @@ def _check_quality_release_baseline_end_to_end_contract(root: Path) -> CheckResu
     )
 
 
+
+def _check_build_validate_json_contract(root: Path) -> CheckResult:
+    """Verify structured JSON success and Extension-diagnostic failure paths."""
+    failures: list[str] = []
+
+    def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
+        if result.returncode == 0 and label.endswith("failure"):
+            failures.append(f"{label} unexpectedly succeeded")
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            failures.append(f"{label} emitted invalid JSON: {exc}")
+            return None
+        if not isinstance(payload, dict):
+            failures.append(f"{label} JSON root is not an object")
+            return None
+        return payload
+
+    with tempfile.TemporaryDirectory(prefix="edutex-quality-json-") as temporary:
+        project = Path(temporary) / "project"
+        initialized = _init_project(root, project)
+        if initialized.returncode != 0:
+            return CheckResult(
+                "Q036 Build/Validate JSON contract",
+                False,
+                initialized.returncode,
+                _output(initialized),
+            )
+
+        valid = _run_module(root, "validate", "--project", str(project), "--format", "json")
+        if valid.returncode != 0:
+            failures.append(f"validate success path exited {valid.returncode}: {_output(valid)}")
+        valid_payload = read_json(valid, "validate success")
+        if valid_payload != {"validation": {"status": "completed"}}:
+            failures.append("validate success JSON shape is not stable")
+
+        extension_dir = project / "assets" / "extensions" / "failing_extension"
+        extension_dir.mkdir(parents=True)
+        (extension_dir / "extension.yaml").write_text(
+            "id: failing_extension\n"
+            "name: Failing Extension\n"
+            "version: 1.0.0\n"
+            "target: layout.post_structure\n"
+            "module: extension.py\n"
+            "entrypoint: apply\n",
+            encoding="utf-8",
+        )
+        (extension_dir / "extension.py").write_text(
+            "def apply(context):\n"
+            "    raise RuntimeError('quality json diagnostic boom')\n",
+            encoding="utf-8",
+        )
+        config_path = project / "edutex.config.yaml"
+        config = config_path.read_text(encoding="utf-8")
+        if "enabled: []" not in config:
+            failures.append("quality JSON fixture could not find extensions.enabled")
+        else:
+            config_path.write_text(
+                config.replace("enabled: []", 'enabled: ["failing_extension"]', 1),
+                encoding="utf-8",
+            )
+
+        validate_failure = _run_module(
+            root,
+            "validate",
+            "--project",
+            str(project),
+            "--format",
+            "json",
+        )
+        validate_payload = read_json(validate_failure, "validate failure")
+        if validate_failure.returncode != 1:
+            failures.append(f"validate failure exited {validate_failure.returncode}, expected 1")
+        _check_extension_error_payload(validate_payload, "validation", failures)
+
+        build_failure = _run_module(
+            root,
+            "build",
+            "--project",
+            str(project),
+            "--format",
+            "json",
+        )
+        build_payload = read_json(build_failure, "build failure")
+        if build_failure.returncode != 1:
+            failures.append(f"build failure exited {build_failure.returncode}, expected 1")
+        _check_extension_error_payload(build_payload, "build", failures)
+
+    if failures:
+        return CheckResult(
+            "Q036 Build/Validate JSON contract",
+            False,
+            1,
+            "\n".join(failures),
+        )
+    return CheckResult(
+        "Q036 Build/Validate JSON contract",
+        True,
+        detail="Build and Validate JSON success and Extension-diagnostic failure paths passed",
+    )
+
+
+def _check_extension_error_payload(
+    payload: dict[str, object] | None,
+    root_key: str,
+    failures: list[str],
+) -> None:
+    if payload is None:
+        return
+    section = payload.get(root_key)
+    if not isinstance(section, dict):
+        failures.append(f"{root_key} JSON is missing its result section")
+        return
+    if section.get("status") != "failed":
+        failures.append(f"{root_key} JSON failure status is incorrect")
+    error = section.get("error")
+    if not isinstance(error, dict):
+        failures.append(f"{root_key} JSON is missing its error object")
+        return
+    if error.get("type") != "ExtensionError":
+        failures.append(f"{root_key} JSON error type is not ExtensionError")
+    if "quality json diagnostic boom" not in str(error.get("message", "")):
+        failures.append(f"{root_key} JSON error message lost the handler detail")
+    diagnostics = error.get("diagnostics")
+    if not isinstance(diagnostics, list) or len(diagnostics) != 1:
+        failures.append(f"{root_key} JSON diagnostics list is missing or not singular")
+        return
+    diagnostic = diagnostics[0]
+    if not isinstance(diagnostic, dict):
+        failures.append(f"{root_key} JSON diagnostic is not an object")
+        return
+    expected = {
+        "extension_id": "failing_extension",
+        "point_id": "layout.post_structure",
+        "phase": "handler",
+    }
+    for key, value in expected.items():
+        if diagnostic.get(key) != value:
+            failures.append(f"{root_key} JSON diagnostic field {key} is incorrect")
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -3356,6 +3497,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q033", _check_quality_diagnostic_provenance_contract),
         ("Q034", _check_quality_runner_report_consistency_contract),
         ("Q035", _check_quality_release_baseline_end_to_end_contract),
+        ("Q036", _check_build_validate_json_contract),
     )
 
 

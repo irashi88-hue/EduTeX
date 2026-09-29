@@ -1245,15 +1245,17 @@ class HtmlRenderer:
         }});
       }};
 
+      const parseAcceptedAnswers = (value) => String(value || "")
+        .split("|")
+        .map(normalizeShortAnswer)
+        .filter(Boolean);
+
       const initializeShortAnswer = (exercise) => {{
         const input = exercise.querySelector("input.short-answer-input");
         const result = exercise.querySelector(".short-answer-result");
         const checkButton = exercise.querySelector("button.short-answer-check");
         const resetButton = exercise.querySelector("button.short-answer-reset");
-        const answers = (input.dataset.answer || "")
-          .split("|")
-          .map(normalizeShortAnswer)
-          .filter(Boolean);
+        const answers = parseAcceptedAnswers(input.dataset.answer);
 
         checkButton.addEventListener("click", () => {{
           exercise.classList.remove("is-correct", "is-wrong");
@@ -1539,10 +1541,7 @@ class HtmlRenderer:
         const result = exercise.querySelector(".translation-result");
         const checkButton = exercise.querySelector("button.translation-check");
         const resetButton = exercise.querySelector("button.translation-reset");
-        const answers = (input.dataset.answers || "")
-          .split("|")
-          .map(normalizeShortAnswer)
-          .filter(Boolean);
+        const answers = parseAcceptedAnswers(input.dataset.answers);
 
         checkButton.addEventListener("click", () => {{
           exercise.classList.remove("is-correct", "is-wrong");

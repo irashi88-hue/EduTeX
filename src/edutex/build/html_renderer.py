@@ -26,6 +26,9 @@ _EDUTEX_UI_LABELS = {
         "chemical_formula": "Chemical formula", "mathematical_formula": "Mathematical formula",
         "show_solution": "Show / hide solution", "answer": "Answer", "options": "Options",
         "translation_prompt": "Text to translate", "write_translation": "Write your translation",
+        "translation_check": "Check translation", "translation_reset": "Reset translation",
+        "translation_correct": "Correct", "translation_wrong": "Not correct",
+        "translation_empty": "Write a translation first",
         "matching": "Matching", "matching_word": "Word", "matching_meaning": "Meaning",
         "choose_meaning": "Choose a meaning", "no_matching_data": "No matching pairs configured.",
         "check_matching": "Check answers", "matching_correct": "Correct",
@@ -66,6 +69,9 @@ _EDUTEX_UI_LABELS = {
         "chemical_formula": "Formula chimica", "mathematical_formula": "Formula matematica",
         "show_solution": "Mostra / nascondi soluzione", "answer": "Risposta", "options": "Opzioni",
         "translation_prompt": "Testo da tradurre", "write_translation": "Scrivi la traduzione",
+        "translation_check": "Verifica traduzione", "translation_reset": "Azzera traduzione",
+        "translation_correct": "Corretta", "translation_wrong": "Non corretta",
+        "translation_empty": "Scrivi prima una traduzione",
         "matching": "Abbinamento", "matching_word": "Parola", "matching_meaning": "Significato",
         "choose_meaning": "Scegli un significato", "no_matching_data": "Nessuna coppia configurata.",
         "check_matching": "Verifica risposte", "matching_correct": "Corretta",
@@ -441,6 +447,41 @@ class HtmlRenderer:
       outline: 3px solid var(--exercise-color);
       outline-offset: 2px;
       background: var(--control-bg);
+    }}
+    .translation-actions {{
+      margin-top: .8rem;
+    }}
+    .translation-check, .translation-reset {{
+      padding: .5rem .8rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .translation-check {{
+      border: 0;
+      border-bottom: 3px solid var(--exercise-color);
+      background: var(--exercise-color);
+      color: #fff;
+    }}
+    .translation-reset {{
+      margin-left: .5rem;
+      border: 1px solid var(--exercise-color);
+      border-bottom: 3px solid var(--exercise-color);
+      background: var(--input-bg);
+      color: var(--exercise-color);
+    }}
+    .translation-result {{
+      min-height: 1.5em;
+      margin-top: .6rem;
+      font-weight: 700;
+    }}
+    .translation.is-correct .translation-answer {{
+      border-color: #15803d;
+      background: #f0fdf4;
+    }}
+    .translation.is-wrong .translation-answer {{
+      border-color: #b91c1c;
+      background: #fef2f2;
     }}
     .choice-list {{
       display: grid;
@@ -1487,8 +1528,46 @@ class HtmlRenderer:
         updateMatchingGroup(group);
       }});
 
+      const initializeTextEntry = (exercise) => {{
+        const input = exercise.querySelector("textarea.translation-answer");
+        const result = exercise.querySelector(".translation-result");
+        const checkButton = exercise.querySelector("button.translation-check");
+        const resetButton = exercise.querySelector("button.translation-reset");
+        const answers = (input.dataset.answers || "")
+          .split("|")
+          .map(normalizeShortAnswer)
+          .filter(Boolean);
+
+        checkButton.addEventListener("click", () => {{
+          exercise.classList.remove("is-correct", "is-wrong");
+          const value = normalizeShortAnswer(input.value);
+          if (!value) {{
+            result.textContent = "{self._labels["translation_empty"]}";
+          }} else if (answers.includes(value)) {{
+            exercise.classList.add("is-correct");
+            result.textContent = "{self._labels["translation_correct"]}";
+          }} else {{
+            exercise.classList.add("is-wrong");
+            result.textContent = "{self._labels["translation_wrong"]}";
+          }}
+        }});
+
+        input.addEventListener("input", () => {{
+          exercise.classList.remove("is-correct", "is-wrong");
+          result.textContent = "";
+        }});
+
+        resetButton.addEventListener("click", () => {{
+          input.value = "";
+          exercise.classList.remove("is-correct", "is-wrong");
+          result.textContent = "";
+          input.focus();
+        }});
+      }};
+
       document.querySelectorAll(".short-answer").forEach(initializeSpecialCharacters);
       document.querySelectorAll(".choice-exercise").forEach(initializeChoice);
+      document.querySelectorAll(".translation").forEach(initializeTextEntry);
       document.querySelectorAll(".short-answer").forEach(initializeShortAnswer);
       document.querySelectorAll(".cloze-exercise").forEach(initializeCloze);
       document.querySelectorAll(".true-false-exercise").forEach(initializeTrueFalse);
@@ -1590,7 +1669,9 @@ class HtmlRenderer:
                 elif self._is_matching_exercise(body):
                     content = self._render_matching_exercise(body, section_id)
                 elif self._is_translation_exercise(body):
-                    content = self._render_translation_exercise(body, section_id)
+                    content = self._render_translation_exercise(
+                        body, section_id, exercise_solution_body
+                    )
                 elif self._is_choice_exercise(body):
                     content = self._render_choice_exercise(body, section_id)
                 else:
@@ -2077,18 +2158,28 @@ class HtmlRenderer:
             for line in body.splitlines()
         )
 
-    def _render_translation_exercise(self, body: str, exercise_id: str) -> str:
-        """Render a translation prompt and an accessible multiline answer box.
+    def _render_translation_exercise(
+        self,
+        body: str,
+        exercise_id: str,
+        solution_body: str = "",
+    ) -> str:
+        """Render a checked translation exercise with accessible controls.
 
-        Supported body syntax:
+        Supported body syntax::
 
             type: translation
             source: Mi chiamo Luca.
+            answer: Ich heiße Luca. | Ich heisse Luca.
 
-        ``prompt:`` is accepted as an alias for ``source:``.
+        ``prompt:`` is accepted as an alias for ``source:``. ``expected:``
+        is accepted as an alias for ``answer:``. Alternatives are separated
+        by ``|``. If no answer is declared, the first non-empty line of the
+        nested solution is used.
         """
         prompt_lines: list[str] = []
         source_lines: list[str] = []
+        accepted_answers: list[str] = []
         in_source = False
 
         for raw_line in body.splitlines():
@@ -2101,11 +2192,26 @@ class HtmlRenderer:
                 source_lines.append(line.split(":", 1)[1].strip())
                 in_source = True
                 continue
+            if lower.startswith("answer:") or lower.startswith("expected:"):
+                value = line.split(":", 1)[1].strip()
+                if value:
+                    accepted_answers.extend(
+                        item.strip() for item in value.split("|") if item.strip()
+                    )
+                in_source = False
+                continue
             if in_source and line:
                 source_lines.append(raw_line)
                 continue
             if line:
                 prompt_lines.append(raw_line)
+
+        if not accepted_answers and solution_body:
+            solution_lines = [
+                line.strip() for line in solution_body.splitlines() if line.strip()
+            ]
+            if solution_lines:
+                accepted_answers = [solution_lines[0]]
 
         rendered: list[str] = []
         for line in prompt_lines:
@@ -2122,14 +2228,27 @@ class HtmlRenderer:
 
         answer_id = f"{exercise_id}-translation"
         rendered.append(
+            f'<div class="translation" id="{html.escape(exercise_id)}" '
+            f'aria-label="{html.escape(self._labels["translation"])}">'
             f'<label class="translation-label" for="{html.escape(answer_id)}">'
             f'{html.escape(self._labels["write_translation"])}:</label>'
             f'<textarea class="translation-answer" '
             f'id="{html.escape(answer_id)}" '
             f'name="{html.escape(answer_id)}" '
+            f'data-answers="{html.escape("|".join(accepted_answers), quote=True)}" '
             f'aria-label="{html.escape(self._labels["write_translation"])}"></textarea>'
+            f'<div class="translation-actions">'
+            f'<button type="button" class="translation-check">'
+            f'{html.escape(self._labels["translation_check"])}'
+            f'</button>'
+            f'<button type="button" class="translation-reset">'
+            f'{html.escape(self._labels["translation_reset"])}'
+            f'</button>'
+            f'<div class="translation-result" role="status" aria-live="polite"></div>'
+            f'</div></div>'
         )
         return chr(10).join(rendered)
+
 
     def _is_choice_exercise(self, body: str) -> bool:
         """Return True when an exercise body declares type: choice."""

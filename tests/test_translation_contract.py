@@ -94,3 +94,28 @@ def test_translation_is_rendered_without_interactive_javascript_dependency() -> 
     assert "addEventListener" not in translation_method
     assert "check_translation" not in translation_method
     assert "reset_translation" not in translation_method
+
+def test_shared_alternative_answer_parser_is_preserved() -> None:
+    source = _renderer_source()
+
+    assert 'const parseAcceptedAnswers = (value) => String(value || "")' in source
+    assert 'const answers = parseAcceptedAnswers(input.dataset.answer);' in source
+    assert 'const answers = parseAcceptedAnswers(input.dataset.answers);' in source
+    assert '.split("|")' in source
+    assert '.map(normalizeShortAnswer)' in source
+    assert '.filter(Boolean)' in source
+
+
+def test_translation_feedback_uses_theme_semantic_tokens() -> None:
+    source = _renderer_source()
+
+    for marker in (
+        'color: var(--on-accent);',
+        'background: var(--control-bg);',
+        'border-color: var(--success-border);',
+        'background: var(--success-bg);',
+        'border-color: var(--danger-border);',
+        'background: var(--danger-bg);',
+        '.translation-check:hover, .translation-reset:hover',
+    ):
+        assert marker in source

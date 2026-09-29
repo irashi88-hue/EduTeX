@@ -320,3 +320,39 @@ def test_build_json_reports_extension_diagnostics(tmp_path: Path) -> None:
             "message": error["diagnostics"][0]["message"],
         }
     ]
+
+def test_build_text_reports_extension_diagnostics(tmp_path: Path) -> None:
+    project = make_project(tmp_path / "project", VALID_SOURCE)
+
+    extension_dir = project / "assets" / "extensions" / "failing_extension"
+    extension_dir.mkdir()
+    (extension_dir / "extension.yaml").write_text(
+        "id: failing_extension\n"
+        "name: Failing Extension\n"
+        "version: 1.0.0\n"
+        "target: layout.post_structure\n"
+        "module: extension.py\n"
+        "entrypoint: apply\n",
+        encoding="utf-8",
+    )
+    (extension_dir / "extension.py").write_text(
+        "def apply(context):\n"
+        "    raise RuntimeError('build text diagnostic boom')\n",
+        encoding="utf-8",
+    )
+
+    config_path = project / "edutex.config.yaml"
+    config = config_path.read_text(encoding="utf-8")
+    config_path.write_text(
+        config.replace("enabled: []", 'enabled: ["failing_extension"]', 1),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(main, ["build", "--project", str(project)])
+
+    assert result.exit_code == 1, result.output
+    assert "Extension diagnostics:" in result.output
+    assert "extension_id=failing_extension" in result.output
+    assert "point_id=layout.post_structure" in result.output
+    assert "phase=handler" in result.output
+    assert "build text diagnostic boom" in result.output

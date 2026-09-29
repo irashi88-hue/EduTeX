@@ -32,3 +32,14 @@ def serialize_diagnostics(
 ) -> list[dict[str, Any]]:
     """Convert diagnostics in input order without changing their contracts."""
     return [serialize_diagnostic(diagnostic) for diagnostic in diagnostics]
+
+
+def format_diagnostics_text(diagnostics: Iterable[object]) -> str:
+    """Format structured diagnostics for the human-readable CLI channel."""
+    lines = ["Extension diagnostics:"]
+    for diagnostic in serialize_diagnostics(diagnostics):
+        lines.append(
+            "- extension_id={extension_id}; point_id={point_id}; "
+            "phase={phase}; message={message}".format(**diagnostic)
+        )
+    return "\n".join(lines)

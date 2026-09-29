@@ -24,7 +24,7 @@ from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
 from edutex.core.errors import EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
-from edutex.core.diagnostics import serialize_diagnostics
+from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostics
 from edutex.extension.models import ExtensionDiagnostic
 from edutex.extension.service import ExtensionService
 from edutex.knowledge.service import KnowledgeService
@@ -740,6 +740,8 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
                 )
             )
             raise click.exceptions.Exit(1) from exc
+        if extension_diagnostics:
+            message = f"{message}\n{format_diagnostics_text(extension_diagnostics)}"
         raise click.ClickException(message) from exc
     except OSError as exc:
         message = f"File operation failed: {exc}"
@@ -834,7 +836,10 @@ def validate_command(
                 )
             )
             raise click.exceptions.Exit(1) from exc
-        raise click.ClickException(str(exc)) from exc
+        message = str(exc)
+        if extension_diagnostics:
+            message = f"{message}\n{format_diagnostics_text(extension_diagnostics)}"
+        raise click.ClickException(message) from exc
     except OSError as exc:
         _mark_lifecycle_failed(context)
         message = f"File operation failed: {exc}"

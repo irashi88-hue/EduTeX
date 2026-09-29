@@ -66,3 +66,21 @@ def test_serialize_diagnostic_requires_mapping_from_to_dict() -> None:
 
     with pytest.raises(TypeError, match="must return a mapping"):
         serialize_diagnostic(InvalidDiagnostic())
+
+def test_format_diagnostics_text_preserves_structured_fields() -> None:
+    from edutex.core.diagnostics import format_diagnostics_text
+
+    diagnostics = (
+        ExtensionDiagnostic(
+            extension_id="reading_tip",
+            point_id="layout.post_structure",
+            phase="handler",
+            message="handler boom",
+        ),
+    )
+
+    assert format_diagnostics_text(diagnostics) == (
+        "Extension diagnostics:\n"
+        "- extension_id=reading_tip; point_id=layout.post_structure; "
+        "phase=handler; message=handler boom"
+    )

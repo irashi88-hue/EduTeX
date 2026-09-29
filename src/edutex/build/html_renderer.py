@@ -461,14 +461,17 @@ class HtmlRenderer:
       border: 0;
       border-bottom: 3px solid var(--exercise-color);
       background: var(--exercise-color);
-      color: #fff;
+      color: var(--on-accent);
     }}
     .translation-reset {{
       margin-left: .5rem;
       border: 1px solid var(--exercise-color);
       border-bottom: 3px solid var(--exercise-color);
-      background: var(--input-bg);
+      background: var(--control-bg);
       color: var(--exercise-color);
+    }}
+    .translation-check:hover, .translation-reset:hover {{
+      filter: brightness(.95);
     }}
     .translation-result {{
       min-height: 1.5em;
@@ -476,12 +479,12 @@ class HtmlRenderer:
       font-weight: 700;
     }}
     .translation.is-correct .translation-answer {{
-      border-color: #15803d;
-      background: #f0fdf4;
+      border-color: var(--success-border);
+      background: var(--success-bg);
     }}
     .translation.is-wrong .translation-answer {{
-      border-color: #b91c1c;
-      background: #fef2f2;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
     }}
     .choice-list {{
       display: grid;
@@ -1247,6 +1250,10 @@ class HtmlRenderer:
         const result = exercise.querySelector(".short-answer-result");
         const checkButton = exercise.querySelector("button.short-answer-check");
         const resetButton = exercise.querySelector("button.short-answer-reset");
+        const answers = (input.dataset.answer || "")
+          .split("|")
+          .map(normalizeShortAnswer)
+          .filter(Boolean);
 
         checkButton.addEventListener("click", () => {{
           exercise.classList.remove("is-correct", "is-wrong");
@@ -1254,8 +1261,7 @@ class HtmlRenderer:
           if (!value) {{
             result.textContent = "{self._labels["short_empty"]}";
           }} else if (
-            normalizeShortAnswer(value)
-            === normalizeShortAnswer(input.dataset.answer)
+            answers.includes(normalizeShortAnswer(value))
           ) {{
             exercise.classList.add("is-correct");
             result.textContent = "{self._labels["short_correct"]}";

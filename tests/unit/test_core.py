@@ -6,6 +6,7 @@ from pathlib import Path
 def test_public_core_api_exports_contract():
     import edutex.core as public_core
     from edutex.core.context import LifecyclePhase, RuntimeContext
+    from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostic, serialize_diagnostics
     from edutex.core.errors import (
         ActivationError,
         BuildError,
@@ -25,6 +26,9 @@ def test_public_core_api_exports_contract():
         "ConfigurationError": ConfigurationError,
         "EduTeXError": EduTeXError,
         "ExtensionError": ExtensionError,
+        "format_diagnostics_text": format_diagnostics_text,
+        "serialize_diagnostic": serialize_diagnostic,
+        "serialize_diagnostics": serialize_diagnostics,
         "KnowledgeError": KnowledgeError,
         "LayoutError": LayoutError,
         "LifecyclePhase": LifecyclePhase,

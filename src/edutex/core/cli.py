@@ -13,7 +13,7 @@ import json
 import logging
 import shutil
 from importlib.resources import as_file, files
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
@@ -24,6 +24,7 @@ from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
 from edutex.core.errors import EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
+from edutex.core.diagnostics import serialize_diagnostics
 from edutex.extension.models import ExtensionDiagnostic
 from edutex.extension.service import ExtensionService
 from edutex.knowledge.service import KnowledgeService
@@ -144,10 +145,7 @@ def _format_build_error_json(
         "message": message,
     }
     if diagnostics:
-        error["diagnostics"] = [
-            asdict(diagnostic)
-            for diagnostic in diagnostics
-        ]
+        error["diagnostics"] = serialize_diagnostics(diagnostics)
 
     return json.dumps(
         {
@@ -176,10 +174,7 @@ def _format_validate_json(
             "message": message or "",
         }
         if diagnostics:
-            error["diagnostics"] = [
-                asdict(diagnostic)
-                for diagnostic in diagnostics
-            ]
+            error["diagnostics"] = serialize_diagnostics(diagnostics)
         validation["error"] = error
 
     return json.dumps(

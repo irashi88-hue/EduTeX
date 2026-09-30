@@ -95,3 +95,44 @@ def test_translation_exercise_contract() -> None:
     assert 'class="translation-check"' in source
     assert 'class="translation-reset"' in source
     assert 'role="status" aria-live="polite"' in source
+
+def test_translation_authoring_aliases_and_solution_fallback() -> None:
+    renderer = HtmlRenderer()
+    renderer._labels = {
+        "translation": "Traduzione",
+        "translation_prompt": "Testo da tradurre",
+        "write_translation": "Scrivi la traduzione",
+        "translation_check": "Verifica traduzione",
+        "translation_reset": "Azzera traduzione",
+    }
+
+    alias_source = renderer._render_translation_exercise(
+        "\n".join(
+            (
+                "type: translation",
+                "prompt: Mi chiamo Luca.",
+                "expected: Ich hei\u00dfe Luca. | Ich heisse Luca.",
+            )
+        ),
+        "exercise-alias",
+    )
+
+    assert "Mi chiamo Luca." in alias_source
+    assert (
+        'data-answers="Ich hei\u00dfe Luca.|Ich heisse Luca."'
+        in alias_source
+    )
+
+    fallback_source = renderer._render_translation_exercise(
+        "\n".join(
+            (
+                "type: translation",
+                "source: Mi chiamo Luca.",
+            )
+        ),
+        "exercise-fallback",
+        "Ich hei\u00dfe Luca.\nSeconda riga ignorata.",
+    )
+
+    assert "Mi chiamo Luca." in fallback_source
+    assert 'data-answers="Ich hei\u00dfe Luca."' in fallback_source

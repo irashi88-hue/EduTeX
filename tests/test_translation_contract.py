@@ -131,3 +131,24 @@ def test_translation_fixture_is_authorable_and_utf8() -> None:
     assert "answer: Ich heiße Luca. | Ich heisse Luca." in fixture
     assert "::: solution" in fixture
     assert "Ich heiße Luca." in fixture
+
+def test_translation_labels_cover_italian_and_english() -> None:
+    source = _renderer_source()
+
+    for marker in (
+        '"translation_prompt": "Text to translate"',
+        '"write_translation": "Write your translation"',
+        '"translation_check": "Check translation"',
+        '"translation_reset": "Reset translation"',
+        '"translation_correct": "Correct"',
+        '"translation_wrong": "Not correct"',
+        '"translation_empty": "Write a translation first"',
+        '"translation_prompt": "Testo da tradurre"',
+        '"write_translation": "Scrivi la traduzione"',
+        '"translation_check": "Verifica traduzione"',
+        '"translation_reset": "Azzera traduzione"',
+        '"translation_correct": "Corretta"',
+        '"translation_wrong": "Non corretta"',
+        '"translation_empty": "Scrivi prima una traduzione"',
+    ):
+        assert marker in source

@@ -280,6 +280,8 @@ The example shortcode supports the subtypes simple, comparative, and contextual 
 
 The formula shortcode supports the subtypes math and chem as defined in SHORTCODE_SPEC.md.
 
+The exercise shortcode supports the interactive variant `type: translation` as defined in SHORTCODE_SPEC.md.
+
 8.3 Nesting
 
 The only supported nesting within a Knowledge Model is a solution block nested inside an exercise block.
@@ -287,6 +289,21 @@ The only supported nesting within a Knowledge Model is a solution block nested i
 All other nesting combinations are prohibited.
 
 Nesting rules are fully defined in SHORTCODE_SPEC.md.
+
+
+8.4 Interactive translation exercises
+
+An exercise with `type: translation` presents a checked translation task.
+
+Authors MAY provide the source text with `source:` or its alias `prompt:`.
+Accepted answers MAY be provided with `answer:` or its alias `expected:`.
+
+Alternative accepted answers SHALL be separated by `|`.
+
+If no answer field is declared, the first non-empty line of the nested solution is used as the accepted answer.
+
+The current user-interface labels for this exercise are defined for Italian and English.
+The exercise content itself MAY contain Unicode text independently of the interface language.
 
 9. Dependencies
 

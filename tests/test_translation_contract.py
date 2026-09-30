@@ -152,3 +152,23 @@ def test_translation_labels_cover_italian_and_english() -> None:
         '"translation_empty": "Scrivi prima una traduzione"',
     ):
         assert marker in source
+
+def test_translation_authoring_contract_is_documented() -> None:
+    shortcode_spec = (
+        ROOT / "docs" / "SHORTCODE_SPEC.md"
+    ).read_text(encoding="utf-8")
+    knowledge_spec = (
+        ROOT / "docs" / "KNOWLEDGE_MODEL_SPEC.md"
+    ).read_text(encoding="utf-8")
+
+    for marker in (
+        "type: translation",
+        "source:",
+        "prompt:",
+        "answer:",
+        "expected:",
+        "Multiple accepted answers SHALL be separated by `|`.",
+        "first non-empty line of the nested `solution`",
+        "Italian and English",
+    ):
+        assert marker in shortcode_spec or marker in knowledge_spec

@@ -172,3 +172,31 @@ def test_translation_accessibility_contract() -> None:
         'role="status" aria-live="polite"',
     ):
         assert expected in translation_source
+
+def test_release_smoke_preserves_current_interactive_fixture() -> None:
+    source = render_in_memory()
+
+    for expected in (
+        "<!doctype html>",
+        '<meta charset="utf-8">',
+        '<meta name="generator" content="EduTeX">',
+        'data-choice-exercise',
+        'class="short-answer"',
+        'class="translation"',
+        'class="translation-answer"',
+        'class="translation-check"',
+        'class="translation-reset"',
+        'role="status" aria-live="polite"',
+        'class="solutions"',
+        'class="solution-inline"',
+    ):
+        assert expected in source
+
+    assert source.count('class="solution-inline"') == 3
+    assert source.count('data-choice-exercise') == 2
+    assert source.count('class="translation"') == 1
+
+    assert '<script src=' not in source
+    assert '<link rel="stylesheet" href=' not in source
+    assert "http://" not in source
+    assert "https://" not in source

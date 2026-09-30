@@ -119,3 +119,15 @@ def test_translation_feedback_uses_theme_semantic_tokens() -> None:
         '.translation-check:hover, .translation-reset:hover',
     ):
         assert marker in source
+
+def test_translation_fixture_is_authorable_and_utf8() -> None:
+    fixture = (
+        ROOT / "assets" / "knowledge_models" / "choice-verifica.md"
+    ).read_text(encoding="utf-8")
+
+    assert "title: Übersetze den Satz" in fixture
+    assert "type: translation" in fixture
+    assert "source: Mi chiamo Luca." in fixture
+    assert "answer: Ich heiße Luca. | Ich heisse Luca." in fixture
+    assert "::: solution" in fixture
+    assert "Ich heiße Luca." in fixture

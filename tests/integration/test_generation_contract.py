@@ -29,7 +29,7 @@ def render_in_memory() -> str:
 
     assert config.extensions.enabled == []
     assert not extensions.loaded_extensions
-    assert len(extensions.document.appendix_nodes) == 2
+    assert len(extensions.document.appendix_nodes) == 3
     return HtmlRenderer().render(extensions.document, knowledge.meta, theme.theme_model)
 
 
@@ -52,8 +52,8 @@ def test_generation_contract() -> None:
     ):
         assert forbidden not in source
 
-    assert source.count('class="solution-inline"') == 2
-    assert source.count('class="solution-inline"><a ') == 2
+    assert source.count('class="solution-inline"') == 3
+    assert source.count('class="solution-inline"><a ') == 3
 
     for expected in (
         "Soluzioni",
@@ -77,3 +77,21 @@ def test_choice_exercise_contract() -> None:
     assert 'class="choice-result" role="status" aria-live="polite"' in source
     assert 'function sameValues' in source
     assert "choice_correct" not in source
+
+def test_translation_exercise_contract() -> None:
+    source = render_in_memory()
+
+    for expected in (
+        "\u00dcbersetze den Satz",
+        "Mi chiamo Luca.",
+        "Ich hei\u00dfe Luca.",
+        "Ich heisse Luca.",
+    ):
+        assert expected in source
+
+    assert 'class="translation"' in source
+    assert 'class="translation-answer"' in source
+    assert 'data-answers="Ich hei\u00dfe Luca.|Ich heisse Luca."' in source
+    assert 'class="translation-check"' in source
+    assert 'class="translation-reset"' in source
+    assert 'role="status" aria-live="polite"' in source

@@ -4,7 +4,7 @@ title: "Verifica esercizi interattivi"
 language: it
 level: A1
 version: 1.0.0
-description: "Una breve lezione con esercizi a scelta singola, multipla e risposta breve."
+description: "Una breve lezione con esercizi a scelta singola, multipla, risposta breve e traduzione."
 tags:
   - tedesco
   - saluti
@@ -75,4 +75,15 @@ title: Completa la risposta
 type: short_answer
 question: Come si dice “buongiorno” in tedesco?
 expected: Guten Morgen | guten morgen
+:::
+
+::: exercise
+title: Übersetze den Satz
+type: translation
+source: Mi chiamo Luca.
+answer: Ich heiße Luca. | Ich heisse Luca.
+
+::: solution
+Ich heiße Luca.
+:::
 :::

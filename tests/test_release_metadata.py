@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "0.4.0"
+EXPECTED_VERSION = "0.5.0"
 
 
 def test_release_version_is_consistent_across_project_metadata() -> None:
@@ -24,5 +24,5 @@ def test_release_version_is_consistent_across_project_metadata() -> None:
 def test_readme_identifies_current_release_and_json_build_output() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "## Release 0.4.0 — Shortcode authoring quality" in readme
+    assert "## Release 0.5.0 — V1 release foundation" in readme
     assert "edutex build --project path/to/project --lint --format json" in readme

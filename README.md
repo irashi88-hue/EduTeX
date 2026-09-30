@@ -40,6 +40,23 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 0.5.0 — V1 release foundation
+
+EduTeX 0.5.0 consolida la base tecnica necessaria verso V1.
+
+Highlights:
+
+- metadata del pacchetto conformi al formato SPDX;
+- release smoke offline riutilizzabile;
+- verifica automatica di wheel e sdist;
+- verifica della CLI installata dalla wheel;
+- verifica end-to-end di `init`, `validate` e `build`;
+- package data del project template verificati;
+- pipeline CI su Python 3.11, 3.12 e 3.13;
+- contratti runtime esistenti invariati.
+
+Questa release prepara la stabilizzazione dell'API pubblica verso V1 senza introdurre nuovi shortcode o modifiche al renderer.
+
 ## Release 0.4.0 — Shortcode authoring quality
 
 EduTeX 0.4.0 consolida la pipeline di authoring e aggiunge il contratto

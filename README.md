@@ -53,7 +53,7 @@ Highlights:
 - risposte alternative separate da `|`;
 - normalizzazione delle risposte e fallback alla soluzione;
 - controlli accessibili per risposta, verifica, reset e feedback;
-- etichette dell?interfaccia in italiano e inglese;
+- etichette dell’interfaccia in italiano e inglese;
 - rendering UTF-8 e Unicode-safe;
 - documentazione, test di integrazione e release smoke coverage.
 

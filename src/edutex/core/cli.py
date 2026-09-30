@@ -36,7 +36,7 @@ from edutex.resolver.resolver import Resolver
 from edutex.theme.service import ThemeService
 
 
-CLI_VERSION = "0.3.0"
+CLI_VERSION = "0.4.0"
 
 
 def _configure_logging(level: str) -> None:

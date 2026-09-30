@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edutex"
-version = "0.3.0"
+version = "0.4.0"
 description = "EduTeX — A modular framework for generating educational documents from structured content."
 readme = "README.md"
 license = { text = "MIT" }
@@ -30,6 +30,19 @@ edutex = "edutex.core.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+edutex = [
+    "project_template/*.md",
+    "project_template/*.yaml",
+    "project_template/assets/extensions/reading_tip/*.py",
+    "project_template/assets/extensions/reading_tip/*.yaml",
+    "project_template/assets/knowledge_models/*.md",
+    "project_template/assets/layouts/default/*.yaml",
+    "project_template/assets/themes/dark/*.yaml",
+    "project_template/assets/themes/default/*.yaml",
+    "project_template/assets/themes/default/template/*.j2",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

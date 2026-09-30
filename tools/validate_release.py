@@ -28,10 +28,10 @@ def main() -> int:
     readme = read("README.md")
     renderer = read("src/edutex/build/html_renderer.py")
 
-    check('version = "0.2.0"' in pyproject, "pyproject version")
-    check(bool(re.search(r"^\s*version:\s*['\"]?0\.2\.0", config, re.MULTILINE)), "config version")
-    check('CLI_VERSION = "0.2.0"' in cli, "CLI version")
-    check("Release 0.2.0" in readme, "README release section")
+    check('version = "0.4.0"' in pyproject, "pyproject version")
+    check(bool(re.search(r"^\s*version:\s*['\"]?0\.4\.0", config, re.MULTILINE)), "config version")
+    check('CLI_VERSION = "0.4.0"' in cli, "CLI version")
+    check("Release 0.4.0" in readme, "README release section")
     check(compileall.compile_dir(str(ROOT / "src"), quiet=1, maxlevels=20), "Python compilation")
 
     exercise_detectors = (

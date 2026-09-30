@@ -40,6 +40,26 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 0.4.0 — Shortcode authoring quality
+
+EduTeX 0.4.0 consolida la pipeline di authoring e aggiunge il contratto
+completo per gli esercizi interattivi di traduzione.
+
+Highlights:
+
+- `type: translation` nei Knowledge Model;
+- alias `source:` / `prompt:`;
+- alias `answer:` / `expected:`;
+- risposte alternative separate da `|`;
+- normalizzazione delle risposte e fallback alla soluzione;
+- controlli accessibili per risposta, verifica, reset e feedback;
+- etichette dell?interfaccia in italiano e inglese;
+- rendering UTF-8 e Unicode-safe;
+- documentazione, test di integrazione e release smoke coverage.
+
+La release preserva inoltre i contratti esistenti per `choice`,
+`short_answer`, `true_false`, `cloze`, `builder` e `matching`.
+
 ## Release 0.3.0 — Shortcode authoring quality
 
 EduTeX 0.3.0 adds authoring-time quality checks for Knowledge Models. The

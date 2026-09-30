@@ -1,4 +1,4 @@
-"""Release smoke tests for the EduTeX 0.3.0 baseline.
+"""Release smoke tests for the EduTeX 0.4.0 baseline.
 
 These checks intentionally avoid importing the full runtime. They remain useful
 when a source snapshot is incomplete, while still protecting the release
@@ -15,7 +15,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "0.3.0"
+EXPECTED_VERSION = "0.4.0"
 RENDERER = ROOT / "src" / "edutex" / "build" / "html_renderer.py"
 README = ROOT / "README.md"
 PYPROJECT = ROOT / "pyproject.toml"

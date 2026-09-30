@@ -7,7 +7,7 @@ name = "edutex"
 version = "0.4.0"
 description = "EduTeX — A modular framework for generating educational documents from structured content."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",

@@ -1,3 +1,5 @@
+import re
+
 from pathlib import Path
 
 from edutex.activator.activator import Activator
@@ -136,3 +138,37 @@ def test_translation_authoring_aliases_and_solution_fallback() -> None:
 
     assert "Mi chiamo Luca." in fallback_source
     assert 'data-answers="Ich hei\u00dfe Luca."' in fallback_source
+
+def test_translation_accessibility_contract() -> None:
+    source = render_in_memory()
+
+    translation_start = source.index('<div class="translation"')
+    translation_source = source[translation_start:]
+
+    label_match = re.search(
+        r'<label class="translation-label" for="([^"]+)">',
+        translation_source,
+    )
+    textarea_match = re.search(
+        r'<textarea class="translation-answer" id="([^"]+)" '
+        r'name="([^"]+)"',
+        translation_source,
+    )
+
+    assert label_match is not None
+    assert textarea_match is not None
+
+    label_target = label_match.group(1)
+    textarea_id = textarea_match.group(1)
+    textarea_name = textarea_match.group(2)
+
+    assert label_target == textarea_id
+    assert textarea_id == textarea_name
+
+    for expected in (
+        'aria-label="Scrivi la traduzione"',
+        '<button type="button" class="translation-check">',
+        '<button type="button" class="translation-reset">',
+        'role="status" aria-live="polite"',
+    ):
+        assert expected in translation_source

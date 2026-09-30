@@ -172,3 +172,30 @@ def test_translation_authoring_contract_is_documented() -> None:
         "Italian and English",
     ):
         assert marker in shortcode_spec or marker in knowledge_spec
+
+def test_translation_runtime_language_selection_is_supported() -> None:
+    from edutex.build.html_renderer import (
+        _EDUTEX_UI_LABELS,
+        _ui_language,
+    )
+
+    assert _ui_language("it") == "it"
+    assert _ui_language("de") == "it"
+    assert _ui_language("en") == "en"
+    assert _ui_language("en-US") == "en"
+    assert (
+        _EDUTEX_UI_LABELS["it"]["translation_prompt"]
+        == "Testo da tradurre"
+    )
+    assert (
+        _EDUTEX_UI_LABELS["it"]["write_translation"]
+        == "Scrivi la traduzione"
+    )
+    assert (
+        _EDUTEX_UI_LABELS["en"]["translation_prompt"]
+        == "Text to translate"
+    )
+    assert (
+        _EDUTEX_UI_LABELS["en"]["write_translation"]
+        == "Write your translation"
+    )

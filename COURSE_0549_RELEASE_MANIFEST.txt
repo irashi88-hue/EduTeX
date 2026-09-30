@@ -1,0 +1,44 @@
+EduTeX 0.5.49 - Quality CLI JSON output contract
+
+Scope
+- Add Q017, a deterministic contract check for the quality CLI JSON channel.
+- Verify parseable stdout, empty stderr, schema identity, failure/incomplete
+  status, newline termination, and exit-code alignment with and without --verbose.
+- Preserve edutex.quality-baseline.v1 and Q001-Q016 behavior.
+- Document QL-024.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q017 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q016 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Seventeen-check catalog and execution plan: PASS.
+- Q017 JSON output fixtures with and without --verbose: PASS.
+- Q010 schema through Q016 serialization contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.49_quality_cli_json_output_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

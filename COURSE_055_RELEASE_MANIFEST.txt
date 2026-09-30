@@ -1,0 +1,22 @@
+EduTeX 0.5.5 Course Authoring Diagnostics tranche
+
+This incremental patch adds machine-readable diagnostics to course validation
+without changing the existing text output or legacy errors/warnings arrays.
+
+Changes:
+  - add CourseDiagnostic with stable code, message, severity, field, and path;
+  - add ordered diagnostics to course validation JSON;
+  - use project-relative paths for linked lesson sources;
+  - classify source, front matter, prerequisite, presentation, manifest, and warning conditions;
+  - preserve the existing text CLI output and exit behavior;
+  - add regression tests for source and prerequisite diagnostic codes;
+  - document the diagnostic contract for CI and editor integrations.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.5_course_authoring_diagnostics.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose
+  edutex course validate --project . --format json

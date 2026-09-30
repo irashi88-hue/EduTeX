@@ -1,0 +1,46 @@
+EduTeX 0.5.14 - PDF runtime hardening
+
+Scope
+- Normalize latexmk version reporting when Windows wrappers emit Perl or
+  initialization lines before the semantic Latexmk version line.
+- Add missing_gates to edutex.pdf-runtime.v1 so unavailable qpdf structural
+  validation is explicit without changing compiler readiness semantics.
+- Add focused tests for Windows-like latexmk output and missing qpdf reporting.
+- Document the additive runtime-report fields and normalization contract.
+- Include copyable PowerShell commands for applying and testing the release.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- latexmk Windows-wrapper normalization: PASS
+- missing qpdf gate reporting: PASS
+- runtime report JSON serialization: PASS
+- standard library focused harness: PASS
+- pytest: NOT RUN - pytest is unavailable in the offline build environment.
+
+Compatibility
+- Existing Q001-Q007 names and behavior remain unchanged.
+- The existing pdf_runtime_summary() API remains available.
+- The edutex.pdf-runtime.v1 report remains JSON-safe; missing_gates is an
+  additive field.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+- The report never installs tools, modifies PATH, or changes project files.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.14_pdf_runtime_hardening.tar.gz -C .
+
+Print the structured report:
+  python -c "from tools.quality_check import pdf_runtime_report; import json; print(json.dumps(pdf_runtime_report(), indent=2, sort_keys=True))"
+
+Run focused checks:
+  python -m compileall -q .\tools .\tests
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the normal project checks:
+  python -m pytest -q
+  python .\tools\quality_check.py --verbose

@@ -1,0 +1,41 @@
+EduTeX 0.4.3 Course Progression tranche
+
+This incremental patch adds optional course-level learning metadata and richer
+HTML progress reporting while preserving existing 0.4.x manifests.
+
+New course.yaml fields:
+  objectives:
+    - Introduce yourself confidently
+    - Ask simple questions
+  competencies:
+    - Speaking
+    - Listening
+  estimated_duration_minutes: 90
+
+The explicit estimated duration takes precedence over the sum of lesson
+`duration_minutes` values. If it is omitted, the existing sum is used.
+
+Validation JSON now reports:
+  objectives
+  competencies
+  duration_minutes
+  dependencies
+
+HTML course builds now add:
+  - a Course goals section when objectives are present;
+  - a Skills you will build section when competencies are present;
+  - a progress bar;
+  - completed lesson count and percentage;
+  - remaining estimated minutes;
+  - browser-local progress updates after completing lessons.
+
+Commands:
+  edutex course validate --project .
+  edutex course validate --project . --format json
+  edutex course build --project . --format html
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.4.3_course_progression.tar.gz -C .
+
+All new course-level fields are optional. The 0.4.2 prerequisite validation,
+0.4.1 lesson HTML orchestration, and existing single-lesson build remain intact.

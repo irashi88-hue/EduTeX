@@ -1,0 +1,72 @@
+\documentclass[12pt,a4paper]{article}
+
+%% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin={{ layout.page.margin_top_mm }}mm,
+            left={{ layout.page.margin_left_mm }}mm,
+            right={{ layout.page.margin_right_mm }}mm,
+            bottom={{ layout.page.margin_bottom_mm }}mm]{geometry}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage[version=4]{mhchem}
+\usepackage{hyperref}
+\usepackage{fontenc}
+
+%% --- Colour definitions ---
+\definecolor{rulecolor}{HTML}{ {{- theme.styles.rule.border_color | replace('#','') -}} }
+\definecolor{notecolor}{HTML}{ {{- theme.styles.note.border_color | replace('#','') -}} }
+\definecolor{examplecolor}{HTML}{ {{- theme.styles.example.border_color | replace('#','') -}} }
+\definecolor{exercisecolor}{HTML}{ {{- theme.styles.exercise.border_color | replace('#','') -}} }
+\definecolor{solutioncolor}{HTML}{ {{- theme.styles.solution.border_color | replace('#','') -}} }
+
+%% --- Block environments ---
+\newmdenv[linecolor=rulecolor, linewidth=2pt, leftline=true,
+          rightline=false, topline=false, bottomline=false,
+          backgroundcolor={{ theme.styles.rule.background_color | replace('#','') | latex_color }},
+          innerleftmargin=8pt, innerrightmargin=8pt,
+          innertopmargin=6pt, innerbottommargin=6pt]{rulebox}
+
+\newmdenv[linecolor=notecolor, linewidth=2pt, leftline=true,
+          rightline=false, topline=false, bottomline=false,
+          backgroundcolor={{ theme.styles.note.background_color | replace('#','') | latex_color }},
+          innerleftmargin=8pt, innerrightmargin=8pt,
+          innertopmargin=6pt, innerbottommargin=6pt]{notebox}
+
+\newmdenv[linecolor=examplecolor, linewidth=2pt, leftline=true,
+          rightline=false, topline=false, bottomline=false,
+          backgroundcolor={{ theme.styles.example.background_color | replace('#','') | latex_color }},
+          innerleftmargin=8pt, innerrightmargin=8pt,
+          innertopmargin=6pt, innerbottommargin=6pt]{examplebox}
+
+\newmdenv[linecolor=exercisecolor, linewidth=2pt, leftline=true,
+          rightline=false, topline=false, bottomline=false,
+          backgroundcolor={{ theme.styles.exercise.background_color | replace('#','') | latex_color }},
+          innerleftmargin=8pt, innerrightmargin=8pt,
+          innertopmargin=6pt, innerbottommargin=6pt]{exercisebox}
+
+%% --- Document metadata ---
+\title{ {{- meta.title | latex_escape -}} }
+\author{ {{- meta.author | latex_escape -}} }
+\date{}
+
+\begin{document}
+\maketitle
+
+%% --- Body ---
+{{ body }}
+
+%% --- Appendix ---
+{% if appendix_nodes %}
+\newpage
+\section*{ {{- appendix_title | latex_escape -}} }
+{% for node in appendix_nodes %}
+{{ node | render_solution }}
+{% endfor %}
+{% endif %}
+
+\end{document}

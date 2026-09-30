@@ -1,0 +1,43 @@
+EduTeX 0.5.51 - Quality runner/report alignment contract
+
+Scope
+- Add Q019, a deterministic contract check for runner/report alignment.
+- Verify failed-prefix projection, failure identity/detail preservation, and all-pass report completion.
+- Preserve edutex.quality-baseline.v1 and Q001-Q018 behavior.
+- Document QL-025.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q019 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q018 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Nineteen-check catalog and execution plan: PASS.
+- Q019 synthetic runner/report alignment fixtures: PASS.
+- Q010 schema through Q018 runner contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.51_quality_runner_report_alignment_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

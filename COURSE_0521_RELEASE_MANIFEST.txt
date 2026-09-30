@@ -1,0 +1,54 @@
+EduTeX 0.5.21 - Public CLI contract freeze
+
+Scope
+- Formalize the existing public CLI help surface in one ordered contract.
+- Make Q005 consume the shared contract instead of duplicating command markers.
+- Expose public_cli_contract() as a stable, testable inspection helper.
+- Preserve all existing CLI commands, options, quality check names, report schemas,
+  and runtime behavior.
+- Add focused tests for contract order, Q005 pass behavior, and Q005 diagnostics.
+- Document the contract-freeze rule in QL-005 and the quality command interface.
+
+Changed files
+- tools/quality_check.py
+  - Added PUBLIC_CLI_CONTRACT.
+  - Added public_cli_contract().
+  - Updated Q005 to consume the shared contract.
+- tests/test_quality_check.py
+  - Added a stable ordered contract test.
+- docs/quality_process_spec.md
+  - Documented the QL-005 contract and explicit-change rule.
+
+Compatibility
+- Public commands remain: init, lint, build, and validate.
+- Existing required options remain unchanged.
+- Q001-Q007 names and order remain unchanged.
+- edutex.quality-baseline.v1 and edutex.pdf-runtime.v1 remain unchanged.
+- No runtime dependency, CLI behavior, or output schema was changed.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Public contract stability: PASS.
+- Q005 simulated pass path: PASS.
+- Q005 simulated missing-marker diagnostics: PASS.
+- Quality report compatibility and JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.21_cli_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose

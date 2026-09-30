@@ -1,0 +1,43 @@
+EduTeX 0.5.55 - Quality runner return-code contract
+
+Scope
+- Add Q023, a deterministic contract check for runner return-code semantics.
+- Verify passed/non-zero and failed/zero normalization, diagnostic preservation, and stop-on-mismatch.
+- Preserve edutex.quality-baseline.v1 and Q001-Q022 behavior.
+- Document QL-030.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q023 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q022 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Twenty-two-check catalog and execution plan: PASS.
+- Q022 synthetic identity-mismatch runner/report fixtures: PASS.
+- Q010 schema through Q022 runner/report contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.55_quality_runner_returncode_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

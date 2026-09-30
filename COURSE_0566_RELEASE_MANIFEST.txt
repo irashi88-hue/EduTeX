@@ -1,0 +1,45 @@
+EduTeX 0.5.66 - Quality runner/report consistency contract
+
+Scope
+- Add Q034, a deterministic contract check for runner/report consistency.
+- Verify exact projection of genuine runner results into final reports.
+- Verify structural execution diagnostics do not become fabricated failed checks.
+- Preserve edutex.quality-baseline.v1 and Q001-Q033 behavior.
+- Document QL-041.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q034 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q033 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Thirty-four-check catalog and execution plan: PASS.
+- Q010-Q034 direct contract checks: PASS.
+- Q034 synthetic check-failure and plan-diagnostic consistency fixtures: PASS.
+- Zero-argument test harness: PASS (87 executed, 25 parameterized skipped).
+- Full pytest suite: not available in the offline agent image because pytest is not installed.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.66_quality_runner_report_consistency_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

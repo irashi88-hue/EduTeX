@@ -1,0 +1,48 @@
+EduTeX 0.5.47 - Quality report catalog metadata contract
+
+Scope
+- Add Q015, a deterministic contract check for catalog metadata and its report
+  projection.
+- Verify stable catalog fields, ordered IDs and names, non-empty descriptions,
+  required flags, name-to-ID mapping, and complete/failed/incomplete report
+  projections.
+- Preserve edutex.quality-baseline.v1 and Q001-Q014 behavior.
+- Document QL-022.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q015 is additive. Runtime CLI behavior is unchanged.
+- Q001-Q014 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Fifteen-check catalog and execution plan: PASS.
+- Q014 summary fixtures updated for the fifteen-check denominator: PASS.
+- Q015 complete/failed/incomplete catalog projection fixtures: PASS.
+- Q010 schema, Q011 consistency, Q012 diagnostics, Q013 value-types, and Q014
+  identity contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.47_quality_report_catalog_metadata_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

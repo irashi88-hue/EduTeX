@@ -1,0 +1,59 @@
+EduTeX 0.5.32 - Quality baseline summary counts
+
+Scope
+- Combine three small CI reporting advances into one additive summary contract.
+- Add quality_baseline_summary(results) for stable pass/fail/pending counts.
+- Add the report summary object with passed, failed, and pending integer fields.
+- Keep summary informational; status, complete, exit_code, and all prior fields
+  retain their existing meanings.
+- Preserve run identity, timestamps, duration, failed-check identifiers,
+  diagnostics, check ordering, text output, and exit codes.
+- Add focused tests for normal and over-complete result sequences and report output.
+- Document the summary contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_baseline_summary().
+  - Added additive summary object to quality_baseline_report().
+- tests/test_quality_check.py
+  - Added pass/fail/pending count tests and report-summary assertions.
+- docs/quality_process_spec.md
+  - Documented summary semantics in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- Existing calls to quality_baseline_report(results) remain valid.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Normal summary counts: PASS.
+- Non-negative pending count: PASS.
+- Report summary output: PASS.
+- Existing identity/timing/failure compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.32_quality_summary.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

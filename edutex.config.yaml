@@ -1,19 +1,18 @@
-# EduTeX Project Configuration
+﻿# EduTeX Project Configuration
 # Schema version: 1.0.0
 # Reference: CONFIGURATION_SPEC.md (CFG-001, CFG-002)
 
 edutex:
-  version: "0.1.0"
-
+  version: "0.3.0"
 # --- Knowledge Model selection ---
 knowledge:
   # Path to the Knowledge Model source file (relative to project root)
-  model: "assets/knowledge_models/example.md"
+  model: "assets/knowledge_models/choice-verifica.md"
 
 # --- Theme selection ---
 theme:
   # Name of the theme to apply (must match a directory under assets/themes/)
-  name: "default"
+  name: "dark"
 
 # --- Layout selection ---
 layout:
@@ -23,11 +22,11 @@ layout:
 # --- Build configuration ---
 build:
   # Output format: "pdf" (via LaTeX) | "latex" | "html"
-  output_format: "pdf"
+  output_format: "html"
   # Output directory (relative to project root)
   output_dir: "output"
   # Output filename (without extension)
-  output_file: "document"
+  output_file: "choice-verifica"
 
 # --- Extension configuration ---
 extensions:
@@ -37,3 +36,5 @@ extensions:
 # --- Logging ---
 logging:
   level: "INFO"   # DEBUG | INFO | WARNING | ERROR
+
+

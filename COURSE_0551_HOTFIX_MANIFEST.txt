@@ -1,0 +1,29 @@
+EduTeX 0.5.51 - Q019 test-fixture hotfix
+
+Scope
+- Repair the Q019 integration expectations in tests/test_quality_check.py.
+- Add Q019 to the complete passed-results fixture.
+- Shift legacy execution-plan position assertions for Q010-Q017 after adding Q019.
+
+Compatibility
+- No production code changes.
+- edutex.quality-baseline.v1 is unchanged.
+- Q001-Q019 identifiers and semantics are unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation of the patched test module: PASS.
+- Complete fixture contains Q001-Q019: PASS.
+- Execution-plan position assertions are aligned with the nineteen-check catalog: PASS.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the hotfix:
+  tar -xzf .\edutex_0.5.51_quality_runner_report_alignment_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q

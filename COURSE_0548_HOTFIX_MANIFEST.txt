@@ -1,0 +1,34 @@
+EduTeX 0.5.48 Q016 test expectation hotfix
+
+Problem fixed
+- The Q016 release added the production catalog entry and execution check, but
+  several Q015-era test fixtures still expected only Q001-Q015.
+- Relative execution-plan assertions were not shifted after appending Q016.
+
+Change
+- tests/test_quality_check.py
+  - Add Q016 to stable names, catalog, plan, missing-check, and all-passed fixtures.
+  - Shift Q010-Q014 relative positions by one.
+  - Keep Q015 penultimate and Q016 last.
+  - Keep report expectations at checks_expected=16.
+
+Compatibility
+- Test-only change.
+- No production code, catalog definition, report schema, or runtime behavior changed.
+- Q001-Q016 remain in their existing ordered plan.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the hotfix:
+  tar -xzf .\\edutex_0.5.48_quality_report_serialization_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

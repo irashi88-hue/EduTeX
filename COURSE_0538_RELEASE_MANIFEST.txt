@@ -1,0 +1,55 @@
+EduTeX 0.5.38 - Quality report contract closure
+
+Scope
+- Close the quality-report work at a pragmatic 7/10 maturity level.
+- Add quality_baseline_report_diagnostics(report) for observational contract checks.
+- Validate report check list shape, check identity, passed/status agreement, and
+  the complete summary metric set.
+- Keep diagnostics separate from baseline status and exit-code semantics.
+- Preserve the existing report schema, fields, timing, summary metrics,
+  per-check status, failure identifiers, catalog, and CLI behavior.
+- Add focused valid-report and intentional-drift tests.
+- Document the closure-level report inspection contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_baseline_report_diagnostics().
+- tests/test_quality_check.py
+  - Added valid-report and drift-diagnostic tests.
+- docs/quality_process_spec.md
+  - Documented observational report diagnostics in QL-013.
+
+Compatibility
+- edutex.quality-baseline.v1 remains unchanged.
+- Existing quality_baseline_report() output and semantics remain unchanged.
+- Diagnostics do not change status, complete, exit_code, or runner execution.
+- No new runtime dependency or CLI option was added.
+- Human-readable output and exit-code behavior remain unchanged.
+
+Validation
+- Python compileall: PASS.
+- AST validation: PASS.
+- Valid report diagnostics empty: PASS.
+- Status drift detection: PASS.
+- Summary drift detection: PASS.
+- Existing report compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.38_quality_report_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --json

@@ -1,0 +1,14 @@
+EduTeX 0.3.0 Japanese language patch - compatibility merge (final)
+
+This archive merges Japanese support into the compatible renderer baselines.
+It preserves dark-theme palette handling, expanded shortcode rendering,
+interactive exercises, aria-live accessibility, localized skip links and
+localized document landmarks, solution toggles, LaTeX vocabulary/conjugation
+tables, and the CJK LaTeX/PDF path.
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.3.0_japanese_support_compatibility_fixed_final2.tar.gz -C .
+
+Then run:
+  python -m pytest -q
+  python .\tools\quality_check.py

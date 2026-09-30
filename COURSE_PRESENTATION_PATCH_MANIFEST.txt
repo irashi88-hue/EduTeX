@@ -1,0 +1,38 @@
+EduTeX 0.5.0 Course Presentation tranche
+
+This incremental patch adds optional visual and navigation preferences to
+course.yaml while preserving 0.4.x manifests.
+
+Example:
+  presentation:
+    theme: forest
+    accent: "#86c7a5"
+    accent_secondary: "#d4a85c"
+    surface: "#f8fcf8"
+    background: "#eaf3ed"
+    ink: "#17352a"
+    muted: "#547366"
+    show_contents: true
+    show_progress: true
+    show_objectives: true
+    show_competencies: true
+    show_prerequisites: true
+    show_lesson_navigation: true
+
+Built-in themes:
+  midnight, paper, forest, sunset
+
+Custom colors must be six-digit hexadecimal values. Invalid themes, colors, and
+visibility values are rejected during course validation. The default presentation
+is compatible with existing manifests.
+
+Commands:
+  edutex course validate --project .
+  edutex course validate --project . --format json
+  edutex course build --project . --format html
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.0_course_presentation.tar.gz -C .
+
+The course progression, prerequisite graph, complete HTML build, LaTeX/PDF
+roadmap, and single-lesson build remain intact.

@@ -1,0 +1,44 @@
+EduTeX 0.5.48 - Quality report serialization contract
+
+Scope
+- Add Q016, a deterministic contract check for JSON report serialization.
+- Verify complete, failed, and incomplete reports serialize deterministically,
+  round-trip through JSON, use sorted keys, and have newline-terminated output.
+- Preserve edutex.quality-baseline.v1 and Q001-Q015 behavior.
+- Document QL-023.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q016 is additive. Runtime CLI behavior is unchanged.
+- Q001-Q015 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Sixteen-check catalog and execution plan: PASS.
+- Q016 complete/failed/incomplete serialization fixtures and CLI newline model: PASS.
+- Q010 schema through Q015 catalog metadata contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.48_quality_report_serialization_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

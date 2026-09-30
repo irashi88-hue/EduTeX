@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "edutex"
-version = "0.1.0"
+version = "0.3.0"
 description = "EduTeX — A modular framework for generating educational documents from structured content."
 readme = "README.md"
 license = { text = "MIT" }

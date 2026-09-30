@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
+from edutex.core.errors import EduTeXError
+
 
 class LifecyclePhase(Enum):
     """
@@ -30,6 +32,39 @@ class LifecyclePhase(Enum):
     FAILED = auto()
 
 
+_ALLOWED_LIFECYCLE_TRANSITIONS: dict[
+    LifecyclePhase, frozenset[LifecyclePhase]
+] = {
+    LifecyclePhase.INITIALIZING: frozenset(
+        {LifecyclePhase.CONFIGURING, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.CONFIGURING: frozenset(
+        {LifecyclePhase.REGISTERING, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.REGISTERING: frozenset(
+        {LifecyclePhase.RESOLVING, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.RESOLVING: frozenset(
+        {LifecyclePhase.ACTIVATING, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.ACTIVATING: frozenset(
+        {LifecyclePhase.PROCESSING, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.PROCESSING: frozenset(
+        {
+            LifecyclePhase.BUILDING,
+            LifecyclePhase.COMPLETE,
+            LifecyclePhase.FAILED,
+        }
+    ),
+    LifecyclePhase.BUILDING: frozenset(
+        {LifecyclePhase.COMPLETE, LifecyclePhase.FAILED}
+    ),
+    LifecyclePhase.COMPLETE: frozenset(),
+    LifecyclePhase.FAILED: frozenset(),
+}
+
+
 @dataclass
 class RuntimeContext:
     """
@@ -44,7 +79,13 @@ class RuntimeContext:
     metadata: dict[str, object] = field(default_factory=dict)
 
     def advance(self, phase: LifecyclePhase) -> None:
-        """Advance the lifecycle to the next phase."""
+        """Advance the lifecycle to the next valid phase."""
+        allowed = _ALLOWED_LIFECYCLE_TRANSITIONS[self.phase]
+        if phase not in allowed:
+            raise EduTeXError(
+                "Invalid lifecycle transition: "
+                f"{self.phase.name} -> {phase.name}"
+            )
         self.phase = phase
 
     def set_metadata(self, key: str, value: object) -> None:

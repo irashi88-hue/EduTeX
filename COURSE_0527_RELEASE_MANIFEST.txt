@@ -1,0 +1,56 @@
+EduTeX 0.5.27 - Stable quality result IDs
+
+Scope
+- Add stable Q001-Q007 IDs to each completed result in the JSON quality report.
+- Expose quality_check_id(name) for local consumers.
+- Derive IDs from the existing quality catalog without changing result names.
+- Preserve report schema, existing fields, outcome semantics, diagnostics, and
+  missing-check behavior.
+- Add focused tests for known and unknown ID mapping and report output.
+- Document the per-result ID contract in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_check_id().
+  - Added additive id field to each report check entry.
+- tests/test_quality_check.py
+  - Added stable-name, unknown-name, and report-ID assertions.
+- docs/quality_process_spec.md
+  - Documented stable result IDs in QL-013.
+
+Compatibility
+- Existing check names remain unchanged.
+- Existing edutex.quality-baseline.v1 schema identifier remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Known Q001/Q007 ID mapping: PASS.
+- Unknown ID mapping: PASS.
+- Per-result report IDs: PASS.
+- Missing-check and consistency behavior: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.27_quality_result_ids.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

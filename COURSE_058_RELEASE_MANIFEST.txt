@@ -1,0 +1,28 @@
+EduTeX 0.5.8 — PDF/LaTeX metadata and language contract
+
+Scope
+- Add stable PDF metadata to the course LaTeX renderer through hyperref.
+- Normalize manifest language values into BCP 47-style tags for pdflang.
+- Provide safe fallback metadata for missing author and description values.
+- Keep visible title-page values aligned with PDF metadata.
+- Add focused regression tests for metadata, fallbacks, language normalization,
+  and LaTeX escaping.
+- Document post-compilation metadata inspection with pdfinfo.
+
+Changed files
+- src/edutex/course/service.py
+- tests/test_course_management.py
+- docs/course_management.md
+
+Validation
+- compileall: PASS
+- AST validation for renderer and tests: PASS
+- isolated language normalization checks: PASS
+- isolated LaTeX escaping checks: PASS
+- LaTeX/PDF compiler smoke test: SKIPPED — latexmk, pdflatex, and xelatex are
+  unavailable in the offline environment.
+
+Compatibility
+- Existing HTML, LaTeX, and course validation contracts are unchanged.
+- PDF builds still use the existing compiler selection and error handling.
+- CJK documents retain the existing xelatex requirement.

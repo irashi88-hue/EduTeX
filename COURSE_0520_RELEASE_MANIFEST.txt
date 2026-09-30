@@ -1,0 +1,57 @@
+EduTeX 0.5.20 - Configurable PDF language gate
+
+Scope
+- Make the compiled-PDF pypdf parser gate accept a configurable expected language.
+- Preserve the historical en-US default for existing callers and English fixtures.
+- Normalize the short course language en to the PDF tag en-US.
+- Preserve explicit tags such as it-IT, it-IT-style underscore input, and ja.
+- Thread the normalized course language through Q007 instead of hard-coding en-US.
+- Add focused tests for normalization, non-English pass, mismatch diagnostics,
+  gate forwarding, and compatibility defaults.
+- Document the configurable language contract in QL-012.
+
+Changed files
+- tools/quality_check.py
+  - Added _normalize_expected_pdf_language().
+  - Added backward-compatible expected_language defaults to the pypdf helpers.
+  - Added expected_language to _run_pdf_inspection_gates().
+  - Parameterized Q007 language and forwarded the normalized value.
+- tests/test_quality_check.py
+  - Added focused configurable-language and forwarding tests.
+- docs/quality_process_spec.md
+  - Documented QL-012 expected-language behavior and compatibility mapping.
+
+Compatibility
+- Existing calls to _pypdf_gate_result(), _validate_pdf_parser(), and
+  _run_pdf_inspection_gates() continue to use en-US when no language is supplied.
+- Existing report schemas and gate status values are unchanged.
+- No dependency installation, network access, or runtime schema migration is
+  required.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Language normalization: PASS.
+- Configurable non-English pypdf pass: PASS.
+- Configurable non-English mismatch diagnostic: PASS.
+- Inspection-gate language forwarding: PASS.
+- Runtime report JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.20_pdf_language_gate.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose

@@ -1,0 +1,26 @@
+EduTeX 0.5.44 quality report diagnostics contract test hotfix
+
+Problem fixed
+The Q012 empty missing-check fixture listed Q012 twice, while the partial
+missing-check fixture omitted Q012.
+
+Change
+- tests/test_quality_check.py
+  - corrected the empty missing-check tuple to contain Q001-Q012 exactly once;
+  - added Q012 to the partial missing-check tuple.
+
+No production code changed. Q012, the edutex.quality-baseline.v1 schema, and
+Q001-Q011 behavior remain unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.44_quality_report_diagnostics_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

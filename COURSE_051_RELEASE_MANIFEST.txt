@@ -1,0 +1,23 @@
+EduTeX 0.5.1 Course Build Hardening tranche
+
+This incremental patch hardens reproducible HTML course builds while preserving
+all EduTeX 0.5.0 presentation behavior.
+
+Changes:
+  - remove stale generated lesson pages from output/lessons during HTML builds;
+  - restrict cleanup to EduTeX-generated lesson pages owned by the course build;
+  - preserve unrelated HTML and non-HTML files;
+  - add a regression test for rebuilding after a lesson is removed;
+  - fix multi-lesson test fixtures so every Knowledge Model has valid YAML front matter;
+  - document deterministic output cleanup.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\edutex_0.5.1_course_build_hardening.tar.gz -C .
+
+Then run:
+  python -m compileall -q .\src
+  python -m pytest -q
+  edutex course validate --project .
+  edutex course build --project . --format html
+  edutex course build --project . --format latex
+  edutex course build --project . --format pdf

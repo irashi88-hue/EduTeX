@@ -1,0 +1,16 @@
+edutex:
+  version: "0.1.0"
+knowledge:
+  model: "assets/knowledge_models/example.md"
+theme:
+  name: "default"
+layout:
+  name: "default"
+build:
+  output_format: "pdf"
+  output_dir: "output"
+  output_file: "integration_document"
+extensions:
+  enabled: []
+logging:
+  level: "INFO"

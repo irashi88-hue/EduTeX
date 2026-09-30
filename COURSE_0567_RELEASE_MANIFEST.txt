@@ -1,0 +1,47 @@
+EduTeX 0.5.67 - Release baseline end-to-end contract
+
+Scope
+- Add Q035, the final urgent quality contract for the complete public baseline path.
+- Validate actual quality_check.py --json subprocess output, stderr isolation, JSON parsing, and process/report exit alignment.
+- Validate the complete all-pass report path with 35 of 35 checks, no missing checks, no failed-check identity, and empty diagnostic channels.
+- Preserve edutex.quality-baseline.v1 and Q001-Q034 behavior.
+- Document QL-042.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q035 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q034 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+- Private child-process probes are activated only by EDUTEX_Q035_CHILD and EDUTEX_Q035_PASS_PROBE and do not affect normal CLI execution.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Thirty-five-check catalog and execution plan: PASS.
+- Q010-Q035 direct contract checks: PASS.
+- Q035 complete CLI JSON probe: PASS; status=passed, checks_completed=35, checks_expected=35, missing_checks=[], exit_code=0.
+- Q035 real CLI JSON path: PASS as a failure-path contract; status=failed, exit_code=1, stderr empty, and report exit_code aligned with the process. The stripped release workspace intentionally lacks the full EduTeX src tree, so Q001 fails there.
+- Zero-argument test harness: PASS (89 executed, 25 parameterized skipped).
+- Full pytest suite: not available in the offline agent image because pytest is not installed.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.67_quality_release_baseline_end_to_end_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

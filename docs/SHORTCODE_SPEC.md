@@ -319,12 +319,46 @@ Fields
 
 None on the opening line.
 The body contains the task description in Markdown.
-A :::solution block MAY be nested inside.
+A ::: solution block MAY be nested inside.
+
+Interactive translation variant
+
+An exercise MAY declare an interactive translation task using the following fields:
+
+::: exercise
+title: Übersetze den Satz
+type: translation
+source: Mi chiamo Luca.
+answer: Ich heiße Luca. | Ich heisse Luca.
+
+::: solution
+Ich heiße Luca.
+:::
+:::
+
+The `type: translation` field enables an answer area with check and reset controls.
+
+The `source:` field contains the text that the learner must translate.
+The `prompt:` field MAY be used as an alias for `source:`.
+
+The `answer:` field declares one accepted answer or multiple accepted answers.
+Multiple accepted answers SHALL be separated by `|`.
+The `expected:` field MAY be used as an alias for `answer:`.
+
+Before comparison, EduTeX normalizes surrounding and repeated whitespace and ignores letter case.
+The declared answer remains Unicode-sensitive.
+
+If neither `answer:` nor `expected:` is declared, EduTeX SHALL use the first non-empty line of the nested `solution` block as the accepted answer.
+
+The current translation interface labels are localized in Italian and English.
+No additional interface locale is implied by this exercise syntax.
 
 Solution Handling
 
 The solution SHALL be hidden in the rendered PDF output.
+
 Solutions SHALL be collected and printed in a dedicated appendix at the end of the document.
+
 The exercise body SHALL include a reference marker pointing to the appendix entry.
 
 Rendering Intent
@@ -332,6 +366,14 @@ Rendering Intent
 Box with a distinct border.
 
 Label Übung (or localised equivalent) displayed above the body.
+
+Translation exercises SHALL render:
+
+- the source text;
+- an accessible answer area;
+- a verification control;
+- a reset control;
+- a live status region for feedback.
 
 Solution marker printed inline (e.g. → Soluzione p. 42).
 

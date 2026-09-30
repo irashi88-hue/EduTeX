@@ -1,0 +1,43 @@
+EduTeX 0.5.50 - Quality runner stop-on-failure contract
+
+Scope
+- Add Q018, a deterministic contract check for first-failure execution.
+- Verify result truncation, failure detail preservation, and all-pass completion.
+- Preserve edutex.quality-baseline.v1 and Q001-Q017 behavior.
+- Document QL-025.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Compatibility
+- Q018 is additive. Runtime CLI behavior outside the quality runner is unchanged.
+- Q001-Q017 identifiers and semantics remain unchanged.
+- No installation, network access, or global executable lookup is used.
+
+Validation performed in the offline agent
+- Python compilation: PASS.
+- Eighteen-check catalog and execution plan: PASS.
+- Q018 synthetic failing and all-pass runner fixtures: PASS.
+- Q010 schema through Q017 CLI JSON contracts: PASS.
+- Full pytest suite: to be run after applying the archive.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.50_quality_runner_stop_on_failure_contract.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run focused validation:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\tools\quality_check.py --verbose
+  python .\tools\quality_check.py --json

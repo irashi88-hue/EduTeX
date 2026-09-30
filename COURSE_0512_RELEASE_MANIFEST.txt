@@ -1,0 +1,43 @@
+EduTeX 0.5.12 — PDF runtime diagnostics
+
+Scope
+- Add a stable PDF tool availability snapshot to the quality runner.
+- Report selected compiler and optional inspection tools for the requested language.
+- Make Q007 verbose skip output explain the missing compiler and available tools.
+- Preserve environment-aware behavior: no tool installation and no false failure
+  when LaTeX compilers are absent.
+- Add tests for CJK compiler fallback and runtime summary reporting.
+- Document the diagnostic contract and copyable PowerShell commands.
+
+Changed files
+- tools/quality_check.py
+- tests/test_quality_check.py
+- docs/quality_process_spec.md
+
+Validation
+- compileall: PASS
+- AST validation: PASS
+- check-name stability: PASS
+- source marker contract: PASS
+- compiler selection helpers: PASS
+- pdfinfo and metadata helpers: PASS
+- runtime tool status: PASS
+- runtime summary: PASS
+- LaTeX/PDF compiled gates: skipped because latexmk, pdflatex, and xelatex
+  are unavailable in the current environment.
+
+Compatibility
+- Existing Q001–Q007 names and behavior remain unchanged.
+- No mandatory Python, LaTeX, or PDF tool dependency is introduced.
+- The diagnostic snapshot is read-only and never installs tools.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.12_pdf_runtime_diagnostics.tar.gz -C .
+
+Run the focused checks:
+  python -m compileall -q .\\tools .\\tests
+  python -c "from tools.quality_check import pdf_runtime_summary; import json; print(json.dumps(pdf_runtime_summary(), indent=2))"
+
+Run the normal project checks:
+  python -m pytest -q
+  python .\\tools\\quality_check.py --verbose

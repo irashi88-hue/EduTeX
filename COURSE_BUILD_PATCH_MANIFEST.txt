@@ -1,0 +1,31 @@
+EduTeX 0.4.1 Course Build tranche
+
+This incremental patch extends Course Management HTML builds to render every
+course lesson through the existing EduTeX lesson pipeline.
+
+New HTML output:
+  output/course.html
+  output/lessons/<lesson-id>.html
+
+The course index links to generated lesson pages. Each lesson page receives:
+  - a link back to the course index;
+  - module and lesson position;
+  - previous and next lesson links where available.
+
+Commands:
+  edutex course validate --project .
+  edutex course build --project . --format html
+  edutex course build --project . --format latex
+  edutex course build --project . --format pdf
+
+Install from the repository root in PowerShell:
+  tar -xzf .\edutex_0.4.1_course_build.tar.gz -C .
+
+The HTML course build requires the normal project configuration file
+edutex.config.yaml and the configured theme/layout assets, because each lesson
+is rendered through the official lesson pipeline. LaTeX and PDF continue to
+build the course roadmap without generating lesson HTML pages.
+
+The existing single-lesson commands remain unchanged:
+  edutex validate --project .
+  edutex build --project .

@@ -1,0 +1,6 @@
+id: reading_tip
+name: "Reading Tip"
+version: "1.0.0"
+target: "layout.post_structure"
+module: "extension.py"
+entrypoint: "apply"

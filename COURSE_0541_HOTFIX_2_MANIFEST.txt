@@ -1,0 +1,30 @@
+EduTeX 0.5.41 release metadata contract final test hotfix
+
+Problem fixed
+The previous Q009 test hotfix correctly expanded the extra-results fixture to
+nine results, but its expected summary still declared passed=8. The fixture
+contains eight known passing checks plus one intentionally unknown passing result,
+so the summary helper correctly reports nine passed results, nine completed
+results, zero pending checks, and a 100% completion rate.
+
+Change
+- tests/test_quality_check.py
+  - Updated passed from 8 to 9 in
+    test_quality_baseline_summary_is_non_negative_for_extra_results().
+
+No production code changed. Q009 release metadata validation, the
+edutex.quality-baseline.v1 report schema, and Q001-Q009 implementation remain
+unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.41_release_metadata_contract_hotfix_2.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

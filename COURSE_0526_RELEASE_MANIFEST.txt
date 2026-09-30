@@ -1,0 +1,57 @@
+EduTeX 0.5.26 - Quality missing-check diagnostics
+
+Scope
+- Identify expected quality checks that did not produce a completed result.
+- Expose quality_baseline_missing_checks(results) for local consumers.
+- Add the ordered missing_checks list to the existing JSON quality report.
+- Preserve complete runs, failed-run semantics, catalog/execution consistency,
+  report schema, and existing fields.
+- Add focused tests for empty, interrupted, and complete runs.
+- Document missing-check semantics in QL-013.
+
+Changed files
+- tools/quality_check.py
+  - Added quality_baseline_missing_checks().
+  - Added missing_checks to quality_baseline_report().
+- tests/test_quality_check.py
+  - Added empty, interrupted, and complete missing-check coverage.
+  - Added missing_checks report assertions.
+- docs/quality_process_spec.md
+  - Documented missing-check behavior in QL-013.
+
+Compatibility
+- Existing edutex.quality-baseline.v1 schema identifier remains unchanged.
+- Existing report fields and outcome semantics remain available.
+- Complete runs report an empty missing_checks list.
+- No runtime dependency or CLI command was added.
+
+Validation
+- Python compileall: PASS.
+- AST validation for implementation and tests: PASS.
+- Empty-run missing IDs: PASS.
+- Interrupted-run missing IDs: PASS.
+- Complete-run empty list: PASS.
+- Complete/failed/incomplete outcome compatibility: PASS.
+- JSON serialization: PASS.
+- pytest: not available in the offline environment; no installation attempted.
+
+PowerShell commands
+Run these from the repository root.
+
+Apply the release archive:
+  tar -xzf .\edutex_0.5.26_quality_missing_checks.tar.gz -C .
+
+Run syntax validation:
+  python -m compileall -q .\tools .\tests
+
+Run the focused test module when pytest is installed:
+  python -m pytest -q .\tests\test_quality_check.py
+
+Run the complete test suite when pytest is installed:
+  python -m pytest -q
+
+Run the quality runner:
+  python .\tools\quality_check.py --verbose
+
+Print the JSON baseline report:
+  python .\tools\quality_check.py --json

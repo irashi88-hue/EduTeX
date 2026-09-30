@@ -1,0 +1,28 @@
+EduTeX 0.5.42 quality report schema contract test hotfix
+
+Problem fixed
+Two stale Q009-only expectations remained in the missing-check fixture after
+adding Q010:
+- the empty-result tuple listed Q010 twice;
+- the two-result prefix expected missing checks only through Q009.
+
+Change
+- tests/test_quality_check.py
+  - corrected the empty missing-check tuple to Q001-Q010 exactly once;
+  - added Q010 to the missing-check prefix expectation.
+
+No production code changed. Q010, the edutex.quality-baseline.v1 schema, and
+Q001-Q009 behavior remain unchanged.
+
+Apply from the repository root in PowerShell:
+  tar -xzf .\\edutex_0.5.42_quality_report_schema_contract_hotfix.tar.gz -C .
+
+Run focused validation:
+  python -m pytest -q .\\tests\\test_quality_check.py
+
+Run complete validation:
+  python -m pytest -q
+
+Run the quality baseline:
+  python .\\tools\\quality_check.py --verbose
+  python .\\tools\\quality_check.py --json

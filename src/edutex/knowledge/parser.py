@@ -140,6 +140,9 @@ def _parse_block(lines: list[str], start: int, depth: int = 0
     `depth` tracks nesting level (0 = top-level).
     """
     opening = lines[start].strip()
+    opening_match = _OPEN_RE.match(opening)
+    if opening_match and opening_match.group(1) != opening_match.group(1).lower():
+        raise ParseError("Shortcode type and subtype names must be lowercase.", start + 1)
     sc_type, sc_subtype, fields = _parse_open_line(opening)
 
     # Validate type
@@ -189,6 +192,11 @@ def _parse_block(lines: list[str], start: int, depth: int = 0
                     i + 1,
                 )
             child, i = _parse_block(lines, i, depth=depth + 1)
+            if sc_type != "exercise" or child.type != "solution":
+                raise ParseError(
+                    "Only a solution shortcode may be nested inside an exercise.",
+                    child.line,
+                )
             node.children.append(child)
             continue
 
@@ -234,6 +242,11 @@ def parse(source: str) -> list[dict]:
             flush_text()
             node, i = _parse_block(lines, i, depth=0)
             ast.append(node.to_dict())
+        elif _CLOSE_RE.match(stripped):
+            raise ParseError(
+                "Unexpected closing delimiter ':::'. There is no open shortcode to close.",
+                i + 1,
+            )
         else:
             pending_text.append(line)
             i += 1

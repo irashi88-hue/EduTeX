@@ -1,0 +1,50 @@
+name: EduTeX quality
+
+on:
+  push:
+    branches:
+      - development
+      - "feature/**"
+  pull_request:
+    branches:
+      - development
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install ".[dev]"
+
+      - name: Compile Python sources
+        run: python -m compileall -q src tests tools
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      - name: Run quality baseline
+        run: python tools/quality_check.py --verbose
+
+      - name: Run packaging smoke
+        run: python tools/release_smoke.py

@@ -1,7 +1,7 @@
 # Contratto JSON pubblico di EduTeX
 
 Stato: candidato per V1
-Versione di riferimento: 0.7.0
+Versione di riferimento: 1.0.0
 
 Questo documento descrive il contratto osservabile dei rapporti JSON prodotti
 con l'opzione `--format json`. Il contratto è ricavato dall'inventario eseguito

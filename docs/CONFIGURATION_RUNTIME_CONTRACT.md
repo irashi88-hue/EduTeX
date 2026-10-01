@@ -1,7 +1,7 @@
 # Contratto runtime della configurazione di EduTeX
 
 Stato: candidato per V1
-Versione di riferimento: 0.9.0
+Versione di riferimento: 1.0.0
 
 Questo documento descrive il comportamento runtime osservato del caricamento e
 della risoluzione della configurazione EduTeX. Il contratto distingue lo
@@ -16,7 +16,7 @@ Le sezioni obbligatorie sono:
 
 ```yaml
 edutex:
-  version: "0.5.0"
+  version: "1.0.0"
 knowledge:
   model: "assets/knowledge_models/example.md"
 theme:

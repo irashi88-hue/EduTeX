@@ -78,7 +78,7 @@ PACKAGING_CONTRACT = (
     (
         "src/edutex/core/cli.py",
         (
-            'CLI_VERSION = "0.5.0"',
+            'CLI_VERSION = "1.0.0"',
             '@main.command("init")',
             '@main.command("lint")',
             '@main.command("build")',
@@ -510,7 +510,7 @@ def _write_course_project(root: Path, directory: Path) -> None:
         shutil.copytree(assets, directory / "assets")
     (directory / "edutex.config.yaml").write_text(
         "edutex:\n"
-        "  version: \"0.5.0\"\n"
+        "  version: \"1.0.0\"\n"
         "knowledge:\n"
         "  model: \"assets/knowledge_models/example.md\"\n"
         "theme:\n"

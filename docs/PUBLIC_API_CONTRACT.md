@@ -1,7 +1,7 @@
 # Contratto dell'API pubblica di EduTeX
 
 Stato: candidato per V1
-Versione di riferimento: 0.5.0
+Versione di riferimento: 1.0.0
 
 Questo documento descrive l'interfaccia pubblica che EduTeX deve mantenere
 stabile verso la versione 1.0.0.
@@ -78,7 +78,7 @@ Le chiavi supportate sono:
 
 ```yaml
 edutex:
-  version: "0.5.0"
+  version: "1.0.0"
 
 knowledge:
   model: "assets/knowledge_models/example.md"

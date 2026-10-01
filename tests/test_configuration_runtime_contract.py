@@ -19,7 +19,7 @@ CONTRACT = ROOT / "docs" / "CONFIGURATION_RUNTIME_CONTRACT.md"
 
 def minimal_config() -> dict[str, object]:
     return {
-        "edutex": {"version": "0.5.0"},
+        "edutex": {"version": "1.0.0"},
         "knowledge": {"model": "assets/knowledge_models/example.md"},
         "theme": {"name": "default"},
         "layout": {"name": "default"},

@@ -1,7 +1,7 @@
 # Catalogo diagnostico pubblico di EduTeX
 
 Stato: candidato per V1
-Versione di riferimento: 0.8.0
+Versione di riferimento: 1.0.0
 
 Questo documento descrive le diagnostiche già esposte dalla CLI e dai rapporti
 JSON di EduTeX. Il catalogo mantiene separati i contratti delle estensioni,

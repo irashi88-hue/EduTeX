@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.0.0 — Stable V1 release
+
+EduTeX 1.0.0 è la prima release stabile della V1. Stabilizza la CLI pubblica, i contratti JSON, le diagnostiche, la configurazione runtime, il packaging e il quality gate.
+
 ## Release 0.5.0 — V1 release foundation
 
 EduTeX 0.5.0 consolida la base tecnica necessaria verso V1.

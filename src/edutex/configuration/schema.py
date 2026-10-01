@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class _ImmutableConfigModel(BaseModel):
@@ -106,7 +106,16 @@ class ExtensionsConfig(_ImmutableConfigModel):
         cleaned = [item.strip() for item in value]
         if any(not item for item in cleaned):
             raise ValueError("extension names must not be empty")
-        return _ImmutableList(cleaned)
+        return cleaned
+
+    @model_validator(mode="after")
+    def freeze_enabled(self) -> "ExtensionsConfig":
+        object.__setattr__(
+            self,
+            "enabled",
+            _ImmutableList(self.enabled),
+        )
+        return self
 
 
 class LoggingConfig(_ImmutableConfigModel):

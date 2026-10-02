@@ -26,6 +26,7 @@ from edutex.core.errors import ConfigurationError, EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
 from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostics
 from edutex.extension.models import ExtensionDiagnostic
+from edutex.extension.loader import ExtensionLoader
 from edutex.extension.service import ExtensionService
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
@@ -288,34 +289,41 @@ def _format_inspection_error_json(
     )
 
 
+def _inspection_entity(record: EntityRecord) -> dict[str, str]:
+    """Serialize one runtime entity using stable public field names."""
+    return {
+        "id": record.entity_id,
+        "type": record.entity_type.name.lower(),
+        "source_path": str(record.source_path.resolve()),
+    }
+
+
+def _inspection_edge(edge) -> dict[str, str]:
+    """Serialize one resolved graph edge."""
+    return {
+        "source_id": edge.source_id,
+        "source_type": edge.source_type.name.lower(),
+        "target_id": edge.target_id,
+        "target_type": edge.target_type.name.lower(),
+        "reference_type": edge.reference_type,
+    }
+
+
 def _inspect_project(
     config_path: Path,
     project_root: Path,
 ) -> dict[str, object]:
     """Build the deterministic JSON payload for the inspect command."""
     config = load_config(config_path)
-
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
     theme_path = (
-        project_root
-        / "assets"
-        / "themes"
-        / config.theme.name
-        / "theme.yaml"
+        project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
     )
     layout_path = (
-        project_root
-        / "assets"
-        / "layouts"
-        / config.layout.name
-        / "layout.yaml"
+        project_root / "assets" / "layouts" / config.layout.name / "layout.yaml"
     )
     extension_paths = [
-        project_root
-        / "assets"
-        / "extensions"
-        / extension_id
-        / "extension.yaml"
+        project_root / "assets" / "extensions" / extension_id / "extension.yaml"
         for extension_id in config.extensions.enabled
     ]
 
@@ -326,27 +334,56 @@ def _inspect_project(
     )
     for description, asset_path in required_assets:
         if not asset_path.is_file():
-            raise ConfigurationError(
-                f"{description} not found: {asset_path}"
-            )
-
+            raise ConfigurationError(f"{description} not found: {asset_path}")
     for extension_id, extension_path in zip(
         config.extensions.enabled,
         extension_paths,
     ):
         if not extension_path.is_file():
             raise ConfigurationError(
-                f"Extension asset '{extension_id}' not found: "
-                f"{extension_path}"
+                f"Extension asset '{extension_id}' not found: {extension_path}"
             )
 
+    extension_loader = ExtensionLoader()
+    extension_details: list[dict[str, object]] = []
+    for extension_id, extension_path in zip(
+        config.extensions.enabled,
+        extension_paths,
+    ):
+        manifest = extension_loader.read_manifest(
+            extension_path,
+            expected_id=extension_id,
+        )
+        module_path = extension_loader.local_module_path(
+            extension_path.parent,
+            manifest,
+        )
+        extension_details.append(
+            {
+                "id": manifest.extension_id,
+                "name": manifest.name,
+                "version": manifest.version,
+                "target": manifest.target,
+                "module": manifest.module,
+                "entrypoint": manifest.entrypoint,
+                "manifest_path": str(extension_path.resolve()),
+                "module_path": str(module_path) if module_path is not None else None,
+                "module_exists": True if module_path is not None else None,
+            }
+        )
+
+    registry = _register_project_assets(config, project_root)
+    graph = Resolver(registry).resolve()
+    registry_entities = [_inspection_entity(record) for record in registry.get_all()]
+    graph_entities = [_inspection_entity(record) for record in graph.entities]
+    graph_edges = [_inspection_edge(edge) for edge in graph.edges]
     output_dir = _resolve_path(project_root, config.build.output_dir)
 
     return {
         "inspection": {
             "status": "completed",
-            "project_root": str(project_root),
-            "config_file": str(config_path),
+            "project_root": str(project_root.resolve()),
+            "config_file": str(config_path.resolve()),
             "configuration": {
                 "framework_version": config.edutex.version,
                 "knowledge_model": config.knowledge.model.as_posix(),
@@ -368,6 +405,20 @@ def _inspect_project(
                     _inspection_asset(extension_path)
                     for extension_path in extension_paths
                 ],
+            },
+            "runtime": {
+                "registry": {
+                    "entity_count": len(registry_entities),
+                    "entities": registry_entities,
+                },
+                "resolver": {
+                    "status": "completed",
+                    "entity_count": len(graph_entities),
+                    "edge_count": len(graph_edges),
+                    "entities": graph_entities,
+                    "edges": graph_edges,
+                },
+                "extensions": extension_details,
             },
         }
     }

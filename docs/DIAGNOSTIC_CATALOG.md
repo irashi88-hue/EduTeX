@@ -157,8 +157,44 @@ I codici del lint appartengono alla famiglia del Knowledge Model e non devono
 essere confusi con i codici `COURSE_*` della validazione corsi o con
 `ExtensionError`. Il codice osservato nei test esistenti è `SC106`.
 
-Questa tranche stabilizza la separazione delle famiglie, ma non amplia la forma
-interna degli elementi di lint oltre quanto già esposto dalla CLI.
+Il contratto dei suggerimenti nelle diagnostiche `SC*` del lint shortcode è definito nella sezione seguente.
+
+### Suggerimenti nelle diagnostiche del lint shortcode
+
+Le diagnostiche del lint shortcode appartenenti alla famiglia `SC*` possono
+includere il campo opzionale `suggestion`, di tipo stringa. Il campo fornisce
+un'indicazione operativa per correggere il problema rilevato.
+
+- In `edutex lint --format json`, `suggestion` compare nell'oggetto della
+  diagnostica dentro `errors` oppure `warnings`.
+- Nel formato testuale, il suggerimento è mostrato su una riga separata con il
+  prefisso `Suggestion:`.
+- Se non è disponibile, il campo è omesso: non deve essere serializzato come
+  `null` o come stringa vuota.
+- Il campo riguarda le diagnostiche `SC*`; non modifica i contratti delle
+  diagnostiche di estensioni o corsi, né quelli degli altri comandi.
+
+Esempio JSON per un avviso `SC201`:
+
+```json
+{
+  "severity": "warning",
+  "code": "SC201",
+  "message": "Exercise has no nested solution.",
+  "suggestion": "Add a solution shortcode before the exercise closing delimiter.",
+  "path": "lesson.md",
+  "line": 1,
+  "column": 1,
+  "shortcode": "exercise"
+}
+```
+
+Nel testo, il suggerimento segue la diagnostica:
+
+```text
+WARNING lesson.md:1:1 [SC201] Exercise has no nested solution.
+Suggestion: Add a solution shortcode before the exercise closing delimiter.
+```
 
 ## Compatibilità e determinismo
 

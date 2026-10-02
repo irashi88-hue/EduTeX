@@ -139,3 +139,10 @@ python -m pytest -q
 python tools/quality_check.py --verbose
 python tools/release_smoke.py
 ```
+
+## Profili di configurazione V1.1
+
+`edutex build`, `edutex validate`, `edutex inspect` e `edutex course build`
+accettano l'opzione `--profile NAME`. I profili sono definiti in `profiles:` nel
+file `edutex.config.yaml`. `course build --profile` è ammesso solo con `--format
+html`; per PDF e LaTeX l'opzione viene rifiutata.

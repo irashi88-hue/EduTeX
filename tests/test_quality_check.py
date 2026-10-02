@@ -102,9 +102,10 @@ def test_public_cli_contract_is_stable_and_ordered() -> None:
         (("--help",), ("init", "lint", "build", "inspect", "validate")),
         (("init", "--help"), ("--theme", "--language")),
         (("lint", "--help"), ("--format",)),
-        (("build", "--help"), ("--lint",)),
-        (("inspect", "--help"), ("--project", "--config", "--format")),
-        (("validate", "--help"), ("--project", "--config", "--format")),
+        (("build", "--help"), ("--lint", "--profile")),
+        (("inspect", "--help"), ("--project", "--config", "--format", "--profile")),
+        (("validate", "--help"), ("--project", "--config", "--format", "--profile")),
+        (("course", "build", "--help"), ("--profile",)),
     )
 
 

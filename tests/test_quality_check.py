@@ -99,13 +99,14 @@ def test_quality_execution_plan_matches_catalog_order() -> None:
 
 def test_public_cli_contract_is_stable_and_ordered() -> None:
     assert public_cli_contract() == (
-        (("--help",), ("init", "lint", "build", "inspect", "validate")),
+        (("--help",), ("init", "lint", "build", "inspect", "validate", "config")),
         (("init", "--help"), ("--theme", "--language")),
         (("lint", "--help"), ("--format",)),
         (("build", "--help"), ("--lint", "--profile")),
         (("inspect", "--help"), ("--project", "--config", "--format", "--profile")),
         (("validate", "--help"), ("--project", "--config", "--format", "--profile")),
         (("course", "build", "--help"), ("--profile",)),
+    (("config", "diff", "--help"), ("--project", "--config", "--profile", "--format")),
     )
 
 
@@ -116,6 +117,8 @@ def test_packaging_contract_is_stable_and_covers_cli_surface() -> None:
     assert "pyproject.toml" in contract
     assert 'CLI_VERSION = "1.0.0"' in contract["src/edutex/core/cli.py"]
     assert '@main.group("course")' in contract["src/edutex/core/cli.py"]
+    assert '@main.group("config")' in contract["src/edutex/core/cli.py"]
+    assert '@config_group.command("diff")' in contract["src/edutex/core/cli.py"]
     assert "def _format_build_error_json" in contract["src/edutex/core/cli.py"]
 
 

@@ -57,6 +57,7 @@ def test_documentazione_api_pubblica() -> None:
         "edutex build",
         "edutex validate",
         "edutex inspect",
+        "edutex config diff",
         "edutex course validate",
         "edutex course build",
         "--theme default|dark",
@@ -81,6 +82,7 @@ def test_comandi_principali() -> None:
         "build",
         "validate",
         "inspect",
+        "config",
         "course",
     }
 
@@ -88,6 +90,18 @@ def test_comandi_principali() -> None:
 
     assert isinstance(course, click.Group)
     assert set(course.commands) == {"build", "validate"}
+
+
+def test_contratto_config_diff() -> None:
+    config_group = main.commands["config"]
+    assert isinstance(config_group, click.Group)
+    assert set(config_group.commands) == {"diff"}
+
+    command = config_group.commands["diff"]
+    assert find_option(command, "--project").default == Path(".")
+    assert find_option(command, "--config").default == "edutex.config.yaml"
+    assert find_option(command, "--profile").required is True
+    assert get_choices(command, "--format") == ("text", "json")
 
 
 def test_contratto_init() -> None:

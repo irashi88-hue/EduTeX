@@ -146,3 +146,18 @@ python tools/release_smoke.py
 accettano l'opzione `--profile NAME`. I profili sono definiti in `profiles:` nel
 file `edutex.config.yaml`. `course build --profile` è ammesso solo con `--format
 html`; per PDF e LaTeX l'opzione viene rifiutata.
+
+## Confronto tra configurazioni V1.1
+
+`edutex config diff` confronta la configurazione base con un profilo selezionato.
+Il profilo è obbligatorio; il formato predefinito è testo e `--format json`
+produce un rapporto strutturato.
+
+```text
+edutex config diff --profile NAME [--project PROJECT] [--config CONFIG] [--format text|json]
+```
+
+Una comparazione valida restituisce exit code 0 anche se rileva differenze.
+Il rapporto JSON espone `comparison.changed` e `comparison.changes`; ogni
+variazione contiene il percorso e i valori `base_value` e `profile_value`.
+Gli errori di configurazione o di profilo restituiscono exit code 1.

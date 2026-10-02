@@ -1,4 +1,4 @@
-from edutex.knowledge.shortcode_lint import format_text, lint_source
+from edutex.knowledge.shortcode_lint import Diagnostic, format_text, lint_source
 
 def codes(report): return [item.code for item in report.diagnostics]
 
@@ -48,4 +48,21 @@ def test_non_empty_content_shortcodes_remain_valid():
 
     assert report.valid
     assert "SC106" not in [item.code for item in report.diagnostics]
+
+
+def test_suggestion_contract_is_optional_and_serialized():
+    report = lint_source("::: formula.math\n:::\n", path="lesson.md")
+    diagnostic = report.errors[0]
+    suggestion = "Add the formula between the shortcode delimiters."
+
+    assert diagnostic.code == "SC101"
+    assert report.to_dict()["errors"][0]["suggestion"] == suggestion
+    assert f"Suggestion: {suggestion}" in format_text(report)
+
+    without_suggestion = Diagnostic(
+        severity="warning",
+        code="SC299",
+        message="No corrective advice is available.",
+    )
+    assert "suggestion" not in without_suggestion.to_dict()
 

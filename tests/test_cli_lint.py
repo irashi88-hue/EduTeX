@@ -44,6 +44,10 @@ def test_lint_warning_is_non_blocking(tmp_path: Path) -> None:
 
     assert result.exit_code == 0, result.output
     assert "[SC201]" in result.output
+    assert (
+        "Suggestion: Add a solution shortcode before the exercise closing delimiter."
+        in result.output
+    )
     assert "0 errors, 1 warnings." in result.output
 
 
@@ -68,3 +72,6 @@ def test_lint_json_is_machine_readable(tmp_path: Path) -> None:
     assert payload["path"] == str(source)
     assert payload["valid"] is False
     assert payload["errors"][0]["code"] == "SC101"
+    assert payload["errors"][0]["suggestion"] == (
+        "Add the formula between the shortcode delimiters."
+    )

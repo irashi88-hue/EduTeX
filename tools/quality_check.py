@@ -66,10 +66,11 @@ QUALITY_EXIT_CODES = {"passed": 0, "failed": 1, "incomplete": 1}
 # Public CLI surface verified by Q005. Keep this ordered: the order is part of
 # the human-facing help contract and makes regressions easy to diagnose.
 PUBLIC_CLI_CONTRACT = (
-    (("--help",), ("init", "lint", "build", "validate")),
+    (("--help",), ("init", "lint", "build", "inspect", "validate")),
     (("init", "--help"), ("--theme", "--language")),
     (("lint", "--help"), ("--format",)),
     (("build", "--help"), ("--lint",)),
+    (("inspect", "--help"), ("--project", "--config", "--format")),
     (("validate", "--help"), ("--project", "--config", "--format")),
 )
 

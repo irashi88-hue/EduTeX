@@ -18,6 +18,7 @@ edutex = edutex.core.cli:main
 edutex init
 edutex lint
 edutex build
+edutex inspect
 edutex validate
 edutex course validate
 edutex course build
@@ -32,7 +33,11 @@ edutex lint SOURCE_FILE [--format text|json]
 
 edutex build [--project PROJECT] [--config CONFIG] [--lint] [--format text|json]
 
+edutex inspect [--project PROJECT] [--config CONFIG] [--format json]
+
 edutex validate [--project PROJECT] [--config CONFIG] [--format text|json]
+
+edutex inspect [--project PROJECT] [--config CONFIG] [--format json]
 
 edutex course validate [--project PROJECT] [--manifest MANIFEST] [--format text|json]
 
@@ -53,6 +58,10 @@ build --format: text
 validate --project: .
 validate --config: edutex.config.yaml
 validate --format: text
+
+inspect --project: .
+inspect --config: edutex.config.yaml
+inspect --format: json
 
 course validate --project: .
 course validate --manifest: course.yaml

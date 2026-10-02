@@ -64,6 +64,7 @@ def test_documentazione_api_pubblica() -> None:
         "--language en|it|ja",
         "--format text|json",
         "--format html|latex|pdf",
+        "--report-format text|json",
         "--profile NAME",
         "build.output_format",
         "1.0.0",
@@ -163,6 +164,8 @@ def test_contratto_course_build() -> None:
     assert find_option(command, "--manifest").default == "course.yaml"
     assert get_choices(command, "--format") == ("html", "latex", "pdf")
     assert find_option(command, "--output").default is None
+    assert get_choices(command, "--report-format") == ("text", "json")
+    assert find_option(command, "--report-format").default == "text"
 
 def test_profile_option_is_available_on_configuration_commands() -> None:
     commands = (

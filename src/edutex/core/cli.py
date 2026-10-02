@@ -712,6 +712,62 @@ def _add_course_lesson_navigation(
     html_path.write_text(source, encoding="utf-8")
 
 
+def _course_build_artifacts(
+    project_root: Path,
+    manifest_path: Path,
+    output_path: Path,
+    output_format: str,
+) -> list[str]:
+    """Return the stable list of public artifacts produced by course build."""
+    artifacts = [output_path.resolve()]
+    if output_format.lower() == "html":
+        report = validate_course(manifest_path, project_root)
+        if report.manifest is not None:
+            for module in report.manifest.modules:
+                for lesson in module.lessons:
+                    lesson_path = (
+                        project_root / "output" / "lessons" / f"{lesson.lesson_id}.html"
+                    ).resolve()
+                    if lesson_path.is_file():
+                        artifacts.append(lesson_path)
+    return list(dict.fromkeys(str(item) for item in artifacts))
+
+
+def _course_build_report(
+    *,
+    status: str,
+    project_root: Path | None = None,
+    manifest_path: Path | None = None,
+    output_format: str | None = None,
+    output_path: Path | None = None,
+    artifacts: list[str] | None = None,
+    error_type: str | None = None,
+    message: str | None = None,
+) -> str:
+    """Serialize one course-build report without human-readable prefixes."""
+    result: dict[str, object] = {"status": status}
+    if status == "completed":
+        result.update(
+            {
+                "project_root": str(project_root.resolve()),
+                "manifest": str(manifest_path.resolve()),
+                "output_format": output_format,
+                "output": str(output_path.resolve()),
+                "artifacts": artifacts or [],
+            }
+        )
+    else:
+        result["error"] = {
+            "type": error_type or "CourseBuildError",
+            "message": message or "",
+        }
+    return json.dumps(
+        {"course_build": result},
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
 @course_group.command("build")
 @click.option("--project", "project_root", type=click.Path(file_okay=False, dir_okay=True, path_type=Path), default=Path("."), show_default=True)
 @click.option("--manifest", "manifest_file", type=click.Path(dir_okay=False, path_type=Path), default="course.yaml", show_default=True)
@@ -723,22 +779,40 @@ def _add_course_lesson_navigation(
     default=None,
     help="Configuration profile to apply.",
 )
-def course_build_command(project_root: Path, manifest_file: Path, output_format: str, output_file: Path | None, profile: str | None = None) -> None:
+@click.option(
+    "--report-format",
+    "report_format",
+    type=click.Choice(("text", "json"), case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Report format for terminal or tooling integration.",
+)
+def course_build_command(
+    project_root: Path,
+    manifest_file: Path,
+    output_format: str,
+    output_file: Path | None,
+    profile: str | None = None,
+    report_format: str = "text",
+) -> None:
     """Build a course index or printable roadmap."""
     project_root = project_root.resolve()
     manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
-    if profile is not None:
-        if output_format.lower() != "html":
-            raise click.ClickException(
-                "--profile is supported for course build only with --format html."
-            )
-        try:
-            load_config(project_root / "edutex.config.yaml", profile=profile)
-        except ConfigurationError as exc:
-            raise click.ClickException(str(exc)) from exc
+    output_format = output_format.lower()
+    report_format = report_format.lower()
     try:
+        if profile is not None:
+            if output_format != "html":
+                raise CourseBuildError(
+                    "--profile is supported for course build only with --format html."
+                )
+            try:
+                load_config(project_root / "edutex.config.yaml", profile=profile)
+            except ConfigurationError as exc:
+                raise CourseBuildError(str(exc)) from exc
+
         lesson_builder = None
-        if output_format.lower() == "html":
+        if output_format == "html":
             lesson_builder = lambda manifest, lesson, module_number, lesson_number: _build_course_lesson(
                 manifest,
                 lesson,
@@ -754,9 +828,39 @@ def course_build_command(project_root: Path, manifest_file: Path, output_format:
             output_file,
             lesson_builder=lesson_builder,
         )
-    except CourseBuildError as exc:
-        raise click.ClickException(str(exc)) from exc
-    click.echo(f"Course build completed: {output}")
+    except Exception as exc:
+        if report_format == "json":
+            click.echo(
+                _course_build_report(
+                    status="failed",
+                    error_type=exc.__class__.__name__,
+                    message=str(exc),
+                )
+            )
+            raise click.exceptions.Exit(1) from exc
+        if isinstance(exc, CourseBuildError):
+            raise click.ClickException(str(exc)) from exc
+        raise
+
+    if report_format == "json":
+        artifacts = _course_build_artifacts(
+            project_root,
+            manifest_path,
+            output,
+            output_format,
+        )
+        click.echo(
+            _course_build_report(
+                status="completed",
+                project_root=project_root,
+                manifest_path=manifest_path,
+                output_format=output_format,
+                output_path=output,
+                artifacts=artifacts,
+            )
+        )
+    else:
+        click.echo(f"Course build completed: {output}")
 
 
 @main.command("init")

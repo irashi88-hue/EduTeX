@@ -161,3 +161,51 @@ Una comparazione valida restituisce exit code 0 anche se rileva differenze.
 Il rapporto JSON espone `comparison.changed` e `comparison.changes`; ogni
 variazione contiene il percorso e i valori `base_value` e `profile_value`.
 Gli errori di configurazione o di profilo restituiscono exit code 1.
+
+
+## Report JSON di `course build` V1.1
+
+L'opzione `--report-format` controlla il rapporto del comando e non modifica
+`--format`, che continua a selezionare l'artefatto `html`, `latex` o `pdf`.
+Il valore predefinito è `text`, così l'output testuale precedente resta
+compatibile.
+
+```text
+edutex course build [--project PROJECT] [--manifest MANIFEST]
+  [--format html|latex|pdf] [--output OUTPUT]
+  [--profile NAME] [--report-format text|json]
+```
+
+Con `--report-format json`, un successo restituisce:
+
+```json
+{
+  "course_build": {
+    "status": "completed",
+    "project_root": "...",
+    "manifest": "...",
+    "output_format": "html",
+    "output": "...",
+    "artifacts": ["...", "..."]
+  }
+}
+```
+
+`project_root`, `manifest`, `output` e ogni elemento di `artifacts` sono
+percorsi assoluti. `artifacts` elenca tutti gli artefatti pubblici prodotti:
+l'indice e le pagine delle lezioni per HTML, oppure l'artefatto principale per
+LaTeX/PDF. Ogni percorso elencato identifica un file esistente.
+
+Gli errori JSON hanno sempre exit code `1` e questa forma stabile:
+
+```json
+{
+  "course_build": {
+    "status": "failed",
+    "error": {
+      "type": "CourseBuildError",
+      "message": "..."
+    }
+  }
+}
+```

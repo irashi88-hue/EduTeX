@@ -3326,7 +3326,7 @@ def _check_quality_release_baseline_end_to_end_contract(root: Path) -> CheckResu
 
 
 def _check_build_validate_json_contract(root: Path) -> CheckResult:
-    """Verify Build metadata success and structured JSON failure paths."""
+    """Verify Build, Validate, and Course structured JSON paths."""
     failures: list[str] = []
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
@@ -3359,6 +3359,70 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
         valid_payload = read_json(valid, "validate success")
         if valid_payload != {"validation": {"status": "completed"}}:
             failures.append("validate success JSON shape is not stable")
+
+        course_success = _run_module(
+            root,
+            "course",
+            "build",
+            "--project",
+            str(project),
+            "--format",
+            "html",
+            "--report-format",
+            "json",
+        )
+        if course_success.returncode != 0:
+            failures.append(f"course build success path exited {course_success.returncode}: {_output(course_success)}")
+        course_payload = read_json(course_success, "course build success")
+        if course_payload is not None:
+            course_section = course_payload.get("course_build")
+            if not isinstance(course_section, dict):
+                failures.append("course build success JSON is missing its result object")
+            else:
+                if course_section.get("status") != "completed":
+                    failures.append("course build success JSON status is incorrect")
+                if course_section.get("output_format") != "html":
+                    failures.append("course build success JSON format is incorrect")
+                artifacts = course_section.get("artifacts")
+                if not isinstance(artifacts, list) or not artifacts:
+                    failures.append("course build success JSON artifacts are missing")
+                else:
+                    for artifact in artifacts:
+                        if not isinstance(artifact, str) or not Path(artifact).is_absolute() or not Path(artifact).is_file():
+                            failures.append("course build artifact is not an existing absolute path")
+                    output = course_section.get("output")
+                    if output not in artifacts:
+                        failures.append("course build output is not listed among artifacts")
+
+        course_failure = _run_module(
+            root,
+            "course",
+            "build",
+            "--project",
+            str(project),
+            "--manifest",
+            "missing-course.yaml",
+            "--report-format",
+            "json",
+        )
+        course_failure_payload = read_json(course_failure, "course build failure")
+        if course_failure.returncode != 1:
+            failures.append(f"course build failure exited {course_failure.returncode}, expected 1")
+        if course_failure_payload is not None:
+            course_failure_section = course_failure_payload.get("course_build")
+            if not isinstance(course_failure_section, dict):
+                failures.append("course build failure JSON is missing its result object")
+            else:
+                if course_failure_section.get("status") != "failed":
+                    failures.append("course build failure JSON status is incorrect")
+                error = course_failure_section.get("error")
+                if not isinstance(error, dict):
+                    failures.append("course build failure JSON is missing its error object")
+                else:
+                    if error.get("type") != "CourseBuildError":
+                        failures.append("course build failure JSON error type is incorrect")
+                    if not error.get("message"):
+                        failures.append("course build failure JSON error message is empty")
 
         build_success = _run_module(root, "build", "--project", str(project), "--format", "json")
         if build_success.returncode != 0:

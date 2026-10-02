@@ -27,6 +27,40 @@ from edutex.knowledge.parser import parse
 from edutex.registry.models import EntityType
 
 
+def parse_content_model(body: str) -> ContentModel:
+    """Parse Knowledge Model body text into a typed ContentModel."""
+    try:
+        ast = parse(body)
+    except Exception as exc:
+        raise KnowledgeError(f"Shortcode parsing failed: {exc}") from exc
+
+    items = []
+    for node in ast:
+        if node["kind"] == "text":
+            if node["content"].strip():
+                items.append(TextBlock(content=node["content"]))
+        elif node["kind"] == "shortcode":
+            items.append(_convert_content_node(node))
+    return ContentModel(items=items)
+
+
+def _convert_content_node(node: dict) -> ContentNode:
+    """Recursively convert one parser node into a typed content node."""
+    children = [
+        _convert_content_node(child)
+        for child in node.get("children", [])
+        if child.get("kind") == "shortcode"
+    ]
+    return ContentNode(
+        node_type=node["type"],
+        subtype=node.get("subtype"),
+        fields=node.get("fields", []),
+        body=node.get("body", ""),
+        children=children,
+        source_line=node.get("line", 0),
+    )
+
+
 class KnowledgeService:
     """
     Knowledge Service — orchestrates Knowledge Processing (COMP-KNOW-001).
@@ -113,24 +147,8 @@ class KnowledgeService:
     # ------------------------------------------------------------------
 
     def _parse_body(self, body: str) -> ContentModel:
-        """
-        Parse the Knowledge Model body using the shortcode parser
-        and convert the AST (list of dicts) into a typed ContentModel.
-        """
-        try:
-            ast = parse(body)
-        except Exception as exc:
-            raise KnowledgeError(f"Shortcode parsing failed: {exc}") from exc
-
-        items = []
-        for node in ast:
-            if node["kind"] == "text":
-                if node["content"].strip():
-                    items.append(TextBlock(content=node["content"]))
-            elif node["kind"] == "shortcode":
-                items.append(self._convert_node(node))
-
-        return ContentModel(items=items)
+        """Parse body text through the public content-model parser."""
+        return parse_content_model(body)
 
     def _convert_node(self, node: dict) -> ContentNode:
         """Recursively convert a parser dict node into a typed ContentNode."""

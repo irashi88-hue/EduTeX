@@ -237,3 +237,12 @@ from edutex.knowledge import CONTENT_MODEL_SCHEMA_VERSION, content_model_schema
 deterministico e JSON-safe per `ContentModel`, `ContentNode` e `TextBlock`.
 Restituisce un nuovo dizionario a ogni chiamata e non modifica il modello o lo
 schema condiviso.
+
+
+## Raccolta pubblica dei contenuti del corso V1.2
+
+Il modulo `edutex.course` espone `load_course_content`,
+`CourseContentCollection` e `CourseContentEntry`. La raccolta è costruita da
+`course.yaml`, mantiene l'ordine delle lezioni e carica i relativi Knowledge
+Model. `edutex.config.yaml` continua a definire tema, formato, layout e build
+dell'intero progetto.

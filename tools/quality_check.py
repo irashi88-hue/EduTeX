@@ -69,9 +69,10 @@ PUBLIC_CLI_CONTRACT = (
     (("--help",), ("init", "lint", "build", "inspect", "validate")),
     (("init", "--help"), ("--theme", "--language")),
     (("lint", "--help"), ("--format",)),
-    (("build", "--help"), ("--lint",)),
-    (("inspect", "--help"), ("--project", "--config", "--format")),
-    (("validate", "--help"), ("--project", "--config", "--format")),
+    (("build", "--help"), ("--lint", "--profile")),
+    (("inspect", "--help"), ("--project", "--config", "--format", "--profile")),
+    (("validate", "--help"), ("--project", "--config", "--format", "--profile")),
+    (("course", "build", "--help"), ("--profile",)),
 )
 
 
@@ -3395,6 +3396,51 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
                     metadata_path = metadata.get("output_path")
                     if not isinstance(metadata_path, str) or not Path(metadata_path).is_absolute():
                         failures.append("build metadata output_path is not absolute")
+
+        config_path = project / "edutex.config.yaml"
+        profile_config = config_path.read_text(encoding="utf-8")
+        profile_config += (
+            "\nprofiles:\n"
+            "  quality-web:\n"
+            "    build:\n"
+            "      output_format: html\n"
+            "      output_dir: profile-output\n"
+            "      output_file: quality-web\n"
+        )
+        config_path.write_text(profile_config, encoding="utf-8")
+        profiled_build = _run_module(
+            root,
+            "build",
+            "--project",
+            str(project),
+            "--profile",
+            "quality-web",
+            "--format",
+            "json",
+        )
+        if profiled_build.returncode != 0:
+            failures.append(
+                f"profiled build success path exited {profiled_build.returncode}: {_output(profiled_build)}"
+            )
+        profiled_payload = read_json(profiled_build, "profiled build success")
+        if profiled_payload is not None:
+            profiled_section = profiled_payload.get("build")
+            if not isinstance(profiled_section, dict):
+                failures.append("profiled build JSON is missing its build object")
+            else:
+                metadata = profiled_section.get("metadata")
+                if not isinstance(metadata, dict):
+                    failures.append("profiled build JSON metadata object is missing")
+                elif metadata.get("output_format") != "html":
+                    failures.append("selected profile did not set the HTML build format")
+                elif metadata.get("output_path") != str(
+                    (project / "profile-output" / "quality-web.html").resolve()
+                ):
+                    failures.append("selected profile did not set its output path")
+                elif metadata.get("output_exists") is not True:
+                    failures.append("profiled build output does not exist")
+                elif metadata.get("output_path") != profiled_section.get("output"):
+                    failures.append("profiled build metadata output_path is inconsistent")
 
         extension_dir = project / "assets" / "extensions" / "failing_extension"
         extension_dir.mkdir(parents=True)

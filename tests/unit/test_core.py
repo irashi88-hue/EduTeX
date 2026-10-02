@@ -359,7 +359,7 @@ def test_validate_command_coordinates_runtime_lifecycle(tmp_path, monkeypatch):
     )
 
     monkeypatch.setattr(cli_module, "RuntimeContext", RecordingContext)
-    monkeypatch.setattr(cli_module, "load_config", lambda path: config)
+    monkeypatch.setattr(cli_module, "load_config", lambda path, profile=None: config)
     monkeypatch.setattr(
         cli_module,
         "_configure_logging",
@@ -454,7 +454,7 @@ def test_validate_command_marks_failure_and_terminates_extensions(
     )
 
     monkeypatch.setattr(cli_module, "RuntimeContext", RecordingContext)
-    monkeypatch.setattr(cli_module, "load_config", lambda path: config)
+    monkeypatch.setattr(cli_module, "load_config", lambda path, profile=None: config)
     monkeypatch.setattr(
         cli_module,
         "_configure_logging",

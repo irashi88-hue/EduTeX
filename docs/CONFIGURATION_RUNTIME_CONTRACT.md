@@ -1,7 +1,7 @@
 # Contratto runtime della configurazione di EduTeX
 
 Stato: candidato per V1
-Versione di riferimento: 1.0.0
+Versione di riferimento: 1.1.0
 
 Questo documento descrive il comportamento runtime osservato del caricamento e
 della risoluzione della configurazione EduTeX. Il contratto distingue lo
@@ -206,3 +206,12 @@ python -m py_compile .\tests\test_configuration_runtime_contract.py
 python -m pytest -q .\tests\test_configuration_runtime_contract.py
 python -m pytest -q .\tests\test_validate_json.py .\tests\test_build_lint_json.py .\tests\test_course_management.py
 ```
+
+## Profili di configurazione V1.1
+
+I comandi `edutex build`, `edutex validate`, `edutex inspect` e `edutex course build`
+accettano `--profile NAME`. I profili sono definiti nella mappa top-level `profiles`
+di `edutex.config.yaml` e applicano override ricorsivi alla configurazione base;
+liste e valori scalari sostituiscono quelli base. L'assenza dell'opzione conserva il
+comportamento precedente. Per il dettaglio del contratto consultare
+`CONFIGURATION_PROFILES_CONTRACT.md`.

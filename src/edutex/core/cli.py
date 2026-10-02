@@ -210,10 +210,11 @@ def _prepare_project_pipeline(
     context: RuntimeContext,
     *,
     config=None,
+    profile: str | None = None,
 ):
     """Prepare the shared runtime pipeline up to the processing phase."""
     if config is None:
-        config = load_config(config_path)
+        config = load_config(config_path, profile=profile)
     _configure_logging(config.logging.level.value)
     context.advance(LifecyclePhase.CONFIGURING)
 
@@ -312,9 +313,10 @@ def _inspection_edge(edge) -> dict[str, str]:
 def _inspect_project(
     config_path: Path,
     project_root: Path,
+    profile: str | None = None,
 ) -> dict[str, object]:
     """Build the deterministic JSON payload for the inspect command."""
-    config = load_config(config_path)
+    config = load_config(config_path, profile=profile)
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
     theme_path = (
         project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
@@ -396,6 +398,7 @@ def _inspect_project(
                 },
                 "extensions": list(config.extensions.enabled),
                 "logging_level": config.logging.level.value,
+                **({"profile": profile} if profile is not None else {}),
             },
             "assets": {
                 "knowledge_model": _inspection_asset(knowledge_path),
@@ -526,6 +529,7 @@ def _build_course_lesson(
     lesson_number: int,
     *,
     project_root: Path,
+    profile: str | None = None,
 ) -> Path:
     """Build one course lesson through the normal EduTeX pipeline."""
     config_path = project_root / "edutex.config.yaml"
@@ -533,7 +537,7 @@ def _build_course_lesson(
         raise click.ClickException(
             f"Lesson build requires project configuration: {config_path}"
         )
-    config = load_config(config_path)
+    config = load_config(config_path, profile=profile)
     lesson_config = config.model_copy(
         update={
             "knowledge": config.knowledge.model_copy(
@@ -713,10 +717,25 @@ def _add_course_lesson_navigation(
 @click.option("--manifest", "manifest_file", type=click.Path(dir_okay=False, path_type=Path), default="course.yaml", show_default=True)
 @click.option("--format", "output_format", type=click.Choice(("html", "latex", "pdf"), case_sensitive=False), default="html", show_default=True)
 @click.option("--output", "output_file", type=click.Path(dir_okay=False, path_type=Path), default=None)
-def course_build_command(project_root: Path, manifest_file: Path, output_format: str, output_file: Path | None) -> None:
+@click.option(
+    "--profile",
+    type=str,
+    default=None,
+    help="Configuration profile to apply.",
+)
+def course_build_command(project_root: Path, manifest_file: Path, output_format: str, output_file: Path | None, profile: str | None = None) -> None:
     """Build a course index or printable roadmap."""
     project_root = project_root.resolve()
     manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
+    if profile is not None:
+        if output_format.lower() != "html":
+            raise click.ClickException(
+                "--profile is supported for course build only with --format html."
+            )
+        try:
+            load_config(project_root / "edutex.config.yaml", profile=profile)
+        except ConfigurationError as exc:
+            raise click.ClickException(str(exc)) from exc
     try:
         lesson_builder = None
         if output_format.lower() == "html":
@@ -726,6 +745,7 @@ def course_build_command(project_root: Path, manifest_file: Path, output_format:
                 module_number,
                 lesson_number,
                 project_root=project_root,
+                profile=profile,
             )
         output = build_course(
             manifest_path,
@@ -878,7 +898,13 @@ def lint_command(source_file: Path, output_format: str) -> None:
     show_default=True,
     help="Output format for the build result and optional lint report.",
 )
-def build_command(project_root: Path, config_file: Path, run_lint: bool, output_format: str) -> None:
+@click.option(
+    "--profile",
+    type=str,
+    default=None,
+    help="Configuration profile to apply.",
+)
+def build_command(project_root: Path, config_file: Path, run_lint: bool, output_format: str, profile: str | None = None) -> None:
     """Build the configured project and produce the selected output."""
     project_root = project_root.resolve()
     config_path = _resolve_path(project_root, config_file)
@@ -887,7 +913,7 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
     lint_report = None
     extension_diagnostics: list[ExtensionDiagnostic] = []
     try:
-        config = load_config(config_path)
+        config = load_config(config_path, profile=profile)
         if run_lint:
             lint_report = _run_lint_preflight(
                 config,
@@ -972,10 +998,17 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
     show_default=True,
     help="Inspection report format.",
 )
+@click.option(
+    "--profile",
+    type=str,
+    default=None,
+    help="Configuration profile to apply.",
+)
 def inspect_command(
     project_root: Path,
     config_file: Path,
     output_format: str,
+    profile: str | None = None,
 ) -> None:
     """Inspect resolved configuration and project assets."""
     del output_format
@@ -984,7 +1017,7 @@ def inspect_command(
     config_path = _resolve_path(project_root, config_file)
 
     try:
-        payload = _inspect_project(config_path, project_root)
+        payload = _inspect_project(config_path, project_root, profile=profile)
     except EduTeXError as exc:
         click.echo(
             _format_inspection_error_json(
@@ -1030,10 +1063,17 @@ def inspect_command(
     show_default=True,
     help="Output format.",
 )
+@click.option(
+    "--profile",
+    type=str,
+    default=None,
+    help="Configuration profile to apply.",
+)
 def validate_command(
     project_root: Path,
     config_file: Path,
     output_format: str = "text",
+    profile: str | None = None,
 ) -> None:
     """Validate configuration and runtime asset resolution without building."""
     project_root = project_root.resolve()
@@ -1046,6 +1086,7 @@ def validate_command(
             config_path,
             project_root,
             context,
+            profile=profile,
         )
 
         extensions = ExtensionService()

@@ -1,7 +1,7 @@
 document_id:      COMP-CONFIG-001
 title:            EduTeX Configuration Component Specification
 type:             Component Specification
-version:          1.0.0
+version:          1.1.0
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -193,6 +193,8 @@ The nature of the configuration source is an implementation detail and SHALL NOT
 The configuration source MAY be a file, an environment, or any other mechanism defined by the implementation.
 
 Regardless of the source, the resulting configuration model SHALL conform to the configuration schema.
+
+An implementation MAY declare named configuration profiles in a source envelope. A selected profile SHALL be merged into the base values before validation; the resulting validated model remains the single authoritative configuration model and SHALL retain the immutability requirements of this specification. Profile selection SHALL NOT create a second mutable configuration model.
 
 7.3 Configuration Schema
 
@@ -502,8 +504,6 @@ Future versions of Configuration MAY introduce:
 
 a richer schema introspection API within CFG-002;
 
-support for multiple configuration profiles selectable at startup;
-
 a configuration diff mechanism to detect changes across framework versions.
 
 13.2 Stability Commitment
@@ -572,7 +572,7 @@ Sole configuration owner (DR-003), immutability after init, validation before ex
 
 Extension Points
 
-Schema Evolution, Configuration Source Abstraction
+Schema Evolution, Configuration Source Abstraction, Configuration Profiles
 
 15. Change History
 
@@ -581,6 +581,12 @@ Version
 Date
 
 Description
+
+1.1.0
+
+2026-10-02
+
+Added selectable configuration profiles.
 
 1.0.0
 

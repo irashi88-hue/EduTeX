@@ -609,7 +609,7 @@ def _check_course_management(root: Path) -> CheckResult:
             pdf_detail = "; PDF skipped (latex compiler unavailable)"
     query_contract = run_command(
         "Q006 Course management contract",
-        (sys.executable, "-m", "pytest", "-q", "tests/test_content_model_query_contract.py", "tests/test_content_model_schema_contract.py"),
+        (sys.executable, "-m", "pytest", "-q", "tests/test_content_model_query_contract.py", "tests/test_content_model_schema_contract.py", "tests/test_course_content_collection_contract.py"),
         root,
     )
     if not query_contract.passed:

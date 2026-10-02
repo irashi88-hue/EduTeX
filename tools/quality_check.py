@@ -25,7 +25,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q003", "CLI lint JSON", "Validate the public lint command and its JSON output."),
     ("Q004", "build lint preflight", "Exercise blocking, warning, and normal build paths."),
     ("Q005", "CLI contract", "Verify the ordered public command and option help contract."),
-    ("Q006", "Course management contract", "Validate course management and available output paths."),
+    ("Q006", "Course management contract", "Validate course management, content model query, and available output paths."),
     ("Q007", "PDF/LaTeX accessibility contract", "Validate LaTeX accessibility and compiled-PDF gates."),
     ("Q008", "Packaging contract", "Validate the packaged CLI entrypoint and public command surface."),
     ("Q009", "Release metadata contract", "Validate coherent project and CLI release metadata."),
@@ -607,7 +607,23 @@ def _check_course_management(root: Path) -> CheckResult:
             pdf_detail = "; PDF passed"
         else:
             pdf_detail = "; PDF skipped (latex compiler unavailable)"
-    return CheckResult("Q006 Course management contract", True, detail="JSON, HTML, LaTeX passed" + pdf_detail)
+    query_contract = run_command(
+        "Q006 Course management contract",
+        (sys.executable, "-m", "pytest", "-q", "tests/test_content_model_query_contract.py"),
+        root,
+    )
+    if not query_contract.passed:
+        return CheckResult(
+            "Q006 Course management contract",
+            False,
+            query_contract.returncode or 1,
+            "content model query contract failed: " + query_contract.detail,
+        )
+    return CheckResult(
+        "Q006 Course management contract",
+        True,
+        detail="JSON, HTML, LaTeX, and ContentModel query passed" + pdf_detail,
+    )
 
 
 

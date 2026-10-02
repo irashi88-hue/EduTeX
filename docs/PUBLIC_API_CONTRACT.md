@@ -223,3 +223,17 @@ from edutex.knowledge import ContentQuery, query_content
 `all()`, `by_type()`, `by_subtype()`, `search()` e `count()`. I risultati sono
 copie distaccate, includono i nodi annidati in ordine preorder e non modificano
 il `ContentModel` originale.
+
+
+## Schema pubblico del Content Model V1.2
+
+Il modulo `edutex.knowledge` espone:
+
+```python
+from edutex.knowledge import CONTENT_MODEL_SCHEMA_VERSION, content_model_schema
+```
+
+`content_model_schema()` restituisce uno schema JSON Schema Draft 2020-12
+deterministico e JSON-safe per `ContentModel`, `ContentNode` e `TextBlock`.
+Restituisce un nuovo dizionario a ogni chiamata e non modifica il modello o lo
+schema condiviso.

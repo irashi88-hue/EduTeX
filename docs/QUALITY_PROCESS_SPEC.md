@@ -193,7 +193,7 @@ The public CLI contract SHALL be represented by one ordered, testable definition
 used by Q005 and exposed through `public_cli_contract()`. The contract SHALL
 include the following required commands and options:
 
-- top-level help: `init`, `lint`, `build`, and `validate`;
+- top-level help: `init`, `lint`, `build`, `inspect`, and `validate`;
 - `init --help`: `--theme` and `--language`;
 - `lint --help`: `--format`;
 - `build --help`: `--lint`;

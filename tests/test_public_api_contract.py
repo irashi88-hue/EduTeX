@@ -56,6 +56,7 @@ def test_documentazione_api_pubblica() -> None:
         "edutex lint",
         "edutex build",
         "edutex validate",
+        "edutex inspect",
         "edutex course validate",
         "edutex course build",
         "--theme default|dark",
@@ -78,6 +79,7 @@ def test_comandi_principali() -> None:
         "lint",
         "build",
         "validate",
+        "inspect",
         "course",
     }
 
@@ -120,6 +122,15 @@ def test_contratto_validate() -> None:
     assert find_option(command, "--project").default == Path(".")
     assert find_option(command, "--config").default == "edutex.config.yaml"
     assert get_choices(command, "--format") == ("text", "json")
+
+
+
+def test_contratto_inspect() -> None:
+    command = main.commands["inspect"]
+
+    assert find_option(command, "--project").default == Path(".")
+    assert find_option(command, "--config").default == "edutex.config.yaml"
+    assert get_choices(command, "--format") == ("json",)
 
 
 def test_contratto_course_validate() -> None:

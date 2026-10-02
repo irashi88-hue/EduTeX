@@ -99,10 +99,11 @@ def test_quality_execution_plan_matches_catalog_order() -> None:
 
 def test_public_cli_contract_is_stable_and_ordered() -> None:
     assert public_cli_contract() == (
-        (("--help",), ("init", "lint", "build", "validate")),
+        (("--help",), ("init", "lint", "build", "inspect", "validate")),
         (("init", "--help"), ("--theme", "--language")),
         (("lint", "--help"), ("--format",)),
         (("build", "--help"), ("--lint",)),
+        (("inspect", "--help"), ("--project", "--config", "--format")),
         (("validate", "--help"), ("--project", "--config", "--format")),
     )
 

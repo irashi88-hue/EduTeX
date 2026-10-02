@@ -22,7 +22,7 @@ from edutex.activator.activator import Activator
 from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
-from edutex.core.errors import EduTeXError, KnowledgeError
+from edutex.core.errors import ConfigurationError, EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
 from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostics
 from edutex.extension.models import ExtensionDiagnostic
@@ -243,6 +243,125 @@ def _mark_lifecycle_failed(context: RuntimeContext) -> None:
         LifecyclePhase.FAILED,
     }:
         context.advance(LifecyclePhase.FAILED)
+
+
+def _inspection_asset(path: Path) -> dict[str, object]:
+    """Serialize one resolved project asset for inspection."""
+    return {
+        "path": str(path),
+        "exists": path.is_file(),
+    }
+
+
+def _format_inspection_json(payload: dict[str, object]) -> str:
+    """Serialize a successful inspection report."""
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _format_inspection_error_json(
+    message: str,
+    *,
+    error_type: str = "inspection_error",
+) -> str:
+    """Serialize an inspection failure without human-readable prefixes."""
+    return json.dumps(
+        {
+            "inspection": {
+                "status": "failed",
+                "error": {
+                    "type": error_type,
+                    "message": message,
+                },
+            }
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+def _inspect_project(
+    config_path: Path,
+    project_root: Path,
+) -> dict[str, object]:
+    """Build the deterministic JSON payload for the inspect command."""
+    config = load_config(config_path)
+
+    knowledge_path = _resolve_path(project_root, config.knowledge.model)
+    theme_path = (
+        project_root
+        / "assets"
+        / "themes"
+        / config.theme.name
+        / "theme.yaml"
+    )
+    layout_path = (
+        project_root
+        / "assets"
+        / "layouts"
+        / config.layout.name
+        / "layout.yaml"
+    )
+    extension_paths = [
+        project_root
+        / "assets"
+        / "extensions"
+        / extension_id
+        / "extension.yaml"
+        for extension_id in config.extensions.enabled
+    ]
+
+    required_assets = (
+        ("Knowledge Model", knowledge_path),
+        ("Theme asset", theme_path),
+        ("Layout asset", layout_path),
+    )
+    for description, asset_path in required_assets:
+        if not asset_path.is_file():
+            raise ConfigurationError(
+                f"{description} not found: {asset_path}"
+            )
+
+    for extension_id, extension_path in zip(
+        config.extensions.enabled,
+        extension_paths,
+    ):
+        if not extension_path.is_file():
+            raise ConfigurationError(
+                f"Extension asset '{extension_id}' not found: "
+                f"{extension_path}"
+            )
+
+    output_dir = _resolve_path(project_root, config.build.output_dir)
+
+    return {
+        "inspection": {
+            "status": "completed",
+            "project_root": str(project_root),
+            "config_file": str(config_path),
+            "configuration": {
+                "framework_version": config.edutex.version,
+                "knowledge_model": config.knowledge.model.as_posix(),
+                "theme": config.theme.name,
+                "layout": config.layout.name,
+                "build": {
+                    "output_format": config.build.output_format.value,
+                    "output_dir": str(output_dir),
+                    "output_file": config.build.output_file,
+                },
+                "extensions": list(config.extensions.enabled),
+                "logging_level": config.logging.level.value,
+            },
+            "assets": {
+                "knowledge_model": _inspection_asset(knowledge_path),
+                "theme": _inspection_asset(theme_path),
+                "layout": _inspection_asset(layout_path),
+                "extensions": [
+                    _inspection_asset(extension_path)
+                    for extension_path in extension_paths
+                ],
+            },
+        }
+    }
 
 
 def build_project(
@@ -760,6 +879,64 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
         )
     else:
         click.echo(f"Build completed: {output_path}")
+
+
+@main.command("inspect")
+@click.option(
+    "--project",
+    "project_root",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project directory containing edutex.config.yaml and assets.",
+)
+@click.option(
+    "--config",
+    "config_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default="edutex.config.yaml",
+    show_default=True,
+    help="Configuration file, relative to the project directory unless absolute.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(("json",), case_sensitive=False),
+    default="json",
+    show_default=True,
+    help="Inspection report format.",
+)
+def inspect_command(
+    project_root: Path,
+    config_file: Path,
+    output_format: str,
+) -> None:
+    """Inspect resolved configuration and project assets."""
+    del output_format
+
+    project_root = project_root.resolve()
+    config_path = _resolve_path(project_root, config_file)
+
+    try:
+        payload = _inspect_project(config_path, project_root)
+    except EduTeXError as exc:
+        click.echo(
+            _format_inspection_error_json(
+                str(exc),
+                error_type=exc.__class__.__name__,
+            )
+        )
+        raise click.exceptions.Exit(1) from exc
+    except OSError as exc:
+        click.echo(
+            _format_inspection_error_json(
+                f"File operation failed: {exc}",
+                error_type="file_error",
+            )
+        )
+        raise click.exceptions.Exit(1) from exc
+
+    click.echo(_format_inspection_json(payload))
 
 
 @main.command("validate")

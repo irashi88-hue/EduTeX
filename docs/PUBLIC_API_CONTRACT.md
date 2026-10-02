@@ -209,3 +209,17 @@ Gli errori JSON hanno sempre exit code `1` e questa forma stabile:
   }
 }
 ```
+
+
+## API pubblica di query del Content Model V1.2
+
+Il modulo `edutex.knowledge` espone gli entry point Python:
+
+```python
+from edutex.knowledge import ContentQuery, query_content
+```
+
+`query_content(content_model)` restituisce una query read-only con le operazioni
+`all()`, `by_type()`, `by_subtype()`, `search()` e `count()`. I risultati sono
+copie distaccate, includono i nodi annidati in ordine preorder e non modificano
+il `ContentModel` originale.

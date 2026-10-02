@@ -3322,7 +3322,7 @@ def _check_quality_release_baseline_end_to_end_contract(root: Path) -> CheckResu
 
 
 def _check_build_validate_json_contract(root: Path) -> CheckResult:
-    """Verify structured JSON success and Extension-diagnostic failure paths."""
+    """Verify Build metadata success and structured JSON failure paths."""
     failures: list[str] = []
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
@@ -3355,6 +3355,46 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
         valid_payload = read_json(valid, "validate success")
         if valid_payload != {"validation": {"status": "completed"}}:
             failures.append("validate success JSON shape is not stable")
+
+        build_success = _run_module(root, "build", "--project", str(project), "--format", "json")
+        if build_success.returncode != 0:
+            failures.append(f"build success path exited {build_success.returncode}: {_output(build_success)}")
+        build_success_payload = read_json(build_success, "build success")
+        if build_success_payload is not None:
+            if build_success_payload.get("lint") is not None:
+                failures.append("build success JSON changed the default lint field")
+            build_section = build_success_payload.get("build")
+            if not isinstance(build_section, dict):
+                failures.append("build success JSON is missing its build object")
+            else:
+                if build_section.get("status") != "completed":
+                    failures.append("build success JSON status is incorrect")
+                output_value = build_section.get("output")
+                if not isinstance(output_value, str):
+                    failures.append("build success JSON output path is missing")
+                else:
+                    output_path = Path(output_value)
+                    if not output_path.is_absolute() or not output_path.is_file():
+                        failures.append("build success output is not an existing absolute path")
+                metadata = build_section.get("metadata")
+                if not isinstance(metadata, dict):
+                    failures.append("build success JSON metadata object is missing")
+                else:
+                    expected_metadata = {
+                        "project_root": str(project.resolve()),
+                        "config_file": str((project / "edutex.config.yaml").resolve()),
+                        "output_format": "html",
+                    }
+                    for key, expected in expected_metadata.items():
+                        if metadata.get(key) != expected:
+                            failures.append(f"build metadata field {key} is incorrect")
+                    if metadata.get("output_path") != output_value:
+                        failures.append("build metadata output_path does not match build.output")
+                    if metadata.get("output_exists") is not True:
+                        failures.append("build metadata output_exists is not true")
+                    metadata_path = metadata.get("output_path")
+                    if not isinstance(metadata_path, str) or not Path(metadata_path).is_absolute():
+                        failures.append("build metadata output_path is not absolute")
 
         extension_dir = project / "assets" / "extensions" / "failing_extension"
         extension_dir.mkdir(parents=True)
@@ -3418,7 +3458,7 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
     return CheckResult(
         "Q036 Build/Validate JSON contract",
         True,
-        detail="Build and Validate JSON success and Extension-diagnostic failure paths passed",
+        detail="Build metadata success and Build/Validate Extension-diagnostic failure paths passed",
     )
 
 
@@ -3435,6 +3475,8 @@ def _check_extension_error_payload(
         return
     if section.get("status") != "failed":
         failures.append(f"{root_key} JSON failure status is incorrect")
+    if root_key == "build" and "metadata" in section:
+        failures.append("build failure JSON must not contain metadata")
     error = section.get("error")
     if not isinstance(error, dict):
         failures.append(f"{root_key} JSON is missing its error object")

@@ -152,6 +152,12 @@ def test_build_with_lint_json_succeeds_and_reports_output(tmp_path: Path) -> Non
     assert payload["lint"]["warnings"] == []
     assert payload["build"]["status"] == "completed"
     assert payload["build"]["output"].endswith("document.html")
+    metadata = payload["build"]["metadata"]
+    assert metadata["project_root"] == str(project.resolve())
+    assert metadata["config_file"] == str((project / "edutex.config.yaml").resolve())
+    assert metadata["output_format"] == "html"
+    assert metadata["output_path"] == payload["build"]["output"]
+    assert metadata["output_exists"] is True
 
 
 def test_build_with_lint_json_preserves_warnings_and_continues(tmp_path: Path) -> None:
@@ -186,6 +192,7 @@ def test_build_with_lint_json_blocks_on_errors(tmp_path: Path) -> None:
     assert payload["build"]["status"] == "blocked"
     assert payload["build"]["message"] == "Build blocked: shortcode lint found errors."
     assert "output" not in payload["build"]
+    assert "metadata" not in payload["build"]
     assert not (project / "output" / "document.html").exists()
 
 

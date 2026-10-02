@@ -120,7 +120,14 @@ def _run_lint_preflight(config, project_root: Path, *, output_format: str = "tex
     return report
 
 
-def _format_build_json(report, *, status: str, output_path: Path | None = None, message: str | None = None) -> str:
+def _format_build_json(
+    report,
+    *,
+    status: str,
+    output_path: Path | None = None,
+    message: str | None = None,
+    metadata: dict[str, object] | None = None,
+) -> str:
     """Serialize one complete build/lint result without mixed terminal text."""
     payload = {
         "lint": report.to_dict() if report is not None else None,
@@ -130,6 +137,8 @@ def _format_build_json(report, *, status: str, output_path: Path | None = None, 
         payload["build"]["output"] = str(output_path)
     if message is not None:
         payload["build"]["message"] = message
+    if status == "completed" and metadata is not None:
+        payload["build"]["metadata"] = metadata
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
@@ -827,9 +836,8 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
     lint_report = None
     extension_diagnostics: list[ExtensionDiagnostic] = []
     try:
-        config = None
+        config = load_config(config_path)
         if run_lint:
-            config = load_config(config_path)
             lint_report = _run_lint_preflight(
                 config,
                 project_root,
@@ -875,6 +883,13 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
                 lint_report,
                 status="completed",
                 output_path=output_path,
+                metadata={
+                    "project_root": str(project_root),
+                    "config_file": str(config_path.resolve()),
+                    "output_format": config.build.output_format.value,
+                    "output_path": str(output_path),
+                    "output_exists": output_path.is_file(),
+                },
             )
         )
     else:

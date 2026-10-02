@@ -1154,5 +1154,140 @@ def validate_command(
 
 
 
+@main.group("config")
+def config_group() -> None:
+    """Compare and inspect project configuration."""
+
+
+@config_group.command("diff")
+@click.option(
+    "--project",
+    "project_root",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project directory containing the configuration file.",
+)
+@click.option(
+    "--config",
+    "config_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default="edutex.config.yaml",
+    show_default=True,
+    help="Configuration file, relative to the project directory unless absolute.",
+)
+@click.option(
+    "--profile",
+    required=True,
+    type=str,
+    help="Profile to compare against the base configuration.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(("text", "json"), case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Comparison report format.",
+)
+def config_diff_command(
+    project_root: Path,
+    config_file: Path,
+    profile: str,
+    output_format: str,
+) -> None:
+    """Compare the base configuration with one selected profile."""
+    project_root = project_root.expanduser().resolve()
+    config_path = _resolve_path(project_root, config_file).expanduser().resolve()
+    output_format = output_format.lower()
+
+    try:
+        base_config = load_config(config_path)
+        profile_config = load_config(config_path, profile=profile)
+    except EduTeXError as exc:
+        if output_format == "json":
+            click.echo(
+                json.dumps(
+                    {
+                        "comparison": {
+                            "status": "failed",
+                            "error": {
+                                "type": exc.__class__.__name__,
+                                "message": str(exc),
+                            },
+                        }
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            raise click.exceptions.Exit(1) from exc
+        raise click.ClickException(str(exc)) from exc
+
+    changes = _configuration_diff_rows(base_config, profile_config)
+    payload = {
+        "comparison": {
+            "status": "completed",
+            "project_root": str(project_root),
+            "config_file": str(config_path),
+            "profile": profile,
+            "changed": bool(changes),
+            "changes": changes,
+        }
+    }
+
+    if output_format == "json":
+        click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    click.echo(f"Configuration comparison: base -> profile '{profile}'")
+    if not changes:
+        click.echo("No configuration differences.")
+        return
+
+    for change in changes:
+        before = json.dumps(change["base_value"], ensure_ascii=False, sort_keys=True)
+        after = json.dumps(change["profile_value"], ensure_ascii=False, sort_keys=True)
+        click.echo(f"{change['path']}: {before} -> {after}")
+
+
+def _configuration_diff_rows(base_config, profile_config) -> list[dict[str, object]]:
+    """Return a deterministic recursive diff of two validated configurations."""
+    base_values = base_config.model_dump(mode="json")
+    profile_values = profile_config.model_dump(mode="json")
+    changes: list[dict[str, object]] = []
+    missing = object()
+
+    def visit(path: str, base_value: object, profile_value: object) -> None:
+        if isinstance(base_value, dict) and isinstance(profile_value, dict):
+            keys = sorted(set(base_value) | set(profile_value))
+            for key in keys:
+                child_path = f"{path}.{key}" if path else str(key)
+                old = base_value.get(key, missing)
+                new = profile_value.get(key, missing)
+                if old is missing or new is missing:
+                    changes.append(
+                        {
+                            "path": child_path,
+                            "base_value": None if old is missing else old,
+                            "profile_value": None if new is missing else new,
+                        }
+                    )
+                else:
+                    visit(child_path, old, new)
+            return
+        if base_value != profile_value:
+            changes.append(
+                {
+                    "path": path,
+                    "base_value": base_value,
+                    "profile_value": profile_value,
+                }
+            )
+
+    visit("", base_values, profile_values)
+    return changes
+
+
 if __name__ == "__main__":
     main()

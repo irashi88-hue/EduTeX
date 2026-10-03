@@ -28,6 +28,7 @@ from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnosti
 from edutex.extension.models import ExtensionDiagnostic
 from edutex.extension.loader import ExtensionLoader
 from edutex.extension.service import ExtensionService
+from edutex.knowledge.authoring import validate_authoring
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
 from edutex.layout.service import LayoutService
@@ -940,6 +941,46 @@ def init_command(project_dir: Path, theme: str, language: str, force: bool) -> N
     click.echo("Next steps:")
     click.echo(f"  edutex validate --project {target}")
     click.echo(f"  edutex build --project {target}")
+
+
+@main.group("author")
+def author_group() -> None:
+    """Validate Knowledge Model authoring before processing."""
+
+
+@author_group.command("validate")
+@click.argument(
+    "source_file",
+    type=click.Path(exists=False, dir_okay=False, readable=True, path_type=Path),
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(("text", "json"), case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Authoring report format for terminal or tooling integration.",
+)
+def author_validate_command(source_file: Path, output_format: str) -> None:
+    """Validate Knowledge Model frontmatter and shortcode authoring."""
+    report = validate_authoring(source_file)
+    if output_format.lower() == "json":
+        click.echo(
+            json.dumps(
+                {
+                    "authoring": {
+                        "status": "completed",
+                        **report.to_dict(),
+                    }
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        click.echo(report.to_text())
+    if not report.valid:
+        raise click.exceptions.Exit(1)
 
 
 @main.command("lint")

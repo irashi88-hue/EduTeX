@@ -246,3 +246,11 @@ Il modulo `edutex.course` espone `load_course_content`,
 `course.yaml`, mantiene l'ordine delle lezioni e carica i relativi Knowledge
 Model. `edutex.config.yaml` continua a definire tema, formato, layout e build
 dell'intero progetto.
+
+
+## Controlli pubblici di authoring V1.2
+
+Il comando `edutex author validate SOURCE_FILE [--format text|json]` controlla
+frontmatter e shortcode senza modificare il contratto di `edutex lint`.
+Il formato predefinito è testo; il formato JSON è stabile e include status,
+metadati, errori, warning e diagnostica.

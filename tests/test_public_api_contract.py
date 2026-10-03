@@ -79,6 +79,7 @@ def test_documentazione_api_pubblica() -> None:
 def test_comandi_principali() -> None:
     assert set(main.commands) == {
         "init",
+        "author",
         "lint",
         "build",
         "validate",
@@ -178,3 +179,12 @@ def test_profile_option_is_available_on_configuration_commands() -> None:
         parameter = find_option(command, "--profile")
         assert parameter.default is None
         assert parameter.required is False
+
+
+
+def test_contratto_author_validate() -> None:
+    command = main.commands["author"].commands["validate"]
+
+    assert find_parameter(command, "source_file").required is True
+    assert get_choices(command, "--format") == ("text", "json")
+    assert find_option(command, "--format").default == "text"

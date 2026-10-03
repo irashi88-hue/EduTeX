@@ -99,16 +99,17 @@ def test_quality_execution_plan_matches_catalog_order() -> None:
 
 def test_public_cli_contract_is_stable_and_ordered() -> None:
     assert public_cli_contract() == (
-        (("--help",), ("init", "lint", "build", "inspect", "validate", "config")),
+        (("--help",), ("init", "author", "lint", "build", "inspect", "validate", "config")),
         (("init", "--help"), ("--theme", "--language")),
+        (("author", "--help"), ("validate",)),
+        (("author", "validate", "--help"), ("--format",)),
         (("lint", "--help"), ("--format",)),
         (("build", "--help"), ("--lint", "--profile")),
         (("inspect", "--help"), ("--project", "--config", "--format", "--profile")),
         (("validate", "--help"), ("--project", "--config", "--format", "--profile")),
         (("course", "build", "--help"), ("--profile",)),
-    (("config", "diff", "--help"), ("--project", "--config", "--profile", "--format")),
+        (("config", "diff", "--help"), ("--project", "--config", "--profile", "--format")),
     )
-
 
 def test_packaging_contract_is_stable_and_covers_cli_surface() -> None:
     contract = dict(packaging_contract())

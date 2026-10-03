@@ -983,6 +983,71 @@ def author_validate_command(source_file: Path, output_format: str) -> None:
         raise click.exceptions.Exit(1)
 
 
+@main.command("preview")
+@click.argument(
+    "source_file",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+)
+@click.option(
+    "--project",
+    "project_root",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project directory containing edutex.config.yaml and assets.",
+)
+@click.option(
+    "--config",
+    "config_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default="edutex.config.yaml",
+    show_default=True,
+    help="Configuration file, relative to the project directory unless absolute.",
+)
+@click.option(
+    "--profile",
+    type=str,
+    default=None,
+    help="Configuration profile to apply.",
+)
+def preview_command(
+    source_file: Path,
+    project_root: Path,
+    config_file: Path,
+    profile: str | None = None,
+) -> None:
+    """Generate one HTML preview using the project's configured style."""
+    project_root = project_root.expanduser().resolve()
+    source_path = source_file.expanduser().resolve()
+    config_path = _resolve_path(project_root, config_file).expanduser().resolve()
+    try:
+        config = load_config(config_path, profile=profile)
+        preview_config = config.model_copy(
+            update={
+                "knowledge": config.knowledge.model_copy(
+                    update={"model": source_path}
+                ),
+                "build": config.build.model_copy(
+                    update={
+                        "output_format": "html",
+                        "output_dir": Path("output") / "preview",
+                        "output_file": source_path.stem,
+                    }
+                ),
+            }
+        )
+        output = build_project(
+            config_path,
+            project_root,
+            config=preview_config,
+        )
+    except EduTeXError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except OSError as exc:
+        raise click.ClickException(f"File operation failed: {exc}") from exc
+    click.echo(f"Preview generated: {output.resolve()}")
+
+
 @main.command("lint")
 @click.argument(
     "source_file",

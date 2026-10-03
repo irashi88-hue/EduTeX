@@ -80,6 +80,7 @@ def test_comandi_principali() -> None:
     assert set(main.commands) == {
         "init",
         "author",
+        "preview",
         "lint",
         "build",
         "validate",
@@ -188,3 +189,13 @@ def test_contratto_author_validate() -> None:
     assert find_parameter(command, "source_file").required is True
     assert get_choices(command, "--format") == ("text", "json")
     assert find_option(command, "--format").default == "text"
+
+
+
+def test_contratto_preview() -> None:
+    command = main.commands["preview"]
+
+    assert find_parameter(command, "source_file").required is True
+    assert find_option(command, "--project").default == Path(".")
+    assert find_option(command, "--config").default == "edutex.config.yaml"
+    assert find_option(command, "--profile").default is None

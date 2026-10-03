@@ -254,3 +254,12 @@ Il comando `edutex author validate SOURCE_FILE [--format text|json]` controlla
 frontmatter e shortcode senza modificare il contratto di `edutex lint`.
 Il formato predefinito è testo; il formato JSON è stabile e include status,
 metadati, errori, warning e diagnostica.
+
+
+## Anteprima del Knowledge Model V1.2
+
+Il comando `edutex preview SOURCE_FILE [--project PROJECT] [--config CONFIG]
+[--profile NAME]` genera un'anteprima HTML in
+`output/preview/<source_file_stem>.html`, usando tema, layout, estensioni e
+profilo del progetto. Forza solo il formato HTML e non modifica la build
+normale né il file sorgente.

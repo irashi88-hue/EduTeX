@@ -3365,6 +3365,23 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
             if marker not in versioning_text:
                 failures.append(f"extension SemVer implementation is missing marker: {marker}")
 
+    compatibility_contract = root / "docs" / "EXTENSION_COMPATIBILITY_CONTRACT.md"
+    compatibility_module = root / "src" / "edutex" / "extension" / "compatibility.py"
+    if not compatibility_contract.is_file():
+        failures.append("extension compatibility contract documentation is missing")
+    else:
+        compatibility_text = compatibility_contract.read_text(encoding="utf-8")
+        for marker in ("framework", ">=1.0.0,<2.0.0", "ExtensionError"):
+            if marker not in compatibility_text:
+                failures.append(f"extension compatibility contract is missing marker: {marker}")
+    if not compatibility_module.is_file():
+        failures.append("extension compatibility implementation is missing")
+    else:
+        compatibility_source = compatibility_module.read_text(encoding="utf-8")
+        for marker in ("FRAMEWORK_VERSION", "def is_framework_compatible", "def validate_framework_compatibility"):
+            if marker not in compatibility_source:
+                failures.append(f"extension compatibility implementation is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

@@ -226,3 +226,9 @@ python -m pytest -q .\tests\test_build_lint_json.py .\tests\test_validate_json.p
 stringa o non conforme a SemVer 2.0.0. La diagnostica viene esposta come
 `ExtensionError` durante la lettura del manifest, prima dell'importazione del
 modulo.
+
+## Compatibilità estensione/framework
+
+`EXTENSION_FRAMEWORK_INCOMPATIBLE` identifica un vincolo `framework` non
+valido o non soddisfatto dalla versione corrente del framework. La diagnostica
+viene esposta come `ExtensionError` prima dell'importazione del modulo.

@@ -12,6 +12,7 @@ import yaml
 from edutex.core.errors import ExtensionError
 from edutex.extension.models import ExtensionManifest, LoadedExtension
 from edutex.extension.versioning import validate_semver
+from edutex.extension.compatibility import validate_framework_compatibility
 
 
 class ExtensionLoader:
@@ -74,6 +75,19 @@ class ExtensionLoader:
         except ValueError as exc:
             raise ExtensionError(str(exc)) from exc
 
+        declared_framework = raw.get("framework")
+        if declared_framework is not None:
+            if not isinstance(declared_framework, str) or not declared_framework.strip():
+                raise ExtensionError(
+                    "Extension framework compatibility must be a non-empty string."
+                )
+            try:
+                declared_framework = validate_framework_compatibility(
+                    declared_framework.strip()
+                )
+            except ValueError as exc:
+                raise ExtensionError(str(exc)) from exc
+
         extension_id = raw["id"].strip()
         if expected_id is not None and extension_id != expected_id:
             raise ExtensionError(
@@ -87,6 +101,7 @@ class ExtensionLoader:
             target=raw["target"].strip(),
             module=raw["module"].strip(),
             entrypoint=raw["entrypoint"].strip(),
+            framework=declared_framework,
         )
 
     @staticmethod

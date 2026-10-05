@@ -19,3 +19,11 @@ __all__ = [
     "ExtensionService",
     "LoadedExtension",
 ]
+
+
+from edutex.extension.catalog import (
+    ExtensionCatalogEntry,
+    get_official_extension,
+    official_extension_catalog,
+    search_official_extensions,
+)

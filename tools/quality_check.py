@@ -3408,6 +3408,23 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
             if marker not in developer_text:
                 failures.append(f"extension developer contract is missing marker: {marker}")
 
+    catalog_contract = root / "docs" / "EXTENSION_CATALOG_CONTRACT.md"
+    catalog_module = root / "src" / "edutex" / "extension" / "catalog.py"
+    if not catalog_contract.is_file():
+        failures.append("extension catalog contract documentation is missing")
+    else:
+        catalog_text = catalog_contract.read_text(encoding="utf-8")
+        for marker in ("official_extension_catalog", "reading_tip", "metadata-only"):
+            if marker not in catalog_text:
+                failures.append(f"extension catalog contract is missing marker: {marker}")
+    if not catalog_module.is_file():
+        failures.append("extension catalog implementation is missing")
+    else:
+        catalog_source = catalog_module.read_text(encoding="utf-8")
+        for marker in ("class ExtensionCatalogEntry", "def official_extension_catalog", "def search_official_extensions"):
+            if marker not in catalog_source:
+                failures.append(f"extension catalog implementation is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

@@ -232,3 +232,9 @@ modulo.
 `EXTENSION_FRAMEWORK_INCOMPATIBLE` identifica un vincolo `framework` non
 valido o non soddisfatto dalla versione corrente del framework. La diagnostica
 viene esposta come `ExtensionError` prima dell'importazione del modulo.
+
+## Fallback di estensione opzionale
+
+`EXTENSION_OPTIONAL_SKIPPED` identifica un'estensione con `optional: true`
+che non è stata caricata. L'errore originale resta nella
+`ExtensionDiagnostic` non bloccante e il punto di fase è `loading`.

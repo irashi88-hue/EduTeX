@@ -219,3 +219,10 @@ python -m py_compile .\tests\test_diagnostic_catalog.py
 python -m pytest -q .\tests\test_diagnostic_catalog.py
 python -m pytest -q .\tests\test_build_lint_json.py .\tests\test_validate_json.py .\tests\test_course_management.py
 ```
+
+## Versione del manifest di estensione
+
+`EXTENSION_VERSION_INVALID` identifica un campo `version` mancante, non
+stringa o non conforme a SemVer 2.0.0. La diagnostica viene esposta come
+`ExtensionError` durante la lettura del manifest, prima dell'importazione del
+modulo.

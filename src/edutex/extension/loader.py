@@ -11,6 +11,7 @@ import yaml
 
 from edutex.core.errors import ExtensionError
 from edutex.extension.models import ExtensionManifest, LoadedExtension
+from edutex.extension.versioning import validate_semver
 
 
 class ExtensionLoader:
@@ -32,6 +33,7 @@ class ExtensionLoader:
             ) from exc
         if not isinstance(raw, dict):
             raise ExtensionError("Extension asset must be a YAML mapping.")
+
         required = ("id", "name", "version", "target", "module", "entrypoint")
         missing = [
             field
@@ -40,21 +42,38 @@ class ExtensionLoader:
             or raw[field] is None
             or (isinstance(raw[field], str) and not raw[field].strip())
         ]
+        if "version" in missing and "version" in raw:
+            raise ExtensionError(
+                "Extension version must be a valid SemVer 2.0.0 string; "
+                f"got {raw["version"]!r}."
+            )
         if missing:
             raise ExtensionError(
                 f"Extension asset {manifest_path} is missing required fields: "
                 + ", ".join(missing)
             )
+
         invalid = [
             field
             for field in required
             if not isinstance(raw[field], str) or not raw[field].strip()
         ]
+        if "version" in invalid:
+            raise ExtensionError(
+                "Extension version must be a valid SemVer 2.0.0 string; "
+                f"got {raw["version"]!r}."
+            )
         if invalid:
             raise ExtensionError(
                 f"Extension asset {manifest_path} fields must be non-empty strings: "
                 + ", ".join(invalid)
             )
+
+        try:
+            validated_version = validate_semver(raw["version"].strip())
+        except ValueError as exc:
+            raise ExtensionError(str(exc)) from exc
+
         extension_id = raw["id"].strip()
         if expected_id is not None and extension_id != expected_id:
             raise ExtensionError(
@@ -64,7 +83,7 @@ class ExtensionLoader:
         return ExtensionManifest(
             extension_id=extension_id,
             name=raw["name"].strip(),
-            version=raw["version"].strip(),
+            version=validated_version,
             target=raw["target"].strip(),
             module=raw["module"].strip(),
             entrypoint=raw["entrypoint"].strip(),

@@ -3348,6 +3348,23 @@ def _check_quality_release_baseline_end_to_end_contract(root: Path) -> CheckResu
 def _check_build_validate_json_contract(root: Path) -> CheckResult:
     """Verify Build, Validate, and Course structured JSON paths."""
     failures: list[str] = []
+    extension_contract = root / "docs" / "EXTENSION_VERSION_CONTRACT.md"
+    versioning_module = root / "src" / "edutex" / "extension" / "versioning.py"
+    if not extension_contract.is_file():
+        failures.append("extension version contract documentation is missing")
+    else:
+        contract_text = extension_contract.read_text(encoding="utf-8")
+        for marker in ("SemVer 2.0.0", "1.0.0-alpha.1", "1.0.0+build.1"):
+            if marker not in contract_text:
+                failures.append(f"extension version contract is missing marker: {marker}")
+    if not versioning_module.is_file():
+        failures.append("extension SemVer implementation is missing")
+    else:
+        versioning_text = versioning_module.read_text(encoding="utf-8")
+        for marker in ("def is_valid_semver", "def validate_semver", "_is_ascii_digits"):
+            if marker not in versioning_text:
+                failures.append(f"extension SemVer implementation is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

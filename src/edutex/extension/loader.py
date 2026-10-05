@@ -75,6 +75,10 @@ class ExtensionLoader:
         except ValueError as exc:
             raise ExtensionError(str(exc)) from exc
 
+        optional = raw.get("optional", False)
+        if not isinstance(optional, bool):
+            raise ExtensionError("Extension optional flag must be a boolean.")
+
         declared_framework = raw.get("framework")
         if declared_framework is not None:
             if not isinstance(declared_framework, str) or not declared_framework.strip():
@@ -102,6 +106,7 @@ class ExtensionLoader:
             module=raw["module"].strip(),
             entrypoint=raw["entrypoint"].strip(),
             framework=declared_framework,
+            optional=optional,
         )
 
     @staticmethod

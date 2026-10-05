@@ -41,6 +41,7 @@ class ExtensionManifest:
     module: str
     entrypoint: str
     framework: str | None = None
+    optional: bool = False
 
 
 @dataclass(frozen=True)

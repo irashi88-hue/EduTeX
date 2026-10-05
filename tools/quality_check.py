@@ -3382,6 +3382,23 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
             if marker not in compatibility_source:
                 failures.append(f"extension compatibility implementation is missing marker: {marker}")
 
+    optional_contract = root / "docs" / "OPTIONAL_EXTENSION_CONTRACT.md"
+    fallback_module = root / "src" / "edutex" / "extension" / "fallback.py"
+    if not optional_contract.is_file():
+        failures.append("optional extension contract documentation is missing")
+    else:
+        optional_text = optional_contract.read_text(encoding="utf-8")
+        for marker in ("optional: true", "load_extension_with_fallback", "ExtensionDiagnostic"):
+            if marker not in optional_text:
+                failures.append(f"optional extension contract is missing marker: {marker}")
+    if not fallback_module.is_file():
+        failures.append("optional extension fallback implementation is missing")
+    else:
+        fallback_source = fallback_module.read_text(encoding="utf-8")
+        for marker in ("class OptionalExtensionResult", "def load_extension_with_fallback", "optional"):
+            if marker not in fallback_source:
+                failures.append(f"optional extension fallback implementation is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

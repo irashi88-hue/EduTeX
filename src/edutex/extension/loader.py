@@ -45,7 +45,7 @@ class ExtensionLoader:
         if "version" in missing and "version" in raw:
             raise ExtensionError(
                 "Extension version must be a valid SemVer 2.0.0 string; "
-                f"got {raw["version"]!r}."
+                f"got {raw['version']!r}."
             )
         if missing:
             raise ExtensionError(
@@ -61,7 +61,7 @@ class ExtensionLoader:
         if "version" in invalid:
             raise ExtensionError(
                 "Extension version must be a valid SemVer 2.0.0 string; "
-                f"got {raw["version"]!r}."
+                f"got {raw['version']!r}."
             )
         if invalid:
             raise ExtensionError(

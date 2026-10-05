@@ -40,6 +40,7 @@ class ExtensionManifest:
     target: str
     module: str
     entrypoint: str
+    framework: str | None = None
 
 
 @dataclass(frozen=True)

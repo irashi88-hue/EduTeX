@@ -3399,6 +3399,15 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
             if marker not in fallback_source:
                 failures.append(f"optional extension fallback implementation is missing marker: {marker}")
 
+    developer_contract = root / "docs" / "EXTENSION_DEVELOPER_CONTRACT.md"
+    if not developer_contract.is_file():
+        failures.append("extension developer contract documentation is missing")
+    else:
+        developer_text = developer_contract.read_text(encoding="utf-8")
+        for marker in ("extension.yaml", "ExtensionDiagnostic", "load_extension_with_fallback"):
+            if marker not in developer_text:
+                failures.append(f"extension developer contract is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

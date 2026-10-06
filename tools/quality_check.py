@@ -61,6 +61,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q039", "Artifact cache contract", "Validate atomic artifact storage, integrity checks, and deterministic restore."),
     ("Q040", "Large document build contract", "Validate stable lazy ordering and fallback behavior for large documents."),
     ("Q041", "Layout composition contract", "Validate deterministic extends resolution, layered overrides, cycles, and project-root confinement."),
+    ("Q042", "Adaptive layout contract", "Validate opt-in, content-count-based spacing and page-break placement rules."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -2095,7 +2096,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -3954,6 +3955,57 @@ def _check_layout_composition_contract(root: Path) -> CheckResult:
         detail="ordered extends, recursive overrides, cycle handling, and project-root checks passed",
     )
 
+
+def _check_adaptive_layout_contract(root: Path) -> CheckResult:
+    """Verify the opt-in adaptive-layout implementation and contract."""
+    required_files = (
+        root / "src" / "edutex" / "layout" / "adaptive.py",
+        root / "src" / "edutex" / "layout" / "models.py",
+        root / "src" / "edutex" / "layout" / "service.py",
+        root / "docs" / "ADAPTIVE_LAYOUT_CONTRACT.md",
+        root / "tests" / "test_adaptive_layout_contract.py",
+    )
+    failures: list[str] = []
+    for file_path in required_files:
+        if not file_path.is_file():
+            failures.append(f"missing adaptive-layout contract file: {file_path.relative_to(root)}")
+
+    implementation = required_files[0]
+    if implementation.is_file():
+        text = implementation.read_text(encoding="utf-8")
+        for marker in ("parse_adaptive_config", "resolve_adaptive_placement", "page_break_every"):
+            if marker not in text:
+                failures.append(f"adaptive-layout implementation marker missing: {marker}")
+
+    service = required_files[2]
+    if service.is_file():
+        text = service.read_text(encoding="utf-8")
+        for marker in ("parse_adaptive_config", "resolve_adaptive_placement", "adaptive_enabled"):
+            if marker not in text:
+                failures.append(f"layout service does not apply adaptive rules: {marker}")
+
+    contract = required_files[3]
+    if contract.is_file():
+        text = contract.read_text(encoding="utf-8")
+        for marker in ("opt-in", "page_break_every", "valori espliciti", "min_count", "determinismo"):
+            if marker not in text:
+                failures.append(f"adaptive-layout documentation marker missing: {marker}")
+
+    tests = required_files[4]
+    if tests.is_file():
+        text = tests.read_text(encoding="utf-8")
+        for marker in ("parse_adaptive_config", "resolve_adaptive_placement", "LayoutService"):
+            if marker not in text:
+                failures.append(f"adaptive-layout test marker missing: {marker}")
+
+    if failures:
+        return CheckResult("Q042 Adaptive layout contract", False, 1, "\n".join(failures))
+    return CheckResult(
+        "Q042 Adaptive layout contract",
+        True,
+        detail="opt-in thresholds, field-level precedence, source ordering, and adaptive placement passed",
+    )
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -3998,6 +4050,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q039", _check_artifact_cache_contract),
         ("Q040", _check_large_document_build_contract),
         ("Q041", _check_layout_composition_contract),
+        ("Q042", _check_adaptive_layout_contract),
     )
 
 

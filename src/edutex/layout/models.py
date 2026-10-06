@@ -49,6 +49,17 @@ class AppendixConfig:
     page_break_before: bool
 
 
+@dataclass(frozen=True)
+class AdaptivePlacementRule:
+    """Content-count-based placement adjustments, enabled by layout YAML."""
+
+    node_type: str
+    min_count: int = 1
+    page_break_every: int | None = None
+    spacing_before_mm: float | None = None
+    spacing_after_mm: float | None = None
+
+
 @dataclass
 class LayoutModel:
     """
@@ -64,6 +75,9 @@ class LayoutModel:
     appendix:      AppendixConfig = field(
         default_factory=lambda: AppendixConfig(False, "Solutions", True)
     )
+    adaptive_enabled: bool = False
+    adaptive_rules: dict[str, AdaptivePlacementRule] = field(default_factory=dict)
+    explicit_placement_fields: dict[str, frozenset[str]] = field(default_factory=dict)
 
     def get_placement(self, node_type: str) -> PlacementRule:
         """Return the PlacementRule for a node type, falling back to _default."""

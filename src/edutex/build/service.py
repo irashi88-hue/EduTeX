@@ -26,6 +26,7 @@ from pathlib import Path
 
 from edutex.build.html_renderer import HtmlRenderer
 from edutex.build.renderer import LatexRenderer
+from edutex.build.hooks import BuildHookContext, BuildHookPhase, BuildHookRegistry
 from edutex.configuration.schema import EduTexConfig, OutputFormat
 from edutex.core.errors import BuildError
 from edutex.knowledge.service import KnowledgeService
@@ -79,6 +80,56 @@ class BuildService:
     # ------------------------------------------------------------------
 
     def build(
+        self,
+        config: EduTexConfig,
+        knowledge: KnowledgeService,
+        theme: ThemeService,
+        layout: LayoutService,
+        project_root: Path,
+        document: DocumentStructure | None = None,
+        hooks: BuildHookRegistry | None = None,
+    ) -> None:
+        """Build once, optionally invoking registered lifecycle hooks."""
+        if hooks is None:
+            self._build_without_hooks(
+                config, knowledge, theme, layout, project_root, document=document
+            )
+            return
+
+        output_format = str(getattr(config.build.output_format, "value", config.build.output_format))
+        suffixes = {"html": ".html", "latex": ".tex", "pdf": ".pdf"}
+        if output_format not in suffixes:
+            raise BuildError(f"Unsupported output format for build hooks: {output_format!r}")
+        destination = (
+            project_root / config.build.output_dir / f"{config.build.output_file}{suffixes[output_format]}"
+        )
+        self._output_path = None
+        self._tex_source = None
+        self._html_source = None
+        hooks.freeze()
+        hooks.run(
+            BuildHookPhase.PRE_BUILD,
+            BuildHookContext(
+                project_root=project_root,
+                output_format=output_format,
+                output_path=destination,
+                metadata={"hook_phase": BuildHookPhase.PRE_BUILD.value},
+            ),
+        )
+        self._build_without_hooks(
+            config, knowledge, theme, layout, project_root, document=document
+        )
+        hooks.run(
+            BuildHookPhase.POST_BUILD,
+            BuildHookContext(
+                project_root=project_root,
+                output_format=output_format,
+                output_path=self.output_path,
+                metadata={"hook_phase": BuildHookPhase.POST_BUILD.value},
+            ),
+        )
+
+    def _build_without_hooks(
         self,
         config: EduTexConfig,
         knowledge: KnowledgeService,

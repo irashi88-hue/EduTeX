@@ -56,6 +56,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q034", "Quality runner/report consistency contract", "Validate exact consistency between runner results and final reports."),
     ("Q035", "Release baseline end-to-end contract", "Validate the complete public quality baseline JSON path."),
     ("Q036", "Build/Validate JSON contract", "Validate structured JSON success and Extension-diagnostic failure paths for Build and Validate."),
+    ("Q037", "Multi-format build contract", "Validate deterministic multi-format planning and output paths."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -2090,7 +2091,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -3729,6 +3730,53 @@ def _check_extension_error_payload(
         if diagnostic.get(key) != value:
             failures.append(f"{root_key} JSON diagnostic field {key} is incorrect")
 
+
+def _check_multi_format_build_contract(root: Path) -> CheckResult:
+    """Verify the deterministic multi-format build contract markers."""
+    required_files = (
+        root / "src" / "edutex" / "build" / "multi_format.py",
+        root / "docs" / "MULTI_FORMAT_BUILD_CONTRACT.md",
+        root / "tests" / "test_multi_format_build_contract.py",
+    )
+    failures: list[str] = []
+    for file_path in required_files:
+        if not file_path.is_file():
+            failures.append(f"missing multi-format contract file: {file_path.relative_to(root)}")
+    source_path = required_files[0]
+    if source_path.is_file():
+        source_text = source_path.read_text(encoding="utf-8")
+        for marker in (
+            "SUPPORTED_OUTPUT_FORMATS",
+            "normalize_output_formats",
+            "MultiFormatBuildPlan",
+            "execute_multi_format",
+        ):
+            if marker not in source_text:
+                failures.append(f"multi-format implementation marker missing: {marker}")
+    contract_path = required_files[1]
+    if contract_path.is_file():
+        contract_text = contract_path.read_text(encoding="utf-8")
+        for marker in (
+            "opt-in",
+            "ordine dichiarato",
+            "build singolo",
+            "deterministico",
+        ):
+            if marker not in contract_text:
+                failures.append(f"multi-format documentation marker missing: {marker}")
+    if failures:
+        return CheckResult(
+            "Q037 Multi-format build contract",
+            False,
+            1,
+            "\n".join(failures),
+        )
+    return CheckResult(
+        "Q037 Multi-format build contract",
+        True,
+        detail="multi-format planning and deterministic output-path contract markers passed",
+    )
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -3768,6 +3816,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q034", _check_quality_runner_report_consistency_contract),
         ("Q035", _check_quality_release_baseline_end_to_end_contract),
         ("Q036", _check_build_validate_json_contract),
+        ("Q037", _check_multi_format_build_contract),
     )
 
 

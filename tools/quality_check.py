@@ -59,6 +59,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q037", "Multi-format build contract", "Validate deterministic multi-format planning and output paths."),
     ("Q038", "Build hooks contract", "Validate deterministic opt-in pre-build and post-build hooks."),
     ("Q039", "Artifact cache contract", "Validate atomic artifact storage, integrity checks, and deterministic restore."),
+    ("Q040", "Large document build contract", "Validate stable lazy ordering and fallback behavior for large documents."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -2093,7 +2094,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -3861,6 +3862,47 @@ def _check_artifact_cache_contract(root: Path) -> CheckResult:
         detail="artifact-cache integrity, atomicity, and contract markers passed",
     )
 
+
+def _check_large_document_build_contract(root: Path) -> CheckResult:
+    """Verify the lazy ordering optimization and semantic-preservation contract."""
+    required_files = (
+        root / "src" / "edutex" / "build" / "ordering.py",
+        root / "src" / "edutex" / "build" / "renderer.py",
+        root / "src" / "edutex" / "build" / "html_renderer.py",
+        root / "docs" / "LARGE_DOCUMENT_BUILD_CONTRACT.md",
+        root / "tests" / "test_large_document_build_contract.py",
+    )
+    failures: list[str] = []
+    for file_path in required_files:
+        if not file_path.is_file():
+            failures.append(f"missing large-document contract file: {file_path.relative_to(root)}")
+    ordering = required_files[0]
+    if ordering.is_file():
+        text = ordering.read_text(encoding="utf-8")
+        for marker in ("iter_positioned_items", "heapq.merge", "_is_non_decreasing"):
+            if marker not in text:
+                failures.append(f"large-document ordering marker missing: {marker}")
+    for renderer in required_files[1:3]:
+        if renderer.is_file():
+            text = renderer.read_text(encoding="utf-8")
+            if "iter_positioned_items" not in text:
+                failures.append(f"renderer does not use lazy position merge: {renderer.name}")
+            if "all_items.sort" in text:
+                failures.append(f"renderer retains eager all-items sort: {renderer.name}")
+    contract = required_files[3]
+    if contract.is_file():
+        text = contract.read_text(encoding="utf-8")
+        for marker in ("documenti grandi", "O(n)", "fallback stabile", "semantica", "deterministico"):
+            if marker not in text:
+                failures.append(f"large-document documentation marker missing: {marker}")
+    if failures:
+        return CheckResult("Q040 Large document build contract", False, 1, "\n".join(failures))
+    return CheckResult(
+        "Q040 Large document build contract",
+        True,
+        detail="lazy ordering and stable fallback markers passed for both renderers",
+    )
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -3903,6 +3945,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q037", _check_multi_format_build_contract),
         ("Q038", _check_build_hooks_contract),
         ("Q039", _check_artifact_cache_contract),
+        ("Q040", _check_large_document_build_contract),
     )
 
 

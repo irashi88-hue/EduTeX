@@ -60,6 +60,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q038", "Build hooks contract", "Validate deterministic opt-in pre-build and post-build hooks."),
     ("Q039", "Artifact cache contract", "Validate atomic artifact storage, integrity checks, and deterministic restore."),
     ("Q040", "Large document build contract", "Validate stable lazy ordering and fallback behavior for large documents."),
+    ("Q041", "Layout composition contract", "Validate deterministic extends resolution, layered overrides, cycles, and project-root confinement."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -2094,7 +2095,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -3903,6 +3904,56 @@ def _check_large_document_build_contract(root: Path) -> CheckResult:
         detail="lazy ordering and stable fallback markers passed for both renderers",
     )
 
+
+def _check_layout_composition_contract(root: Path) -> CheckResult:
+    """Verify the layered layout-composition implementation and contract."""
+    required_files = (
+        root / "src" / "edutex" / "layout" / "composition.py",
+        root / "src" / "edutex" / "layout" / "service.py",
+        root / "docs" / "LAYOUT_COMPOSITION_CONTRACT.md",
+        root / "tests" / "test_layout_composition_contract.py",
+    )
+    failures: list[str] = []
+    for file_path in required_files:
+        if not file_path.is_file():
+            failures.append(f"missing layout-composition contract file: {file_path.relative_to(root)}")
+
+    implementation = required_files[0]
+    if implementation.is_file():
+        text = implementation.read_text(encoding="utf-8")
+        for marker in ("compose_layout_definitions", "load_composed_layout", "extends", "cycle"):
+            if marker not in text:
+                failures.append(f"layout-composition implementation marker missing: {marker}")
+
+    service = required_files[1]
+    if service.is_file():
+        text = service.read_text(encoding="utf-8")
+        for marker in ("load_composed_layout", "LayoutCompositionError"):
+            if marker not in text:
+                failures.append(f"layout service does not use composition loader: {marker}")
+
+    contract = required_files[2]
+    if contract.is_file():
+        text = contract.read_text(encoding="utf-8")
+        for marker in ("extends", "ordine", "precedenza", "ciclo", "project_root"):
+            if marker not in text:
+                failures.append(f"layout-composition documentation marker missing: {marker}")
+
+    tests = required_files[3]
+    if tests.is_file():
+        text = tests.read_text(encoding="utf-8")
+        for marker in ("load_composed_layout", "LayoutCompositionError", "extends"):
+            if marker not in text:
+                failures.append(f"layout-composition test marker missing: {marker}")
+
+    if failures:
+        return CheckResult("Q041 Layout composition contract", False, 1, "\n".join(failures))
+    return CheckResult(
+        "Q041 Layout composition contract",
+        True,
+        detail="ordered extends, recursive overrides, cycle handling, and project-root checks passed",
+    )
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -3946,6 +3997,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q038", _check_build_hooks_contract),
         ("Q039", _check_artifact_cache_contract),
         ("Q040", _check_large_document_build_contract),
+        ("Q041", _check_layout_composition_contract),
     )
 
 

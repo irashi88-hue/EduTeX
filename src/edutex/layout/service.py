@@ -20,11 +20,11 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
-import yaml
 
 from edutex.activator.activator import ActivatedState
 from edutex.core.errors import LayoutError
 from edutex.knowledge.models import TextBlock
+from edutex.layout.composition import LayoutCompositionError, load_composed_layout
 from edutex.layout.models import (
     AppendixConfig, DocumentElement, DocumentStructure,
     LayoutModel, PageConfig, PlacementRule, SolutionReference,
@@ -114,7 +114,7 @@ class LayoutService:
         )
 
         # Step 2 — load layout asset → LayoutModel (LAYOUT-002)
-        self._layout_model = self._load_layout(layout_path)
+        self._layout_model = self._load_layout(layout_path, project_root)
 
         # Step 3 — assign placement rules and build DocumentStructure (LAYOUT-001)
         styled_content = theme.styled_content
@@ -124,18 +124,15 @@ class LayoutService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_layout(self, layout_path: Path) -> LayoutModel:
+    def _load_layout(
+        self, layout_path: Path, project_root: Path | None = None
+    ) -> LayoutModel:
         """Load and validate the layout.yaml asset."""
-        if not layout_path.exists():
-            raise LayoutError(f"Layout asset not found: {layout_path}")
-
+        root = project_root if project_root is not None else layout_path.parent
         try:
-            raw = yaml.safe_load(layout_path.read_text(encoding="utf-8"))
-        except yaml.YAMLError as exc:
-            raise LayoutError(f"Failed to parse layout asset: {exc}") from exc
-
-        if not isinstance(raw, dict):
-            raise LayoutError("Layout asset must be a YAML mapping.")
+            raw = load_composed_layout(layout_path, root)
+        except LayoutCompositionError as exc:
+            raise LayoutError(str(exc)) from exc
 
         # Page config
         page_raw = raw.get("page", {})

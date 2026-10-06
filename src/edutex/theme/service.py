@@ -18,14 +18,13 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
-import yaml
-
 from edutex.activator.activator import ActivatedState
 from edutex.core.errors import ThemeError
 from edutex.knowledge.models import ContentModel, ContentNode, TextBlock
 from edutex.knowledge.service import KnowledgeService
 from edutex.registry.models import EntityType
 from edutex.theme.models import StyleRule, StyledContent, StyledNode, ThemeModel
+from edutex.theme.composition import ThemeCompositionError, load_composed_theme
 
 
 class ThemeService:
@@ -107,7 +106,7 @@ class ThemeService:
             else configured_path
         )   
         # Step 2 — load theme asset → ThemeModel (THEME-002)
-        self._theme_model = self._load_theme(theme_path)
+        self._theme_model = self._load_theme(theme_path, theme_path.parent.parent)
 
         # Step 3 — apply style rules to ContentModel (KNOW-001) → StyledContent (THEME-001)
         content_model = knowledge.content
@@ -117,20 +116,17 @@ class ThemeService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_theme(self, theme_path: Path) -> ThemeModel:
-        """Load and validate the theme.yaml asset."""
-        if not theme_path.exists():
-            raise ThemeError(f"Theme asset not found: {theme_path}")
-
+    def _load_theme(self, theme_path: Path, theme_root: Path | None = None) -> ThemeModel:
+        """Load, compose, and validate the selected theme asset."""
+        root = theme_root if theme_root is not None else theme_path.parent.parent
         try:
-            raw = yaml.safe_load(theme_path.read_text(encoding="utf-8"))
-        except yaml.YAMLError as exc:
-            raise ThemeError(f"Failed to parse theme asset: {exc}") from exc
-
-        if not isinstance(raw, dict):
-            raise ThemeError("Theme asset must be a YAML mapping.")
+            raw = load_composed_theme(theme_path, root)
+        except ThemeCompositionError as exc:
+            raise ThemeError(str(exc)) from exc
 
         styles_raw = raw.get("styles", {})
+        if not isinstance(styles_raw, dict):
+            raise ThemeError("Theme styles must be a YAML mapping.")
         styles: dict[str, StyleRule] = {}
         for node_type, rule_data in styles_raw.items():
             if not isinstance(rule_data, dict):
@@ -143,15 +139,20 @@ class ThemeService:
                 display=str(rule_data.get("display", "block")),
             )
 
+        palette_raw = raw.get("palette", {})
+        tokens_raw = raw.get("tokens", {})
+        if not isinstance(palette_raw, dict):
+            raise ThemeError("Theme palette must be a YAML mapping.")
+        if not isinstance(tokens_raw, dict):
+            raise ThemeError("Theme tokens must be a YAML mapping.")
+
         return ThemeModel(
             theme_id=str(raw.get("id", "unknown")),
             theme_name=str(raw.get("name", "")),
             version=str(raw.get("version", "1.0.0")),
             styles=styles,
-            palette={
-                str(key): str(value)
-                for key, value in (raw.get("palette", {}) or {}).items()
-            },
+            palette={str(key): str(value) for key, value in palette_raw.items()},
+            tokens=tokens_raw,
         )
 
     def _apply_styles(

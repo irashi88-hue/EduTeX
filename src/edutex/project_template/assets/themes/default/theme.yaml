@@ -10,6 +10,24 @@ name: "EduTeX Default Theme"
 version: "1.0.0"
 author: "EduTeX Project"
 
+palette:
+  canvas: "#eef1f5"
+  page_bg: "#ffffff"
+  surface: "#ffffff"
+  ink: "#172033"
+  muted: "#536176"
+  link: "#2a4a7f"
+  code_bg: "rgba(23,32,51,.08)"
+
+tokens:
+  color:
+    accent: "#2a4a7f"
+  typography:
+    body_font: "sans-serif"
+    base_size_pt: 11
+  spacing:
+    unit_mm: 4
+
 styles:
   rule:
     label: "Rule"

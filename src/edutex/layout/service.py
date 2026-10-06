@@ -25,6 +25,7 @@ from edutex.activator.activator import ActivatedState
 from edutex.core.errors import LayoutError
 from edutex.knowledge.models import TextBlock
 from edutex.layout.composition import LayoutCompositionError, load_composed_layout
+from edutex.layout.adaptive import parse_adaptive_config, resolve_adaptive_placement
 from edutex.layout.models import (
     AppendixConfig, DocumentElement, DocumentStructure,
     LayoutModel, PageConfig, PlacementRule, SolutionReference,
@@ -147,15 +148,24 @@ class LayoutService:
 
         # Placement rules
         placement: dict[str, PlacementRule] = {}
+        explicit_placement_fields: dict[str, frozenset[str]] = {}
         for node_type, rule_data in raw.get("placement", {}).items():
             if not isinstance(rule_data, dict):
                 continue
+            explicit_placement_fields[node_type] = frozenset(rule_data)
             placement[node_type] = PlacementRule(
                 page_break_before=bool(rule_data.get("page_break_before", False)),
                 keep_with_next=bool(rule_data.get("keep_with_next", False)),
                 spacing_before_mm=float(rule_data.get("spacing_before_mm", 4)),
                 spacing_after_mm=float(rule_data.get("spacing_after_mm", 4)),
             )
+
+        try:
+            adaptive_enabled, adaptive_rules = parse_adaptive_config(
+                raw.get("adaptive", {})
+            )
+        except ValueError as exc:
+            raise LayoutError(f"Invalid adaptive layout configuration: {exc}") from exc
 
         # Appendix config
         appendix_raw = raw.get("appendix", {})
@@ -173,6 +183,9 @@ class LayoutService:
             placement=placement,
             section_order=list(raw.get("section_order", [])),
             appendix=appendix,
+            adaptive_enabled=adaptive_enabled,
+            adaptive_rules=adaptive_rules,
+            explicit_placement_fields=explicit_placement_fields,
         )
 
     def _build_structure(
@@ -185,6 +198,11 @@ class LayoutService:
         solution_references: list[SolutionReference] = []
         position = 0
         exercise_index = 0
+        node_counts: dict[str, int] = {}
+        for candidate in styled_content.items:
+            if isinstance(candidate, StyledNode) and candidate.node_type != "solution":
+                node_counts[candidate.node_type] = node_counts.get(candidate.node_type, 0) + 1
+        node_occurrences: dict[str, int] = {}
 
         for item in styled_content.items:
             if isinstance(item, TextBlock):
@@ -225,7 +243,20 @@ class LayoutService:
                     appendix_nodes.append(item)
                 continue
 
+            occurrence_index = node_occurrences.get(item.node_type, 0) + 1
+            node_occurrences[item.node_type] = occurrence_index
             placement = layout_model.get_placement(item.node_type)
+            adaptive_rule = layout_model.adaptive_rules.get(item.node_type)
+            if layout_model.adaptive_enabled and adaptive_rule is not None:
+                placement = resolve_adaptive_placement(
+                    placement,
+                    adaptive_rule,
+                    occurrence_index=occurrence_index,
+                    total_count=node_counts[item.node_type],
+                    explicit_fields=layout_model.explicit_placement_fields.get(
+                        item.node_type, frozenset()
+                    ),
+                )
             elements.append(DocumentElement(
                 styled_node=item,
                 placement=placement,

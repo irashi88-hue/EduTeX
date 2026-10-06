@@ -10,6 +10,7 @@ import html
 import json
 import re
 
+from edutex.build.ordering import iter_positioned_items
 from edutex.knowledge.models import TextBlock
 from edutex.layout.models import DocumentStructure
 from edutex.theme.models import StyledNode, ThemeModel
@@ -135,15 +136,7 @@ class HtmlRenderer:
         self._used_ids: set[str] = set()
         self._labels = _EDUTEX_UI_LABELS[_ui_language(getattr(meta, "language", "en"))]
         body_parts: list[str] = []
-        all_items: list[tuple[int, object]] = []
-
-        for element in doc.elements:
-            all_items.append((element.position_index, element))
-        for position, block in doc.prose_blocks:
-            all_items.append((position, block))
-        all_items.sort(key=lambda item: item[0])
-
-        for _, item in all_items:
+        for _, item in iter_positioned_items(doc.elements, doc.prose_blocks):
             if isinstance(item, TextBlock):
                 rendered = self._render_prose(item)
             else:

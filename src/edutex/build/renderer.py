@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 
+from edutex.build.ordering import iter_positioned_items
 from edutex.knowledge.models import TextBlock
 from edutex.layout.models import DocumentStructure
 from edutex.theme.models import StyledNode, ThemeModel
@@ -147,15 +148,12 @@ class LatexRenderer:
         )
         body_parts: list[str] = []
 
-        # Merge elements and prose blocks in position order
-        all_items: list[tuple[int, object]] = []
-        for el in doc.elements:
-            all_items.append((el.position_index, el.styled_node))
-        for pos, block in doc.prose_blocks:
-            all_items.append((pos, block))
-        all_items.sort(key=lambda x: x[0])
-
-        for _, item in all_items:
+        # Merge position-sorted streams lazily; retain the stable-sort fallback.
+        for _, item in iter_positioned_items(
+            doc.elements,
+            doc.prose_blocks,
+            element_value=lambda element: element.styled_node,
+        ):
             if isinstance(item, TextBlock):
                 body_parts.append(self._render_prose(item))
             elif isinstance(item, StyledNode):

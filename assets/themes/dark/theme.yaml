@@ -1,6 +1,7 @@
 id: dark
 name: "EduTeX Midnight Blue"
 version: "1.0.0"
+extends: [default]
 author: "EduTeX Project"
 
 palette:
@@ -11,6 +12,15 @@ palette:
   muted: "#B8C4D6"
   link: "#7DD3FC"
   code_bg: "#0F1B2D"
+
+tokens:
+  color:
+    accent: "#7DD3FC"
+  typography:
+    body_font: "sans-serif"
+    base_size_pt: 11
+  spacing:
+    unit_mm: 4
 
 styles:
   rule:

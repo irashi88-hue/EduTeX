@@ -3425,6 +3425,23 @@ def _check_build_validate_json_contract(root: Path) -> CheckResult:
             if marker not in catalog_source:
                 failures.append(f"extension catalog implementation is missing marker: {marker}")
 
+    incremental_contract = root / "docs" / "INCREMENTAL_BUILD_CONTRACT.md"
+    incremental_module = root / "src" / "edutex" / "build" / "incremental.py"
+    if not incremental_contract.is_file():
+        failures.append("incremental build contract documentation is missing")
+    else:
+        incremental_text = incremental_contract.read_text(encoding="utf-8")
+        for marker in ("compute_build_fingerprint", "is_incremental_hit", "SHA-256"):
+            if marker not in incremental_text:
+                failures.append(f"incremental build contract is missing marker: {marker}")
+    if not incremental_module.is_file():
+        failures.append("incremental build implementation is missing")
+    else:
+        incremental_source = incremental_module.read_text(encoding="utf-8")
+        for marker in ("def compute_build_fingerprint", "def is_incremental_hit", "def write_incremental_state"):
+            if marker not in incremental_source:
+                failures.append(f"incremental build implementation is missing marker: {marker}")
+
 
     def read_json(result: subprocess.CompletedProcess[str], label: str) -> dict[str, object] | None:
         if result.returncode == 0 and label.endswith("failure"):

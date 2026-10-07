@@ -1216,3 +1216,98 @@ def test_course_lesson_navigation_aria_labels_are_localized(tmp_path: Path) -> N
         assert 'aria-label="次へ lesson: Goodbye"' not in first
         assert "Ã" not in first
         assert "ã" not in first
+
+def test_course_index_lesson_actions_have_spacing_and_styled_button(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    assert '<div class="lesson-actions"><a class="lesson-link"' in source
+    assert (
+        ".lesson-actions{display:flex;flex-wrap:wrap;align-items:center;"
+        "gap:.5rem .75rem;"
+    ) in source
+    assert ".lesson-complete{appearance:none;" in source
+    assert 'aria-pressed="false"' in source
+    assert 'link.closest(".lesson").querySelector(".lesson-lock")' in source
+
+
+def test_course_presentation_palette_is_applied_to_generated_lesson(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    old = "description: Beginner course\n"
+    new = (
+        "description: Beginner course\n"
+        "presentation:\n"
+        "  theme: forest\n"
+        "  accent: '#123456'\n"
+    )
+    if manifest.count(old) != 1:
+        raise AssertionError("Manifest di test inatteso; test non modificato.")
+    manifest_path.write_text(manifest.replace(old, new, 1), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    lesson = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+    assert "--canvas-bg:#eaf3ed" in lesson
+    assert "--page-bg:#17352a" in lesson
+    assert "--surface:#f8fcf8" in lesson
+    assert "--rule-color:#123456" in lesson
+    assert ".masthead h1,.masthead h2,.masthead h3{color:#fff}" in lesson
+    assert ".masthead .author{color:#d7e4f5}" in lesson
+
+def test_course_lesson_theme_overrides_every_renderer_color_token(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    manifest_path = tmp_path / "course.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    old = "description: Beginner course\n"
+    new = (
+        "description: Beginner course\n"
+        "presentation:\n"
+        "  theme: forest\n"
+    )
+    assert manifest.count(old) == 1
+    manifest_path.write_text(manifest.replace(old, new, 1), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    lesson = (tmp_path / "output/lessons/lesson-01.html").read_text(
+        encoding="utf-8"
+    )
+    theme_match = re.search(
+        r'<style data-edutex-course-theme>(.*?)</style>',
+        lesson,
+        flags=re.DOTALL,
+    )
+    assert theme_match is not None
+    theme_css = theme_match.group(1)
+    assert "--input-bg:#f8fcf8;" in theme_css
+
+    renderer_source = (
+        PROJECT_ROOT / "src" / "edutex" / "build" / "html_renderer.py"
+    ).read_text(encoding="utf-8")
+    renderer_tokens = set(
+        re.findall(r"var\((--[a-zA-Z0-9_-]+)\)", renderer_source)
+    )
+    theme_tokens = set(
+        re.findall(r"(--[a-zA-Z0-9_-]+)\s*:", theme_css)
+    )
+    assert renderer_tokens <= theme_tokens, (
+        "Course theme misses renderer variables: "
+        f"{sorted(renderer_tokens - theme_tokens)}"
+    )
+
+    builder_rule = renderer_source.split(
+        ".builder-answer-token {{", 1
+    )[1].split("}}", 1)[0]
+    assert "color: var(--on-accent);" in builder_rule

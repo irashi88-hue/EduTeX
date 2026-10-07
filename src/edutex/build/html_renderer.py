@@ -648,7 +648,7 @@ class HtmlRenderer:
       border: 1px solid var(--control-border-strong);
       background: var(--control-bg-strong);
       border-radius: .2rem;
-      color: var(--ink);
+      color: var(--on-accent);
       font: inherit;
       cursor: pointer;
     }}

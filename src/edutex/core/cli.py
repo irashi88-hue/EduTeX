@@ -693,15 +693,51 @@ def _add_course_lesson_navigation(
     else:
         nav = f"<div class=\"course-complete-only\">{completion_ui}</div>"
     source = html_path.read_text(encoding="utf-8")
-    style = f"""<style>
+    accent_hex = manifest.presentation.accent.lstrip("#")
+    accent_rgb = tuple(
+        int(accent_hex[index : index + 2], 16) / 255
+        for index in (0, 2, 4)
+    )
+    accent_linear = tuple(
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in accent_rgb
+    )
+    accent_luminance = sum(
+        weight * channel
+        for weight, channel in zip((0.2126, 0.7152, 0.0722), accent_linear)
+    )
+    on_accent = "#172033" if accent_luminance > 0.179 else "#ffffff"
+    accent_hex = manifest.presentation.accent.lstrip("#")
+    accent_rgb = tuple(
+        int(accent_hex[index : index + 2], 16) / 255
+        for index in (0, 2, 4)
+    )
+    accent_linear = tuple(
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in accent_rgb
+    )
+    accent_luminance = sum(
+        weight * channel
+        for weight, channel in zip((0.2126, 0.7152, 0.0722), accent_linear)
+    )
+    on_accent = "#172033" if accent_luminance > 0.179 else "#ffffff"
+    style = f"""<style data-edutex-course-theme>
+:root{{color-scheme:light;--page-bg:{manifest.presentation.ink};--canvas-bg:{manifest.presentation.background};--surface:{manifest.presentation.surface};--surface-subtle:{manifest.presentation.background};--ink:{manifest.presentation.ink};--muted:{manifest.presentation.muted};--control-bg:{manifest.presentation.surface};--control-bg-hover:{manifest.presentation.background};--control-bg-strong:{manifest.presentation.accent};--control-bg-strong-hover:{manifest.presentation.accent_secondary};--control-border:{manifest.presentation.accent};--control-border-soft:{manifest.presentation.muted};--control-border-strong:{manifest.presentation.accent};--on-accent:{on_accent};--neutral-line:color-mix(in srgb,{manifest.presentation.muted} 25%,transparent);--shadow:color-mix(in srgb,{manifest.presentation.ink} 8%,transparent);--rule-color:{manifest.presentation.accent};--rule-bg:{manifest.presentation.surface};--note-color:{manifest.presentation.accent_secondary};--note-bg:{manifest.presentation.background};--example-color:{manifest.presentation.accent_secondary};--example-bg:{manifest.presentation.surface};--exercise-color:{manifest.presentation.accent};--exercise-bg:{manifest.presentation.background};--vocab-color:{manifest.presentation.ink};--vocab-bg:{manifest.presentation.surface};--solution-color:{manifest.presentation.accent_secondary};--solution-bg:{manifest.presentation.background}}}
 .skip-link{{position:absolute;left:1rem;top:-4rem;z-index:10;padding:.55rem .8rem;background:{manifest.presentation.ink};color:#fff;font-weight:800}}
 .skip-link:focus-visible{{top:1rem}}
+.masthead{{color:#fff}}.masthead h1,.masthead h2,.masthead h3{{color:#fff}}.masthead .author{{color:#d7e4f5}}
 .course-lesson-nav{{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin:0 auto 1.25rem;padding:.8rem 1rem;max-width:980px;background:{manifest.presentation.ink};color:#fff;font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}
 .course-lesson-nav a{{color:{manifest.presentation.accent}}}.course-lesson-nav span{{color:#d7e4f5}}.course-nav-disabled{{opacity:.55}}
 .course-lesson-nav a:focus-visible,.course-complete:focus-visible{{outline:3px solid {manifest.presentation.accent};outline-offset:3px}}
 .course-complete{{border:1px solid {manifest.presentation.accent};border-radius:4px;padding:.35rem .6rem;background:{manifest.presentation.surface};color:{manifest.presentation.ink};font:inherit;cursor:pointer}}
 .course-complete-status{{color:{manifest.presentation.accent_secondary}}}
 .course-complete-only{{max-width:980px;margin:0 auto 1.25rem;padding:.8rem 1rem;background:{manifest.presentation.surface};color:{manifest.presentation.ink};font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}
+:root{{color-scheme:light;--page-bg:{manifest.presentation.ink};--canvas-bg:{manifest.presentation.background};--surface:{manifest.presentation.surface};--surface-subtle:{manifest.presentation.background};--ink:{manifest.presentation.ink};--muted:{manifest.presentation.muted};--control-bg:{manifest.presentation.surface};--control-bg-hover:{manifest.presentation.background};--control-bg-strong:{manifest.presentation.accent};--control-bg-strong-hover:{manifest.presentation.accent_secondary};--control-border:{manifest.presentation.accent};--control-border-soft:rgba(83,97,118,.22);--control-border-strong:{manifest.presentation.accent};--input-bg:{manifest.presentation.surface};--code-bg:rgba(23,32,51,.08);--neutral-line:rgba(83,97,118,.25);--shadow:rgba(23,32,51,.08);--on-accent:{on_accent};--success-border:#15803d;--success-bg:#f0fdf4;--success-bg-strong:#dcfce7;--success-ink:#166534;--danger-border:#b91c1c;--danger-bg:#fef2f2;--danger-bg-strong:#fee2e2;--danger-ink:#991b1b;--warning-border:#b45309;--warning-bg:#fffbeb;--warning-bg-strong:#fef3c7;--print-bg:{manifest.presentation.surface};--rule-color:{manifest.presentation.accent};--rule-bg:{manifest.presentation.surface};--note-color:{manifest.presentation.accent_secondary};--note-bg:{manifest.presentation.background};--example-color:{manifest.presentation.accent_secondary};--example-bg:{manifest.presentation.surface};--exercise-color:{manifest.presentation.accent};--exercise-bg:{manifest.presentation.background};--vocab-color:{manifest.presentation.ink};--vocab-bg:{manifest.presentation.surface};--solution-color:{manifest.presentation.accent_secondary};--solution-bg:{manifest.presentation.background}}}
+.masthead{{color:#fff}}.masthead h1,.masthead h2,.masthead h3{{color:#fff}}.masthead .author{{color:#d7e4f5}}
 </style>"""
     script_labels = json.dumps(
         {

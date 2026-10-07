@@ -76,6 +76,7 @@ def test_quality_check_names_are_stable_and_unique() -> None:
         "Q041 Layout composition contract",
         "Q042 Adaptive layout contract",
         "Q043 Theme composition contract",
+        "Q044 Theme zero-configuration contract",
     )
     assert len(names) == len(set(names))
 
@@ -86,7 +87,7 @@ def test_quality_check_catalog_is_stable_unique_and_complete() -> None:
 
     assert tuple(entry["name"] for entry in catalog) == check_names()
     assert tuple(entry["id"] for entry in catalog) == (
-        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043"
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044"
     )
     assert len({entry["id"] for entry in catalog}) == len(catalog)
     assert len({entry["name"] for entry in catalog}) == len(catalog)
@@ -98,7 +99,7 @@ def test_quality_execution_plan_matches_catalog_order() -> None:
     plan = quality_check_execution_plan()
 
     assert tuple(code for code, _ in plan) == (
-        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043"
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044"
     )
     assert quality_check_execution_diagnostics() == ()
     assert all(callable(check) for _, check in plan)
@@ -604,11 +605,11 @@ def test_quality_baseline_missing_checks_tracks_unexecuted_catalog_ids() -> None
     from tools.quality_check import CheckResult
 
     assert quality_baseline_missing_checks([]) == (
-        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043"
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044"
     )
     assert quality_baseline_missing_checks(
         [CheckResult("Q001 Python syntax", True), CheckResult("Q002 pytest suite", False)]
-    ) == ("Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043")
+    ) == ("Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044")
     assert quality_baseline_missing_checks(
         [CheckResult(name, True) for name in check_names()]
     ) == ()
@@ -716,6 +717,7 @@ def test_quality_baseline_status_distinguishes_outcomes() -> None:
         "Q041 Layout composition contract",
         "Q042 Adaptive layout contract",
         "Q043 Theme composition contract",
+        "Q044 Theme zero-configuration contract",
     )]
 
     assert quality_baseline_status(passed_results) == "passed"
@@ -839,11 +841,11 @@ def test_quality_baseline_summary_counts_passed_failed_and_pending() -> None:
     assert summary == {
         "passed": 2,
         "failed": 1,
-        "pending": 40,
-        "total": 43,
+        "pending": 41,
+        "total": 44,
         "completed": 3,
         "pass_rate": 66.67,
-        "completion_rate": 6.98,
+        "completion_rate": 6.82,
         "failure_rate": 33.33,
     }
 
@@ -866,11 +868,11 @@ def test_quality_baseline_summary_is_non_negative_for_extra_results() -> None:
     assert quality_baseline_summary(results) == {
         "passed": 9,
         "failed": 0,
-        "pending": 34,
-        "total": 43,
+        "pending": 35,
+        "total": 44,
         "completed": 9,
         "pass_rate": 100.0,
-        "completion_rate": 20.93,
+        "completion_rate": 20.45,
         "failure_rate": 0.0,
     }
 
@@ -886,11 +888,11 @@ def test_quality_baseline_report_includes_summary() -> None:
     assert report["summary"] == {
         "passed": 1,
         "failed": 1,
-        "pending": 41,
-        "total": 43,
+        "pending": 42,
+        "total": 44,
         "completed": 2,
         "pass_rate": 50.0,
-        "completion_rate": 4.65,
+        "completion_rate": 4.55,
         "failure_rate": 50.0,
     }
 
@@ -917,7 +919,7 @@ def test_quality_report_schema_contract_accepts_complete_failed_and_empty_report
 
 
 def test_quality_report_schema_contract_is_in_execution_plan() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-34] == "Q010"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-35] == "Q010"
 
 
 def test_quality_report_consistency_contract_accepts_representative_reports() -> None:
@@ -930,7 +932,7 @@ def test_quality_report_consistency_contract_accepts_representative_reports() ->
 
 
 def test_quality_report_consistency_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-33] == "Q011"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-34] == "Q011"
 
 
 def test_quality_report_diagnostics_contract_accepts_valid_and_detects_corruption() -> None:
@@ -943,7 +945,7 @@ def test_quality_report_diagnostics_contract_accepts_valid_and_detects_corruptio
 
 
 def test_quality_report_diagnostics_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-32] == "Q012"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-33] == "Q012"
 
 
 def test_quality_report_value_types_contract_accepts_representative_reports() -> None:
@@ -956,7 +958,7 @@ def test_quality_report_value_types_contract_accepts_representative_reports() ->
 
 
 def test_quality_report_value_types_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-31] == "Q013"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-32] == "Q013"
 
 
 def test_quality_report_identity_contract_accepts_representative_reports() -> None:
@@ -969,7 +971,7 @@ def test_quality_report_identity_contract_accepts_representative_reports() -> No
 
 
 def test_quality_report_identity_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-30] == "Q014"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-31] == "Q014"
 
 
 def test_quality_report_catalog_metadata_contract_accepts_representative_reports() -> None:
@@ -982,7 +984,7 @@ def test_quality_report_catalog_metadata_contract_accepts_representative_reports
 
 
 def test_quality_report_catalog_metadata_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-29] == "Q015"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-30] == "Q015"
 
 
 def test_quality_report_serialization_contract_accepts_representative_reports() -> None:
@@ -995,7 +997,7 @@ def test_quality_report_serialization_contract_accepts_representative_reports() 
 
 
 def test_quality_report_serialization_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-28] == "Q016"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-29] == "Q016"
 
 
 def test_quality_cli_json_output_contract_accepts_representative_run() -> None:
@@ -1008,7 +1010,7 @@ def test_quality_cli_json_output_contract_accepts_representative_run() -> None:
 
 
 def test_quality_cli_json_output_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-27] == "Q017"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-28] == "Q017"
 
 
 def test_quality_runner_stop_on_failure_contract_accepts_synthetic_plan() -> None:
@@ -1021,7 +1023,7 @@ def test_quality_runner_stop_on_failure_contract_accepts_synthetic_plan() -> Non
 
 
 def test_quality_runner_stop_on_failure_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-26] == "Q018"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-27] == "Q018"
 
 
 def test_quality_runner_report_alignment_contract_accepts_representative_runs() -> None:
@@ -1034,7 +1036,7 @@ def test_quality_runner_report_alignment_contract_accepts_representative_runs() 
 
 
 def test_quality_runner_report_alignment_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-25] == "Q019"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-26] == "Q019"
 
 
 def test_quality_report_outcome_contract_accepts_representative_reports() -> None:
@@ -1047,7 +1049,7 @@ def test_quality_report_outcome_contract_accepts_representative_reports() -> Non
 
 
 def test_quality_report_outcome_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-24] == "Q020"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-25] == "Q020"
 
 
 def test_quality_runner_exception_contract_accepts_raised_check() -> None:
@@ -1060,7 +1062,7 @@ def test_quality_runner_exception_contract_accepts_raised_check() -> None:
 
 
 def test_quality_runner_exception_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-23] == "Q021"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-24] == "Q021"
 
 
 def test_quality_runner_identity_contract_accepts_mismatched_result() -> None:
@@ -1073,7 +1075,7 @@ def test_quality_runner_identity_contract_accepts_mismatched_result() -> None:
 
 
 def test_quality_runner_identity_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-22] == "Q022"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-23] == "Q022"
 
 
 def test_quality_runner_returncode_contract_accepts_inconsistent_codes() -> None:
@@ -1086,7 +1088,7 @@ def test_quality_runner_returncode_contract_accepts_inconsistent_codes() -> None
 
 
 def test_quality_runner_returncode_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-21] == "Q023"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-22] == "Q023"
 
 
 def test_quality_execution_plan_structure_contract_accepts_malformed_plans() -> None:
@@ -1099,7 +1101,7 @@ def test_quality_execution_plan_structure_contract_accepts_malformed_plans() -> 
 
 
 def test_quality_execution_plan_structure_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-20] == "Q024"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-21] == "Q024"
 
 
 def test_quality_execution_diagnostics_report_contract_accepts_malformed_plan() -> None:
@@ -1112,7 +1114,7 @@ def test_quality_execution_diagnostics_report_contract_accepts_malformed_plan() 
 
 
 def test_quality_execution_diagnostics_report_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-19] == "Q025"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-20] == "Q025"
 
 
 def test_quality_diagnostics_channel_separation_contract_accepts_combined_diagnostics() -> None:
@@ -1125,7 +1127,7 @@ def test_quality_diagnostics_channel_separation_contract_accepts_combined_diagno
 
 
 def test_quality_diagnostics_channel_separation_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-18] == "Q026"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-19] == "Q026"
 
 
 def test_quality_report_diagnostic_outcome_contract_accepts_coherent_reports() -> None:
@@ -1138,7 +1140,7 @@ def test_quality_report_diagnostic_outcome_contract_accepts_coherent_reports() -
 
 
 def test_quality_report_diagnostic_outcome_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-17] == "Q027"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-18] == "Q027"
 
 
 def test_quality_diagnostic_value_types_contract_accepts_json_safe_reports() -> None:
@@ -1151,7 +1153,7 @@ def test_quality_diagnostic_value_types_contract_accepts_json_safe_reports() -> 
 
 
 def test_quality_diagnostic_value_types_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-16] == "Q028"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-17] == "Q028"
 
 
 def test_quality_diagnostic_uniqueness_contract_accepts_valid_messages() -> None:
@@ -1164,7 +1166,7 @@ def test_quality_diagnostic_uniqueness_contract_accepts_valid_messages() -> None
 
 
 def test_quality_diagnostic_uniqueness_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-15] == "Q029"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-16] == "Q029"
 
 
 def test_quality_diagnostic_determinism_contract_accepts_repeated_reports() -> None:
@@ -1177,7 +1179,7 @@ def test_quality_diagnostic_determinism_contract_accepts_repeated_reports() -> N
 
 
 def test_quality_diagnostic_determinism_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-14] == "Q030"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-15] == "Q030"
 
 
 def test_quality_diagnostic_completeness_contract_accepts_complete_propagation() -> None:
@@ -1190,7 +1192,7 @@ def test_quality_diagnostic_completeness_contract_accepts_complete_propagation()
 
 
 def test_quality_diagnostic_completeness_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-13] == "Q031"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-14] == "Q031"
 
 
 def test_quality_diagnostic_channel_isolation_contract_accepts_single_source_failures() -> None:
@@ -1203,7 +1205,7 @@ def test_quality_diagnostic_channel_isolation_contract_accepts_single_source_fai
 
 
 def test_quality_diagnostic_channel_isolation_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-12] == "Q032"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-13] == "Q032"
 
 
 def test_quality_diagnostic_provenance_contract_accepts_distinct_failure_sources() -> None:
@@ -1216,7 +1218,7 @@ def test_quality_diagnostic_provenance_contract_accepts_distinct_failure_sources
 
 
 def test_quality_diagnostic_provenance_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-11] == "Q033"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-12] == "Q033"
 
 
 def test_quality_runner_report_consistency_contract_accepts_source_consistent_reports() -> None:
@@ -1229,7 +1231,7 @@ def test_quality_runner_report_consistency_contract_accepts_source_consistent_re
 
 
 def test_quality_runner_report_consistency_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-10] == "Q034"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-11] == "Q034"
 
 
 def test_quality_release_baseline_end_to_end_contract_accepts_public_json_path() -> None:
@@ -1242,7 +1244,7 @@ def test_quality_release_baseline_end_to_end_contract_accepts_public_json_path()
 
 
 def test_quality_release_baseline_end_to_end_contract_is_last_execution_check() -> None:
-    assert tuple(code for code, _ in quality_check_execution_plan())[-9] == "Q035"
+    assert tuple(code for code, _ in quality_check_execution_plan())[-10] == "Q035"
 
 
 def test_quality_baseline_report_diagnostics_accept_valid_report() -> None:
@@ -1292,20 +1294,20 @@ def test_quality_baseline_report_is_json_safe_and_ordered() -> None:
     assert report["execution_consistent"] is True
     assert report["execution_diagnostics"] == []
     assert report["checks_completed"] == 2
-    assert report["checks_expected"] == 43
-    assert report["missing_checks"] == ["Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043"]
+    assert report["checks_expected"] == 44
+    assert report["missing_checks"] == ["Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044"]
     assert report["summary"] == {
         "passed": 1,
         "failed": 1,
-        "pending": 41,
-        "total": 43,
+        "pending": 42,
+        "total": 44,
         "completed": 2,
         "pass_rate": 50.0,
-        "completion_rate": 4.65,
+        "completion_rate": 4.55,
         "failure_rate": 50.0,
     }
     assert [entry["id"] for entry in report["check_catalog"]] == [
-        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043"
+        "Q001", "Q002", "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010", "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018", "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044"
     ]
     assert report["failed_check"] == "Q002 pytest suite"
     assert report["failed_check_id"] == "Q002"
@@ -1433,3 +1435,8 @@ def test_pdf_runtime_report_explicitly_identifies_missing_qpdf(monkeypatch) -> N
     assert report["inspection_gates"]["pdftotext"]["status"] == "available"
     assert report["inspection_gates"]["pypdf"]["status"] in {"available", "unavailable_optional"}
 
+
+
+
+def test_quality_theme_zero_configuration_contract_is_last_execution_check() -> None:
+    assert tuple(code for code, _ in quality_check_execution_plan())[-1] == "Q044"

@@ -1,0 +1,67 @@
+# Bundled EduTeX default theme. Kept standalone for zero-configuration builds.
+id: default
+name: "EduTeX Default Theme"
+version: "1.0.0"
+author: "EduTeX Project"
+
+styles:
+  rule:
+    label: "Rule"
+    border_color: "#2a4a7f"
+    background_color: "#eef2f9"
+    font_weight: "bold"
+    display: "block"
+  note:
+    label: "Note"
+    border_color: "#b45309"
+    background_color: "#fefce8"
+    font_weight: "normal"
+    display: "block"
+  example:
+    label: "Example"
+    border_color: "#0f766e"
+    background_color: "#f0fdfa"
+    font_weight: "normal"
+    display: "block"
+  exercise:
+    label: "Exercise"
+    border_color: "#4338ca"
+    background_color: "#eef2ff"
+    font_weight: "normal"
+    display: "block"
+  solution:
+    label: "Solution"
+    border_color: "#15803d"
+    background_color: "#f0fdf4"
+    font_weight: "normal"
+    display: "block"
+  vocab:
+    label: ""
+    border_color: "#64748b"
+    background_color: "#f8fafc"
+    font_weight: "normal"
+    display: "card"
+  conjugation:
+    label: ""
+    border_color: "#64748b"
+    background_color: "#f8fafc"
+    font_weight: "normal"
+    display: "table"
+  verb:
+    label: ""
+    border_color: "#64748b"
+    background_color: "#f8fafc"
+    font_weight: "normal"
+    display: "card"
+  formula:
+    label: ""
+    border_color: ""
+    background_color: ""
+    font_weight: "normal"
+    display: "centered"
+  _default:
+    label: ""
+    border_color: "#94a3b8"
+    background_color: "#f8fafc"
+    font_weight: "normal"
+    display: "block"

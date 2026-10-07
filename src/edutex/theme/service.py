@@ -16,6 +16,7 @@ Theme SHALL NOT define document structure (owned by Layout).
 from __future__ import annotations
 
 from copy import deepcopy
+from importlib.resources import as_file, files
 from pathlib import Path
 
 from edutex.activator.activator import ActivatedState
@@ -78,6 +79,8 @@ class ThemeService:
         state: ActivatedState,
         knowledge: KnowledgeService,
         project_root: Path,
+        *,
+        use_bundled_default: bool = False,
     ) -> None:
         """
         Execute Theme Processing.
@@ -91,22 +94,28 @@ class ThemeService:
             ThemeError: If no theme is activated, the theme asset cannot be
                         loaded, or a node type has no style rule (CC-003).
         """
-        # Step 1 — resolve active theme from ACT-001
+        # Step 1 — resolve the configured project theme or explicit bundled default.
         theme_entity = state.get_first(EntityType.THEME)
         if theme_entity is None:
-            raise ThemeError(
-                "No Theme is activated. "
-                "Register a Theme entity before running Theme Processing."
+            if not use_bundled_default:
+                raise ThemeError(
+                    "No Theme is activated. "
+                    "Register a Theme entity before running Theme Processing."
+                )
+            resource = files("edutex.theme").joinpath("default_theme.yaml")
+            if not resource.is_file():
+                raise ThemeError("Bundled default theme asset is missing: default_theme.yaml")
+            with as_file(resource) as theme_path:
+                self._theme_model = self._load_theme(theme_path, theme_path.parent)
+        else:
+            configured_path = project_root / theme_entity.source_path
+            theme_path = (
+                configured_path / "theme.yaml"
+                if configured_path.is_dir()
+                else configured_path
             )
-
-        configured_path = project_root / theme_entity.source_path
-        theme_path = (
-            configured_path / "theme.yaml"
-            if configured_path.is_dir()
-            else configured_path
-        )   
-        # Step 2 — load theme asset → ThemeModel (THEME-002)
-        self._theme_model = self._load_theme(theme_path, theme_path.parent.parent)
+            # Step 2 — load project theme asset → ThemeModel (THEME-002)
+            self._theme_model = self._load_theme(theme_path, theme_path.parent.parent)
 
         # Step 3 — apply style rules to ContentModel (KNOW-001) → StyledContent (THEME-001)
         content_model = knowledge.content

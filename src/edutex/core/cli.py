@@ -65,16 +65,29 @@ def _require_file(path: Path, description: str) -> None:
         raise click.ClickException(message)
 
 
+def _theme_is_explicitly_configured(config) -> bool:
+    """Return whether configuration explicitly supplies theme.name."""
+    theme_config = getattr(config, "theme", None)
+    fields_set = getattr(theme_config, "model_fields_set", None)
+    return fields_set is None or "name" in fields_set
+
+
 def _register_project_assets(config, project_root: Path) -> Registry:
     """Create the registry from the assets selected in project configuration."""
     registry = Registry()
 
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
-    theme_path = project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
+    theme_is_explicit = _theme_is_explicitly_configured(config)
+    theme_path = (
+        project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
+        if theme_is_explicit
+        else None
+    )
     layout_path = project_root / "assets" / "layouts" / config.layout.name / "layout.yaml"
 
     _require_file(knowledge_path, "Knowledge Model")
-    _require_file(theme_path, "Theme asset")
+    if theme_path is not None:
+        _require_file(theme_path, "Theme asset")
     _require_file(layout_path, "Layout asset")
 
     registry.register(EntityRecord(
@@ -82,11 +95,12 @@ def _register_project_assets(config, project_root: Path) -> Registry:
         entity_type=EntityType.KNOWLEDGE_MODEL,
         source_path=knowledge_path,
     ))
-    registry.register(EntityRecord(
-        entity_id=config.theme.name,
-        entity_type=EntityType.THEME,
-        source_path=theme_path,
-    ))
+    if theme_path is not None:
+        registry.register(EntityRecord(
+            entity_id=config.theme.name,
+            entity_type=EntityType.THEME,
+            source_path=theme_path,
+        ))
     registry.register(EntityRecord(
         entity_id=config.layout.name,
         entity_type=EntityType.LAYOUT,
@@ -234,7 +248,15 @@ def _prepare_project_pipeline(
     knowledge.process(state, project_root)
 
     theme = ThemeService()
-    theme.process(state, knowledge, project_root)
+    if _theme_is_explicitly_configured(config):
+        theme.process(state, knowledge, project_root)
+    else:
+        theme.process(
+            state,
+            knowledge,
+            project_root,
+            use_bundled_default=True,
+        )
 
     layout = LayoutService()
     layout.process(state, theme, project_root)
@@ -319,8 +341,11 @@ def _inspect_project(
     """Build the deterministic JSON payload for the inspect command."""
     config = load_config(config_path, profile=profile)
     knowledge_path = _resolve_path(project_root, config.knowledge.model)
+    theme_is_explicit = _theme_is_explicitly_configured(config)
     theme_path = (
         project_root / "assets" / "themes" / config.theme.name / "theme.yaml"
+        if theme_is_explicit
+        else None
     )
     layout_path = (
         project_root / "assets" / "layouts" / config.layout.name / "layout.yaml"
@@ -330,14 +355,24 @@ def _inspect_project(
         for extension_id in config.extensions.enabled
     ]
 
-    required_assets = (
-        ("Knowledge Model", knowledge_path),
-        ("Theme asset", theme_path),
-        ("Layout asset", layout_path),
-    )
+    required_assets = [("Knowledge Model", knowledge_path)]
+    if theme_path is not None:
+        required_assets.append(("Theme asset", theme_path))
+    required_assets.append(("Layout asset", layout_path))
     for description, asset_path in required_assets:
         if not asset_path.is_file():
             raise ConfigurationError(f"{description} not found: {asset_path}")
+
+    if theme_path is None:
+        bundled_theme = files("edutex.theme").joinpath("default_theme.yaml")
+        if not bundled_theme.is_file():
+            raise ConfigurationError("Bundled default theme asset not found: default_theme.yaml")
+        theme_asset = {
+            "path": "package:edutex.theme/default_theme.yaml",
+            "exists": True,
+        }
+    else:
+        theme_asset = _inspection_asset(theme_path)
     for extension_id, extension_path in zip(
         config.extensions.enabled,
         extension_paths,
@@ -403,7 +438,7 @@ def _inspect_project(
             },
             "assets": {
                 "knowledge_model": _inspection_asset(knowledge_path),
-                "theme": _inspection_asset(theme_path),
+                "theme": theme_asset,
                 "layout": _inspection_asset(layout_path),
                 "extensions": [
                     _inspection_asset(extension_path)

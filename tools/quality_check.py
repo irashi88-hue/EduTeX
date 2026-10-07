@@ -63,6 +63,7 @@ QUALITY_CHECK_CATALOG = (
     ("Q041", "Layout composition contract", "Validate deterministic extends resolution, layered overrides, cycles, and project-root confinement."),
     ("Q042", "Adaptive layout contract", "Validate opt-in, content-count-based spacing and page-break placement rules."),
     ("Q043", "Theme composition contract", "Validate ordered theme overlays, safe references, and recursive style/token merging."),
+    ("Q044", "Theme zero-configuration contract", "Validate the bundled default theme, zero-configuration HTML/LaTeX builds, and explicit-theme failures."),
 )
 CHECK_NAMES = tuple(f"{code} {label}" for code, label, _ in QUALITY_CHECK_CATALOG)
 QUALITY_BASELINE_SCHEMA = "edutex.quality-baseline.v1"
@@ -2097,7 +2098,7 @@ def _check_quality_report_outcome_contract(root: Path) -> CheckResult:
     if failed["missing_checks"] != [
         "Q003", "Q004", "Q005", "Q006", "Q007", "Q008", "Q009", "Q010",
         "Q011", "Q012", "Q013", "Q014", "Q015", "Q016", "Q017", "Q018",
-        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043",
+        "Q019", "Q020", "Q021", "Q022", "Q023", "Q024", "Q025", "Q026", "Q027", "Q028", "Q029", "Q030", "Q031", "Q032", "Q033", "Q034", "Q035", "Q036", "Q037", "Q038", "Q039", "Q040", "Q041", "Q042", "Q043", "Q044",
     ]:
         failures.append("failed report missing-check semantics mismatch")
 
@@ -4064,6 +4065,66 @@ def _check_theme_composition_contract(root: Path) -> CheckResult:
         detail="ordered parents, deep style/token merge, legacy compatibility, and path safety passed",
     )
 
+
+def _check_theme_zero_configuration_contract(root: Path) -> CheckResult:
+    """Verify the bundled default theme and explicit-selection failure contract."""
+    required_files = (
+        root / "src" / "edutex" / "configuration" / "schema.py",
+        root / "src" / "edutex" / "core" / "cli.py",
+        root / "src" / "edutex" / "theme" / "service.py",
+        root / "src" / "edutex" / "theme" / "default_theme.yaml",
+        root / "pyproject.toml",
+        root / "docs" / "THEME_ZERO_CONFIGURATION_CONTRACT.md",
+        root / "tests" / "test_theme_zero_configuration_contract.py",
+    )
+    failures: list[str] = []
+    for path in required_files:
+        if not path.is_file():
+            failures.append(f"missing theme zero-configuration file: {path.relative_to(root)}")
+
+    markers = {
+        required_files[0]: ("default_factory=ThemeConfig",),
+        required_files[1]: (
+            "_theme_is_explicitly_configured",
+            "use_bundled_default=",
+            "package:edutex.theme/default_theme.yaml",
+        ),
+        required_files[2]: (
+            "use_bundled_default",
+            'files("edutex.theme")',
+            'joinpath("default_theme.yaml")',
+        ),
+        required_files[4]: ("theme/*.yaml",),
+        required_files[5]: ("HTML", "LaTeX", "explicitly", "bundled"),
+        required_files[6]: (
+            "test_default_theme_builds_without_project_theme",
+            "test_missing_explicit_theme_does_not_fall_back",
+            "test_invalid_explicit_theme_does_not_fall_back",
+            "default_theme.yaml",
+        ),
+    }
+    for path, expected in markers.items():
+        if path.is_file():
+            text = path.read_text(encoding="utf-8")
+            for marker in expected:
+                if marker not in text:
+                    failures.append(f"theme zero-configuration marker missing in {path.relative_to(root)}: {marker}")
+
+    theme_asset = required_files[3]
+    if theme_asset.is_file():
+        text = theme_asset.read_text(encoding="utf-8")
+        if "id: default" not in text or "_default:" not in text:
+            failures.append("bundled default theme lacks its ID or fallback style")
+
+    if failures:
+        return CheckResult("Q044 Theme zero-configuration contract", False, 1, "\n".join(failures))
+    return CheckResult(
+        "Q044 Theme zero-configuration contract",
+        True,
+        detail="bundled default theme, HTML/LaTeX builds, inspection, and explicit-theme failures passed",
+    )
+
+
 def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckResult]], ...]:
     """Return the ordered mapping from catalog IDs to executable checks."""
     return (
@@ -4110,6 +4171,7 @@ def quality_check_execution_plan() -> tuple[tuple[str, Callable[[Path], CheckRes
         ("Q041", _check_layout_composition_contract),
         ("Q042", _check_adaptive_layout_contract),
         ("Q043", _check_theme_composition_contract),
+        ("Q044", _check_theme_zero_configuration_contract),
     )
 
 

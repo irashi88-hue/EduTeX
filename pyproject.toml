@@ -42,6 +42,7 @@ edutex = [
     "project_template/assets/themes/dark/*.yaml",
     "project_template/assets/themes/default/*.yaml",
     "project_template/assets/themes/default/template/*.j2",
+    "theme/*.yaml",
 ]
 
 [tool.pytest.ini_options]

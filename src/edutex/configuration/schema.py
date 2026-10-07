@@ -60,7 +60,7 @@ class KnowledgeConfig(_ImmutableConfigModel):
 
 
 class ThemeConfig(_ImmutableConfigModel):
-    name: str = Field(..., description="Name of the theme to apply.")
+    name: str = Field("default", description="Name of the theme to apply.")
 
     @field_validator("name")
     @classmethod
@@ -139,7 +139,7 @@ class EduTexConfig(_ImmutableConfigModel):
 
     edutex: EduTexVersionConfig
     knowledge: KnowledgeConfig
-    theme: ThemeConfig
+    theme: ThemeConfig = Field(default_factory=ThemeConfig, description="Theme to apply; omitted selects the bundled default.")
     layout: LayoutConfig
     build: BuildConfig = Field(default_factory=BuildConfig)
     extensions: ExtensionsConfig = Field(default_factory=ExtensionsConfig)

@@ -695,7 +695,36 @@ def _add_course_lesson_navigation(
     else:
         nav = f"<div class=\"course-complete-only\">{completion_ui}</div>"
     source = html_path.read_text(encoding="utf-8")
-    style = f"""<style>
+    presentation = manifest.presentation
+
+    def _relative_luminance(color: str) -> float:
+        channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [
+            channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    def _contrast_ratio(first: str, second: str) -> float:
+        luminance = sorted((_relative_luminance(first), _relative_luminance(second)))
+        return (luminance[1] + 0.05) / (luminance[0] + 0.05)
+
+    on_accent = (
+        "#ffffff"
+        if _contrast_ratio(presentation.accent, "#ffffff")
+        >= _contrast_ratio(presentation.accent, presentation.ink)
+        else presentation.ink
+    )
+    on_page_bg = max(
+        ("#ffffff", "#000000", presentation.surface, presentation.background),
+        key=lambda color: _contrast_ratio(presentation.ink, color),
+    )
+    style = f"""<style data-edutex-course-theme>
+:root{{color-scheme:light;--page-bg:{presentation.ink};--canvas-bg:{presentation.background};--surface:{presentation.surface};--surface-subtle:{presentation.background};--ink:{presentation.ink};--muted:{presentation.muted};--control-bg:var(--surface);--control-bg-hover:var(--surface-subtle);--control-bg-strong:{presentation.accent};--control-bg-strong-hover:{presentation.accent_secondary};--control-border:{presentation.accent};--control-border-soft:rgba(83,97,118,.22);--control-border-strong:{presentation.accent};--input-bg:var(--surface);--code-bg:rgba(23,32,51,.08);--neutral-line:rgba(83,97,118,.25);--shadow:rgba(23,32,51,.08);--on-accent:{on_accent};--on-page-bg:{on_page_bg};--success-border:#15803d;--success-bg:#f0fdf4;--success-bg-strong:#dcfce7;--success-ink:#166534;--danger-border:#b91c1c;--danger-bg:#fef2f2;--danger-bg-strong:#fee2e2;--danger-ink:#991b1b;--warning-border:#b45309;--warning-bg:#fffbeb;--warning-bg-strong:#fef3c7;--print-bg:{presentation.surface};--rule-color:{presentation.accent};--rule-bg:{presentation.background};--note-color:{presentation.accent_secondary};--note-bg:{presentation.background};--example-color:{presentation.accent_secondary};--example-bg:{presentation.surface};--exercise-color:{presentation.accent};--exercise-bg:{presentation.background};--vocab-color:{presentation.ink};--vocab-bg:{presentation.surface};--solution-color:{presentation.accent_secondary};--solution-bg:{presentation.background}}}
+body{{font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:1rem;line-height:1.6}}
+.masthead{{color:var(--on-page-bg)}}
+.masthead h1,.masthead .author{{color:var(--on-page-bg)}}
+.masthead .author{{opacity:.86}}
 .skip-link{{position:absolute;left:1rem;top:-4rem;z-index:10;padding:.55rem .8rem;background:{manifest.presentation.ink};color:#fff;font-weight:800}}
 .skip-link:focus-visible{{top:1rem}}
 .course-lesson-nav{{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin:0 auto 1.25rem;padding:.8rem 1rem;max-width:980px;background:{manifest.presentation.ink};color:#fff;font:600 .92rem/1.4 Inter,"Segoe UI",Arial,sans-serif}}

@@ -671,7 +671,7 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
                 f"<div><h3>{html.escape(lesson.title)}</h3>"
                 f"<p class=\"lesson-meta\">{' · '.join(meta) if meta else ''}</p>"
                 f"{details}{lesson_objectives}"
-                f"<a class=\"lesson-link\" href=\"{link_href}\""
+                f"<div class=\"lesson-actions\">" f"<a class=\"lesson-link\" href=\"{link_href}\""
                 f" data-lesson-id=\"{html.escape(lesson.lesson_id, quote=True)}\""
                 f" data-prerequisites=\"{prerequisite_ids}\""
                 f" data-prerequisite-names=\"{prerequisite_names_json}\""
@@ -680,7 +680,7 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
                 f" data-mark-complete=\"{html.escape(lesson.lesson_id, quote=True)}\""
                 f" aria-label=\"{html.escape(labels['mark_complete'], quote=True)}\""
                 f" aria-pressed=\"false\">"
-                f"{html.escape(labels['mark_complete'])}</button>"
+                f"{html.escape(labels['mark_complete'])}</button></div>"
                 f"<span class=\"lesson-lock\" aria-live=\"polite\"></span></div></li>"
             )
         module_description = (
@@ -791,7 +791,7 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
       link.classList.toggle("is-locked", locked);
       link.classList.toggle("is-completed", completed.has(link.dataset.lessonId));
       link.setAttribute("aria-disabled", String(locked));
-      const status = link.parentElement.querySelector(".lesson-lock");
+      const status = link.closest(".lesson").querySelector(".lesson-lock");
       if (status) {{
         status.textContent = locked
           ? `${{labels.locked}} - ${{labels.complete_first}}: ${{names.filter((_, i) => missing.includes(prerequisites[i])).join(", ")}}`
@@ -853,7 +853,7 @@ h1 {{ max-width:760px; margin:.35rem 0 .8rem; font-size:clamp(2.25rem,6vw,4.7rem
 .module > p:not(.eyebrow) {{ color:var(--muted); }} .lessons {{ list-style:none; padding:0; margin:1.25rem 0 0; }}
 .lesson {{ display:grid; grid-template-columns:3.2rem 1fr; gap:1rem; padding:1rem 0; border-top:1px solid var(--line); }} .lesson-number {{ color:var(--accent); font-weight:800; }}
 .lesson h3 {{ margin:0; font-size:1.12rem; }} .lesson-meta {{ color:var(--muted); font-size:.9rem; margin:.15rem 0 .4rem; }} .lesson-description {{ margin:.3rem 0; }}
-.lesson a {{ color:var(--accent); font-weight:700; }} .lesson-link.is-locked {{ color:var(--muted); cursor:not-allowed; opacity:.65; }} .lesson-link.is-completed {{ color:#26734d; }}
+.lesson a {{ color:var(--accent); font-weight:700; }} .lesson-actions {{display:flex;align-items:center;flex-wrap:wrap;gap:.75rem;margin-top:.65rem}} .lesson-actions .lesson-link,.lesson-actions .lesson-complete {{display:inline-flex;align-items:center;min-height:2.5rem;margin:0;padding:.45rem .75rem;font:inherit;line-height:1.25}} .lesson-actions .lesson-link {{text-decoration:none;border:1px solid var(--accent)}} .lesson-actions .lesson-complete {{border:1px solid var(--accent);background:var(--card);color:var(--ink);cursor:pointer}}  .lesson-link.is-locked {{ color:var(--muted); cursor:not-allowed; opacity:.65; }} .lesson-link.is-completed {{ color:#26734d; }}
 .lesson-lock {{ display:block; color:var(--muted); font-size:.82rem; }} .lesson-lock.is-visible {{ margin-top:.25rem; }} .objectives {{ margin:.5rem 0; color:var(--muted); }}
 :focus-visible {{ outline:3px solid #f0bf76; outline-offset:3px; }}
 @media (max-width:600px) {{ .lesson {{ grid-template-columns:2rem 1fr; gap:.6rem; }} .module {{ padding:1rem; }} }}

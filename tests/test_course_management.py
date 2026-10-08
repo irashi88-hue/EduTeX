@@ -1017,6 +1017,31 @@ def test_course_html_localized_lesson_link_labels(tmp_path: Path) -> None:
     assert ">Open lesson</a>" not in index
     assert ">Open lesson source</a>" not in index
 
+def test_course_html_visual_theme_and_action_spacing(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    course_html = (tmp_path / "output/course.html").read_text(encoding="utf-8")
+    lesson_html = (tmp_path / "output/lessons/lesson-01.html").read_text(encoding="utf-8")
+
+    assert '<style data-edutex-course-theme>' in lesson_html
+    assert "--input-bg:var(--surface)" in lesson_html
+    assert "--on-accent:" in lesson_html
+    assert "--on-page-bg:" in lesson_html
+    assert ".masthead h1,.masthead .author{color:var(--on-page-bg)}" in lesson_html
+    assert (
+        'body{font-family:Inter,"Segoe UI",Arial,sans-serif;'
+        'font-size:1rem;line-height:1.6}' in lesson_html
+    )
+    assert '<div class="lesson-actions">' in course_html
+    assert "gap:.75rem" in course_html
+    assert "font:inherit" in course_html
+    assert 'link.closest(".lesson").querySelector(".lesson-lock")' in course_html
+
+
 def test_course_lesson_navigation_is_multilingual(tmp_path: Path) -> None:
     make_project(tmp_path)
     manifest_path = tmp_path / "course.yaml"

@@ -566,6 +566,7 @@ def _build_course_lesson(
     *,
     project_root: Path,
     profile: str | None = None,
+    output_format: str = "html",
 ) -> Path:
     """Build one course lesson through the normal EduTeX pipeline."""
     config_path = project_root / "edutex.config.yaml"
@@ -581,7 +582,7 @@ def _build_course_lesson(
             ),
             "build": config.build.model_copy(
                 update={
-                    "output_format": "html",
+                    "output_format": output_format,
                     "output_dir": Path("output") / "lessons",
                     "output_file": lesson.lesson_id,
                 }
@@ -589,13 +590,14 @@ def _build_course_lesson(
         }
     )
     output = build_project(config_path, project_root, config=lesson_config)
-    _add_course_lesson_navigation(
-        output,
-        manifest,
-        lesson,
-        module_number,
-        lesson_number,
-    )
+    if output_format.lower() == "html":
+        _add_course_lesson_navigation(
+            output,
+            manifest,
+            lesson,
+            module_number,
+            lesson_number,
+        )
     return output
 
 
@@ -831,11 +833,16 @@ def course_build_command(
     profile: str | None = None,
     report_format: str = "text",
 ) -> None:
-    """Build a course index or printable roadmap."""
+    """Build a course index or a complete printable course document."""
     project_root = project_root.resolve()
-    manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
+    manifest_path = (
+        manifest_file
+        if manifest_file.is_absolute()
+        else project_root / manifest_file
+    )
     output_format = output_format.lower()
     report_format = report_format.lower()
+
     try:
         if profile is not None:
             if output_format != "html":
@@ -848,7 +855,8 @@ def course_build_command(
                 raise CourseBuildError(str(exc)) from exc
 
         lesson_builder = None
-        if output_format == "html":
+        if output_format in {"html", "latex", "pdf"}:
+            lesson_output_format = "html" if output_format == "html" else "latex"
             lesson_builder = lambda manifest, lesson, module_number, lesson_number: _build_course_lesson(
                 manifest,
                 lesson,
@@ -856,7 +864,9 @@ def course_build_command(
                 lesson_number,
                 project_root=project_root,
                 profile=profile,
+                output_format=lesson_output_format,
             )
+
         output = build_course(
             manifest_path,
             project_root,

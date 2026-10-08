@@ -262,11 +262,11 @@ class LatexRenderer:
 \\definecolor{{vocabbg}}{{HTML}}{{{vocab_bg}}}
 
 %% Environments (mdframed default framemethod, no TikZ required)
-\\newmdenv[linecolor=rulecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=rulebg,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{rulebox}}
-\\newmdenv[linecolor=notecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=notebg,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{notebox}}
-\\newmdenv[linecolor=examplecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=examplebg,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{examplebox}}
-\\newmdenv[linecolor=exercisecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=exercisebg,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{exercisebox}}
-\\newmdenv[linecolor=vocabcolor,linewidth=1pt,topline=true,bottomline=true,rightline=true,backgroundcolor=vocabbg,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{vocabbox}}
+\\newmdenv[linecolor=rulecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=rulebg,fontcolor=DocumentInk,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{rulebox}}
+\\newmdenv[linecolor=notecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=notebg,fontcolor=DocumentInk,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{notebox}}
+\\newmdenv[linecolor=examplecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=examplebg,fontcolor=DocumentInk,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{examplebox}}
+\\newmdenv[linecolor=exercisecolor,linewidth=2pt,topline=false,bottomline=false,rightline=false,backgroundcolor=exercisebg,fontcolor=DocumentInk,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{exercisebox}}
+\\newmdenv[linecolor=vocabcolor,linewidth=1pt,topline=true,bottomline=true,rightline=true,backgroundcolor=vocabbg,fontcolor=DocumentInk,innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=8pt,innerbottommargin=8pt,skipabove=6pt,skipbelow=6pt]{{vocabbox}}
 
 %% Metadata
 \\title{{{title_tex}}}
@@ -438,7 +438,7 @@ class LatexRenderer:
         data = self._verb_data(node)
         infinitive = latex_escape(data.get("infinitive", ""))
         translation = latex_escape(data.get("translation", data.get("meaning", "")))
-        rows = [f"\\textbf{{{infinitive}}} & {translation} \\\\n"]
+        rows = [f"\\textbf{{{infinitive}}} & {translation} " + r"\\" + "\n"]
         grammar = " · ".join(
             value
             for value in (
@@ -448,10 +448,10 @@ class LatexRenderer:
             if value
         )
         if grammar:
-            rows.append(f"\\textit{{{latex_escape(grammar)}}} & \\\\n")
+            rows.append(f"\\textit{{{latex_escape(grammar)}}} & " + r"\\" + "\n")
         third_person = data.get("3sg", data.get("third_person", ""))
         if third_person:
-            rows.append(f"\\textit{{3sg}} & {latex_escape(third_person)} \\\\n")
+            rows.append(f"\\textit{{3sg}} & {latex_escape(third_person)} " + r"\\" + "\n")
         return (
             "\\begin{vocabbox}\n"
             "\\begin{tabular}{@{}ll@{}}\n"

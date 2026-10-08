@@ -959,6 +959,218 @@ def render_course_latex(manifest: CourseManifest) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _extract_latex_lesson(path: Path) -> tuple[str, str]:
+    """Extract one lesson body and its solutions from generated LaTeX."""
+    try:
+        source = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise CourseBuildError(f"Could not read generated lesson LaTeX: {path}: {exc}") from exc
+
+    document = re.search(
+        r"\\begin\{document\}(.*?)\\end\{document\}",
+        source,
+        flags=re.DOTALL,
+    )
+    if document is None:
+        raise CourseBuildError(f"Generated lesson is not a complete LaTeX document: {path}")
+
+    content = re.sub(r"^\s*\\maketitle\s*", "", document.group(1), count=1)
+    appendix = re.search(
+        r"\\newpage\s*\\section\*\{[^{}]*\}\s*(.*)\Z",
+        content,
+        flags=re.DOTALL,
+    )
+    if appendix is None:
+        return content.strip(), ""
+    return content[:appendix.start()].strip(), appendix.group(1).strip()
+
+
+def _render_printable_course_latex(
+    manifest: CourseManifest,
+    lesson_sources: dict[str, Path],
+) -> str:
+    """Compose ordered rendered lessons and one final solutions appendix."""
+    ordered_lessons = [
+        lesson
+        for module in manifest.modules
+        for lesson in module.lessons
+    ]
+    if not ordered_lessons:
+        raise CourseBuildError("A printable course must contain at least one lesson.")
+
+    first_path = lesson_sources.get(ordered_lessons[0].lesson_id)
+    if first_path is None:
+        raise CourseBuildError(
+            f"Generated LaTeX is missing for lesson '{ordered_lessons[0].lesson_id}'."
+        )
+    try:
+        first_source = first_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise CourseBuildError(
+            f"Could not read generated lesson LaTeX: {first_path}: {exc}"
+        ) from exc
+
+    document_start = first_source.find(r"\begin{document}")
+    if document_start < 0:
+        raise CourseBuildError(
+            f"Generated lesson is not a complete LaTeX document: {first_path}"
+        )
+    preamble = first_source[:document_start]
+
+    title = _latex_escape(manifest.title)
+    author = _latex_escape(manifest.author or "EduTeX")
+    subject = _latex_escape(manifest.description or "EduTeX course roadmap")
+    language_tag = _pdf_language_tag(manifest.language)
+
+    def replace_command(command: str, value: str) -> None:
+        nonlocal preamble
+        pattern = rf"\\{command}\{{.*?\}}"
+        preamble, count = re.subn(
+            pattern,
+            lambda _match: "\\" + command + "{" + value + "}",
+            preamble,
+            count=1,
+            flags=re.DOTALL,
+        )
+        if count != 1:
+            raise CourseBuildError(
+                f"Generated lesson preamble is missing the \\{command} command."
+            )
+
+    replace_command("title", title)
+    replace_command("author", author)
+
+    language_code = manifest.language.lower().replace("_", "-").split("-", 1)[0]
+    is_cjk = language_code in {"ja", "zh", "ko"}
+    if is_cjk:
+        for package_line in (
+            r"\usepackage{cmap}",
+            r"\usepackage[utf8]{inputenc}",
+            r"\usepackage[T1]{fontenc}",
+        ):
+            preamble = re.sub(
+                r"(?m)^\s*" + re.escape(package_line) + r"\s*$\n?",
+                "",
+                preamble,
+            )
+        if r"\usepackage{fontspec}" not in preamble:
+            cjk_packages = (
+                r"\usepackage{fontspec}" + "\n"
+                + r"\usepackage{xeCJK}" + "\n"
+                + r"\setCJKmainfont{Source Han Sans JP}" + "\n"
+            )
+            preamble, count = re.subn(
+                r"(?m)^(\\documentclass[^\n]*\n)",
+                lambda match: match.group(1) + cjk_packages,
+                preamble,
+                count=1,
+            )
+            if count != 1:
+                raise RuntimeError("Could not add XeLaTeX packages to the course preamble.")
+    elif r"\usepackage{cmap}" not in preamble:
+        inputenc = r"\usepackage[utf8]{inputenc}"
+        if inputenc in preamble:
+            preamble = preamble.replace(
+                inputenc,
+                r"\usepackage{cmap}" + "\n" + inputenc,
+                1,
+            )
+        else:
+            preamble += "\n" + r"\usepackage{cmap}" + "\n"
+
+    hyperref_settings = (
+        r"\hypersetup{colorlinks=true,linkcolor=DocumentLink,urlcolor=DocumentLink,"
+        "unicode=true,bookmarks=true,bookmarksopen=true,bookmarksnumbered=true,"
+        "pdftitle={" + title + "},pdfauthor={" + author + "},"
+        "pdfsubject={" + subject + "},pdflang={" + language_tag + "}}"
+    )
+    preamble, hyperref_count = re.subn(
+        r"\\hypersetup\{[^}]*\}",
+        lambda _match: hyperref_settings,
+        preamble,
+        count=1,
+    )
+    if hyperref_count == 0:
+        preamble += "\n" + hyperref_settings + "\n"
+
+    if r"\pdfgentounicode=1" not in preamble:
+        preamble += (
+            "\n"
+            r"\ifdefined\pdfgentounicode" + "\n"
+            r"\IfFileExists{glyphtounicode.tex}{\input glyphtounicode}{}" + "\n"
+            r"\pdfgentounicode=1" + "\n"
+            r"\fi" + "\n"
+        )
+
+    body_parts: list[str] = []
+    if manifest.description:
+        body_parts.append(_latex_escape(manifest.description))
+    body_parts.append(r"\tableofcontents")
+    solution_parts: list[str] = []
+
+    for module in manifest.modules:
+        body_parts.append(r"\section{" + _latex_escape(module.title) + "}")
+        if module.description:
+            body_parts.append(_latex_escape(module.description))
+
+        for lesson in module.lessons:
+            lesson_path = lesson_sources.get(lesson.lesson_id)
+            if lesson_path is None:
+                raise CourseBuildError(
+                    f"Generated LaTeX is missing for lesson '{lesson.lesson_id}'."
+                )
+            lesson_body, lesson_solutions = _extract_latex_lesson(lesson_path)
+            lesson_title = _latex_escape(lesson.title)
+            body_parts.append(r"\subsection{" + lesson_title + "}")
+            body_parts.append(
+                r"\textit{Source:} \texttt{"
+                + _latex_escape(lesson.source)
+                + "}"
+            )
+            if lesson.description:
+                body_parts.append(_latex_escape(lesson.description))
+
+            source_heading = r"\section*{" + lesson_title + "}"
+            lesson_body = re.sub(
+                r"^\s*" + re.escape(source_heading) + r"\s*",
+                "",
+                lesson_body,
+                count=1,
+            )
+            if lesson_body:
+                body_parts.append(lesson_body)
+
+            if lesson_solutions:
+                solution_parts.append(r"\subsection*{" + lesson_title + "}")
+                solution_parts.append(lesson_solutions)
+
+    if solution_parts:
+        language_code = manifest.language.lower().replace("_", "-").split("-", 1)[0]
+        solution_title = "Soluzioni" if language_code in {"it", "de"} else (
+            "解答" if language_code == "ja" else "Solutions"
+        )
+        body_parts.extend(
+            [
+                r"\newpage",
+                r"\section*{" + _latex_escape(solution_title) + "}",
+                *solution_parts,
+            ]
+        )
+
+    return (
+        preamble.rstrip()
+        + "\n"
+        + r"\begin{document}"
+        + "\n"
+        + r"\maketitle"
+        + "\n\n"
+        + "\n\n".join(part for part in body_parts if part.strip())
+        + "\n"
+        + r"\end{document}"
+        + "\n"
+    )
+
+
 def _compile_pdf(tex_path: Path, output_dir: Path, output_file: str, language: str) -> Path:
     code = language.lower().split("-", 1)[0]
     if code in {"ja", "zh", "ko"}:
@@ -975,7 +1187,7 @@ def _compile_pdf(tex_path: Path, output_dir: Path, output_file: str, language: s
     else:
         raise CourseBuildError("PDF output requires latexmk or pdflatex.")
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise CourseBuildError(f"PDF compilation failed: {exc}") from exc
     if result.returncode != 0:
@@ -1018,28 +1230,33 @@ def build_course(
     output_path: Path | None = None,
     lesson_builder: Callable[[CourseManifest, CourseLesson, int, int], Path] | None = None,
 ) -> Path:
-    """Validate and render a course index in HTML, LaTeX, or PDF format.
+    """Build a course index or a printable course document.
 
-    When ``lesson_builder`` is supplied, HTML builds also render every lesson
-    through the caller's official lesson pipeline before writing the index.
-    The callback receives the manifest, lesson, module number, and lesson
-    number, and must return the generated lesson path.
+    HTML builds use the callback to generate lesson pages. LaTeX and PDF builds
+    use the same callback to render each lesson through EduTeX's normal lesson
+    pipeline, then compose the lesson bodies and solutions into one document.
+    When no callback is supplied, the public service retains its roadmap-only
+    behavior for compatibility with direct callers.
     """
     report = validate_course(manifest_path, project_root)
     if not report.valid or report.manifest is None:
         raise CourseBuildError("Course manifest is invalid: " + " ".join(report.errors))
+
     output_format = output_format.lower()
     if output_format not in {"html", "latex", "pdf"}:
         raise CourseBuildError("Course output format must be html, latex, or pdf.")
+
     output_dir = project_root / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     if output_path is None:
-        output_file = "course"
-        destination = output_dir / f"{output_file}.{output_format if output_format != 'latex' else 'tex'}"
+        extension = "tex" if output_format == "latex" else output_format
+        destination = output_dir / f"course.{extension}"
     else:
-        destination = output_path if output_path.is_absolute() else project_root / output_path
+        destination = output_path
+        if not destination.is_absolute():
+            destination = project_root / destination
         destination.parent.mkdir(parents=True, exist_ok=True)
-        output_file = destination.stem
+
     if output_format == "html":
         lesson_links: dict[str, str] = {}
         if lesson_builder is not None:
@@ -1070,13 +1287,45 @@ def build_course(
                         raise CourseBuildError(
                             f"Generated lesson '{lesson.lesson_id}' is outside the course output directory."
                         ) from exc
+
         destination.write_text(
             render_course_html(report.manifest, lesson_links),
             encoding="utf-8",
         )
         return destination
+
+    lesson_sources: dict[str, Path] = {}
+    if lesson_builder is not None:
+        for module_number, module in enumerate(report.manifest.modules, start=1):
+            for lesson_number, lesson in enumerate(module.lessons, start=1):
+                try:
+                    generated = lesson_builder(
+                        report.manifest,
+                        lesson,
+                        module_number,
+                        lesson_number,
+                    )
+                except Exception as exc:
+                    raise CourseBuildError(
+                        f"Could not build lesson '{lesson.lesson_id}': {exc}"
+                    ) from exc
+                generated_path = Path(generated)
+                if not generated_path.is_absolute():
+                    generated_path = project_root / generated_path
+                if not generated_path.is_file():
+                    raise CourseBuildError(
+                        f"Lesson builder did not create LaTeX for '{lesson.lesson_id}': {generated_path}"
+                    )
+                lesson_sources[lesson.lesson_id] = generated_path
+
     tex_path = destination if output_format == "latex" else destination.with_suffix(".tex")
-    tex_path.write_text(render_course_latex(report.manifest), encoding="utf-8")
+    tex_path.parent.mkdir(parents=True, exist_ok=True)
+    tex_source = (
+        _render_printable_course_latex(report.manifest, lesson_sources)
+        if lesson_sources
+        else render_course_latex(report.manifest)
+    )
+    tex_path.write_text(tex_source, encoding="utf-8")
     if output_format == "latex":
         return tex_path
     return _compile_pdf(tex_path, tex_path.parent, tex_path.stem, report.manifest.language)

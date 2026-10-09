@@ -74,6 +74,7 @@ Puoi scrivere la risposta anche con spazi ripetuti o maiuscole diverse: EduTeX n
 title: Completa la risposta
 type: short_answer
 question: Come si dice “buongiorno” in tedesco?
+response_hint: Scrivi la formula tedesca mantenendo lo spazio tra le parole.
 expected: Guten Morgen | guten morgen
 :::
 

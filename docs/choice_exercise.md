@@ -4,6 +4,9 @@ EduTeX supporta esercizi interattivi di scelta multipla nel renderer HTML.
 Il parser esistente conserva il corpo dell'esercizio; non sono necessarie nuove
 estensioni o modifiche alla sintassi generale degli shortcode.
 
+Per gli esercizi a risposta breve (`type: short_answer`), consulta la guida
+[Risposta breve interattiva](short_answer_exercise.md).
+
 ## Scelta singola
 
 ```markdown
@@ -41,9 +44,12 @@ answer: Hallo | Tschüss
 :::
 ```
 
-Il confronto è indipendente dall'ordine delle selezioni e normalizza spazi e
-maiuscole/minuscole. Le risposte non configurate non vengono considerate
-corrette.
+Il confronto non dipende dall'ordine delle selezioni e normalizza spazi e
+maiuscole/minuscole. Per la scelta singola va indicata una sola risposta; per
+la scelta multipla, tutte le risposte attese vanno separate con `|`. `answer:`
+è obbligatorio e ogni risposta deve corrispondere a un'opzione. Il build HTML
+si interrompe con un errore chiaro se la risposta manca, non corrisponde a
+un'opzione o viola il tipo di scelta dichiarato.
 
 ## Comportamento e accessibilità
 
@@ -58,7 +64,8 @@ corrette.
 Ogni esercizio viene emesso in un wrapper `.choice-exercise` con:
 
 - attributo `data-choice-exercise`;
-- `data-answer` contenente un array JSON di risposte normalizzate dal confronto;
+- `data-answer` contenente un array JSON delle risposte attese; il confronto
+  normalizza spazi e maiuscole/minuscole;
 - input con `id`, `name`, `value` e label associata;
 - feedback `.choice-result` con `role="status"` e `aria-live="polite"`;
 - pulsanti per la verifica e il reset.

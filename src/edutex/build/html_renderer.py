@@ -51,6 +51,7 @@ _EDUTEX_UI_LABELS = {
         "cloze_correct": "Correct", "cloze_wrong": "Not correct",
         "cloze_missing": "Fill this blank", "cloze_result": "Cloze result",
         "short_answer": "Short answer", "short_prompt": "Answer",
+        "short_instruction": "Enter your answer in the field below, then select Check answer.",
         "short_placeholder": "Write your answer", "check_short": "Check answer",
         "reset_short": "Reset answer", "short_correct": "Correct",
         "short_wrong": "Not correct", "short_empty": "Write an answer first",
@@ -94,6 +95,7 @@ _EDUTEX_UI_LABELS = {
         "cloze_correct": "Corretta", "cloze_wrong": "Non corretta",
         "cloze_missing": "Completa questo spazio", "cloze_result": "Risultato completamento",
         "short_answer": "Risposta breve", "short_prompt": "Risposta",
+        "short_instruction": "Scrivi la risposta nel campo qui sotto, poi seleziona Verifica risposta.",
         "short_placeholder": "Scrivi la tua risposta", "check_short": "Verifica risposta",
         "reset_short": "Azzera risposta", "short_correct": "Corretta",
         "short_wrong": "Non corretta", "short_empty": "Scrivi prima una risposta",
@@ -1714,8 +1716,9 @@ class HtmlRenderer:
         exercise_id: str,
         solution_body: str = "",
     ) -> str:
-        """Render a short-answer field with client-side checking."""
+        """Render a guided short-answer field with client-side checking."""
         prompt = ""
+        response_hint = ""
         expected = ""
 
         for raw_line in body.splitlines():
@@ -1724,6 +1727,9 @@ class HtmlRenderer:
             if lower in {
                 "type: short_answer", "type: short-answer", "type: shortanswer"
             }:
+                continue
+            if lower.startswith("response_hint:"):
+                response_hint = line.split(":", 1)[1].strip()
                 continue
             if lower.startswith("prompt:") or lower.startswith("question:"):
                 prompt = line.split(":", 1)[1].strip()
@@ -1736,6 +1742,11 @@ class HtmlRenderer:
             expected = solution_lines[0] if solution_lines else ""
 
         input_id = f"{exercise_id}-short-answer"
+        response_hint_html = (
+            f'<p class="short-answer-format-hint">{self._inline(response_hint)}</p>'
+            if response_hint
+            else ""
+        )
         return (
             f'<div class="short-answer" id="{html.escape(exercise_id)}" '
             f'aria-label="{html.escape(self._labels["short_answer"])}">'
@@ -1751,6 +1762,10 @@ class HtmlRenderer:
             )
             + '</div>'
             f'<div class="short-answer-prompt">{self._inline(prompt)}</div>'
+            f'<p class="short-answer-instruction">'
+            f'{html.escape(self._labels["short_instruction"])}'
+            f'</p>'
+            f'{response_hint_html}'
             f'<label class="translation-label" for="{html.escape(input_id)}">'
             f'{html.escape(self._labels["short_prompt"])}:</label>'
             f'<input type="text" class="short-answer-input" '
@@ -2309,16 +2324,42 @@ class HtmlRenderer:
             else:
                 question_lines.append(raw_line.strip())
 
+        if not answers:
+            raise ValueError(
+                f"Choice exercise '{exercise_id}' is missing required answer metadata; "
+                "add 'answer: <option>'."
+            )
+        if not option_lines:
+            raise ValueError(
+                f"Choice exercise '{exercise_id}' has no options configured."
+            )
+        if not multiple and len(answers) != 1:
+            raise ValueError(
+                f"Choice exercise '{exercise_id}' must define exactly one answer; "
+                "use 'multiple: true' for multiple correct answers."
+            )
+
+        normalize = lambda value: " ".join(value.split()).casefold()
+        normalized_options = {normalize(option) for option in option_lines}
+        unmatched_answers = [
+            answer for answer in answers if normalize(answer) not in normalized_options
+        ]
+        if unmatched_answers:
+            invalid = ", ".join(repr(answer) for answer in unmatched_answers)
+            raise ValueError(
+                f"Choice exercise '{exercise_id}' answer(s) {invalid} do not match "
+                "any configured option."
+            )
+        normalized_answers = [normalize(answer) for answer in answers]
+        if len(set(normalized_answers)) != len(normalized_answers):
+            raise ValueError(
+                f"Choice exercise '{exercise_id}' contains duplicate answers."
+            )
+
         rendered = [
             f'<div class="choice-question">{self._inline(line)}</div>'
             for line in question_lines
         ]
-        if not option_lines:
-            rendered.append(
-                '<div class="body-line"><em>Nessuna opzione configurata.</em></div>'
-            )
-            return "\n".join(rendered)
-
         expected = answers if multiple else answers[:1]
         answer_json = json.dumps(expected, ensure_ascii=False, separators=(",", ":"))
         input_type = "checkbox" if multiple else "radio"

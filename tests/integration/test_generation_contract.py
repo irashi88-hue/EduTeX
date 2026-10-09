@@ -1,4 +1,5 @@
 import re
+import pytest
 
 from pathlib import Path
 
@@ -79,6 +80,56 @@ def test_choice_exercise_contract() -> None:
     assert 'class="choice-result" role="status" aria-live="polite"' in source
     assert 'function sameValues' in source
     assert "choice_correct" not in source
+
+def _exercise_contract_renderer() -> HtmlRenderer:
+    renderer = HtmlRenderer()
+    renderer._labels = {
+        "short_answer": "Risposta breve",
+        "short_prompt": "Risposta",
+        "short_placeholder": "Scrivi la tua risposta",
+        "short_instruction": "Scrivi la risposta nel campo qui sotto, poi seleziona Verifica risposta.",
+        "check_short": "Verifica risposta",
+        "reset_short": "Azzera risposta",
+        "special_chars": "Caratteri speciali",
+        "options": "Opzioni",
+        "check_choice": "Verifica risposta",
+        "reset_choice": "Azzera esercizio",
+        "choice_result": "Risultato scelta",
+    }
+    return renderer
+
+
+def test_short_answer_has_default_guidance_and_optional_response_hint() -> None:
+    renderer = _exercise_contract_renderer()
+    source = renderer._render_short_answer(
+        "type: short_answer\n"
+        "prompt: Completa le due forme.\n"
+        "response_hint: Scrivi solo le due parole, in ordine, separate da uno spazio.\n"
+        "answer: heißt heiße",
+        "short-answer-contract",
+    )
+
+    assert "class=\"short-answer-instruction\"" in source
+    assert "poi seleziona Verifica risposta" in source
+    assert "class=\"short-answer-format-hint\"" in source
+    assert "Scrivi solo le due parole" in source
+    assert 'data-character="ä"' in source
+    assert 'data-character="ß"' in source
+
+
+def test_choice_requires_answer_metadata_and_matching_option() -> None:
+    renderer = _exercise_contract_renderer()
+    missing_answer = (
+        "type: choice\nquestion: Scegli la forma corretta.\n"
+        "options:\n- heißen\n- heiße\n- heißt"
+    )
+    with pytest.raises(ValueError, match="missing required answer metadata"):
+        renderer._render_choice_exercise(missing_answer, "choice-missing-answer")
+
+    unmatched_answer = missing_answer + "\nanswer: geheißen"
+    with pytest.raises(ValueError, match="do not match any configured option"):
+        renderer._render_choice_exercise(unmatched_answer, "choice-unmatched-answer")
+
 
 def test_translation_exercise_contract() -> None:
     source = render_in_memory()

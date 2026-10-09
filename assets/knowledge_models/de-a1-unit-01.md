@@ -74,10 +74,10 @@ title: Im Kurs
 
 ::: exercise
 title: Completa il dialogo
-Completa con **heißt** o **heiße**:
-
-— Wie ______ du?
-— Ich ______ Maria.
+type: short_answer
+prompt: Completa il dialogo: — Wie ______ du? — Ich ______ Maria.
+response_hint: Scrivi solo le due forme mancanti nell'ordine in cui compaiono, separate da uno spazio (formato: parola1 parola2).
+answer: heißt heiße
 ::: solution
 — Wie heißt du?
 — Ich heiße Maria.
@@ -197,11 +197,12 @@ In questa unità sai usare:
 ::: exercise
 title: Scegli la forma corretta
 type: choice
-question: Scegli la forma corretta di “chiamarsi”:
+question: Qual è l'infinito tedesco del verbo chiamarsi?
 options:
 - heißen
 - heiße
 - heißt
+answer: heißen
 ::: solution
 La risposta corretta è **heißen**.
 :::

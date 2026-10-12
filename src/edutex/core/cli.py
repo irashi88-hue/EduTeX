@@ -22,6 +22,7 @@ from edutex.activator.activator import Activator
 from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
 from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
+from edutex.course.studio import run_author_studio
 from edutex.core.errors import ConfigurationError, EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
 from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostics
@@ -1055,6 +1056,36 @@ def author_validate_command(source_file: Path, output_format: str) -> None:
         click.echo(report.to_text())
     if not report.valid:
         raise click.exceptions.Exit(1)
+
+
+@author_group.command("studio")
+@click.option(
+    "--project",
+    "project_root",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Course project directory containing course.yaml.",
+)
+@click.option(
+    "--manifest",
+    "manifest_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("course.yaml"),
+    show_default=True,
+    help="Course manifest path, relative to the project unless absolute.",
+)
+@click.option("--no-browser", is_flag=True, help="Print the local URL without opening a browser.")
+def author_studio_command(project_root: Path, manifest_file: Path, no_browser: bool) -> None:
+    """Open the local visual editor for a course manifest."""
+    project_root = project_root.expanduser().resolve()
+    manifest_path = manifest_file if manifest_file.is_absolute() else project_root / manifest_file
+    if not manifest_path.is_file():
+        raise click.ClickException(f"Course manifest not found: {manifest_path}")
+    try:
+        run_author_studio(project_root, manifest_path, open_browser=not no_browser)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @main.command("preview")

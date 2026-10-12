@@ -44,7 +44,7 @@ La radice contiene esattamente la chiave `inspection`:
     "project_root": "...",
     "config_file": "...",
     "configuration": {
-      "framework_version": "1.0.0",
+      "framework_version": "1.6.0",
       "knowledge_model": "assets/knowledge_models/example.md",
       "theme": "default",
       "layout": "default",

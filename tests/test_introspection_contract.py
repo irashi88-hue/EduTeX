@@ -92,7 +92,7 @@ def test_inspect_json_success(tmp_path: Path) -> None:
     )
 
     configuration = inspection["configuration"]
-    assert configuration["framework_version"] == "1.0.0"
+    assert configuration["framework_version"] == "1.6.0"
     assert configuration["knowledge_model"] == (
         "assets/knowledge_models/example.md"
     )

@@ -125,7 +125,7 @@ def test_packaging_contract_is_stable_and_covers_cli_surface() -> None:
 
     assert "src/edutex/core/cli.py" in contract
     assert "pyproject.toml" in contract
-    assert 'CLI_VERSION = "1.0.0"' in contract["src/edutex/core/cli.py"]
+    assert 'CLI_VERSION = "1.6.0"' in contract["src/edutex/core/cli.py"]
     assert '@main.group("course")' in contract["src/edutex/core/cli.py"]
     assert '@main.group("config")' in contract["src/edutex/core/cli.py"]
     assert '@config_group.command("diff")' in contract["src/edutex/core/cli.py"]

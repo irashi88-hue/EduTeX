@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.6.0 - Course authoring and interactive HTML
+
+EduTeX 1.6.0 builds on the stable 1.0.0 baseline, consolidating improvements to course HTML generation, printable course material, interactive exercise contracts, and authoring documentation.
+
 ## Release 1.0.0 — Stable V1 release
 
 EduTeX 1.0.0 è la prima release stabile della V1. Stabilizza la CLI pubblica, i contratti JSON, le diagnostiche, la configurazione runtime, il packaging e il quality gate.

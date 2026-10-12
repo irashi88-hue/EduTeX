@@ -5,7 +5,7 @@ from __future__ import annotations
 from edutex.extension.versioning import is_valid_semver
 
 
-FRAMEWORK_VERSION = "1.0.0"
+FRAMEWORK_VERSION = "1.6.0"
 _OPERATORS = (">=", "<=", ">", "<", "=")
 
 

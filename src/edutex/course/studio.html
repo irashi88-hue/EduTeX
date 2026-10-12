@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>EduTeX Studio</title>
+<style>
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#1d2939;background:#f4f6f8;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}
+header{background:#182d4a;color:#fff;padding:1.1rem clamp(1rem,4vw,3rem);display:flex;justify-content:space-between;align-items:center;gap:1rem}
+header h1{font-size:1.15rem;margin:0;letter-spacing:.01em}header p{margin:.25rem 0 0;color:#d9e4f3;font-size:.9rem}
+main{max-width:1100px;margin:0 auto;padding:1.5rem clamp(1rem,4vw,2rem) 4rem}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem}.toolbar p{margin:0;color:#536176}
+button{border:1px solid #9ba9ba;background:#fff;color:#20344f;padding:.55rem .8rem;border-radius:5px;font-weight:650}
+button:hover{background:#edf3f8}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #7eb8f0;outline-offset:2px}
+button.primary{background:#1c5d8f;color:#fff;border-color:#1c5d8f}button.primary:hover{background:#174b73}
+button.danger{color:#a12f2f;border-color:#d6a0a0}.small{padding:.35rem .55rem;font-size:.88rem}
+.panel{background:#fff;border:1px solid #d8dee7;border-radius:8px;padding:1.2rem;margin:1rem 0;box-shadow:0 2px 8px rgba(24,45,74,.04)}
+h2{font-size:1.08rem;margin:0 0 1rem;color:#20344f}h3{font-size:.98rem;margin:0 0 .85rem;color:#20344f}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem 1rem}.field{display:flex;flex-direction:column;gap:.3rem}.field.wide{grid-column:1/-1}
+label{font-size:.88rem;font-weight:650;color:#34465f}input,textarea{border:1px solid #b8c2cf;border-radius:4px;padding:.6rem .65rem;color:#172033;background:#fff;width:100%}textarea{min-height:5rem;resize:vertical}
+.module{border:1px solid #ccd5df;border-radius:6px;padding:1rem;margin:1rem 0;background:#fbfcfd}.module-head,.lesson-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem}.module-actions,.lesson-actions{display:flex;gap:.4rem;flex-wrap:wrap}.lesson{border-left:3px solid #a5bfd8;margin:.85rem 0 .4rem;padding:.8rem;background:#fff}.lesson .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.status{min-height:1.5rem;margin:.7rem 0;color:#475569}.status.error{color:#a32020}.status.success{color:#17633b}.hint{font-size:.88rem;color:#617087;line-height:1.5}
+.empty{padding:1.2rem;text-align:center;border:1px dashed #b8c2cf;color:#617087;border-radius:5px}
+@media(max-width:650px){.fields,.lesson .fields{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-direction:column}.module-head,.lesson-head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div><h1>EduTeX Studio</h1><p>Organizza il corso senza modificare YAML a mano.</p></div><span aria-hidden="true">EDUTEX · AUTHORING</span></header>
+<main>
+<div class="toolbar"><p>Modifica i dettagli, i moduli e le lezioni. Il salvataggio convalida il corso prima di scrivere il file.</p><button id="save" class="primary" type="button">Salva modifiche</button></div>
+<div id="status" class="status" role="status" aria-live="polite">Caricamento del corso…</div>
+<section class="panel" aria-labelledby="course-title"><h2 id="course-title">Dettagli del corso</h2><div id="course-fields" class="fields"></div></section>
+<section class="panel" aria-labelledby="modules-title"><div class="module-head"><h2 id="modules-title">Moduli e lezioni</h2><button id="add-module" type="button">Aggiungi modulo</button></div><div id="modules"></div></section>
+<p class="hint">Questa prima versione modifica il manifest <code>course.yaml</code>. I file delle lezioni restano invariati. L’editor gira solo sul computer locale; premi Ctrl+C nel terminale per chiuderlo.</p>
+</main>
+<script>
+"use strict";
+const TOKEN = __EDUTEX_STUDIO_TOKEN__;
+let documentData = null;
+let courseData = null;
+let etag = "";
+const statusNode = document.getElementById("status");
+const setStatus = (message, kind = "") => { statusNode.textContent = message; statusNode.className = `status ${kind}`.trim(); };
+const api = async (path, options = {}) => {
+  const response = await fetch(path, { ...options, headers: { "X-EduTeX-Token": TOKEN, ...(options.headers || {}) } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) { const err = new Error(body.error || `Richiesta fallita (${response.status})`); err.payload = body; throw err; }
+  return body;
+};
+function field(parent, labelText, value, onChange, options = {}) {
+  const wrap = document.createElement("div"); wrap.className = `field ${options.wide ? "wide" : ""}`.trim();
+  const label = document.createElement("label"); label.textContent = labelText;
+  const control = options.multiline ? document.createElement("textarea") : document.createElement("input");
+  if (!options.multiline) control.type = options.type || "text";
+  control.value = value == null ? "" : String(value);
+  control.addEventListener("input", () => onChange(control.value));
+  wrap.append(label, control); parent.append(wrap); return control;
+}
+function moveItem(items, index, delta) { const target = index + delta; if (target < 0 || target >= items.length) return; [items[index], items[target]] = [items[target], items[index]]; render(); }
+function makeId(prefix, items, key) { const used = new Set(items.map(item => item[key])); let n = 1; while (used.has(`${prefix}-${String(n).padStart(2,"0")}`)) n++; return `${prefix}-${String(n).padStart(2,"0")}`; }
+function setOptionalNumber(object, key, value) { if (value.trim() === "") delete object[key]; else object[key] = Number(value); }
+function renderCourseFields() {
+  const root = document.getElementById("course-fields"); root.replaceChildren();
+  field(root,"ID corso",courseData.id,v=>courseData.id=v);
+  field(root,"Titolo",courseData.title,v=>courseData.title=v);
+  field(root,"Lingua",courseData.language || "en",v=>courseData.language=v);
+  field(root,"Livello",courseData.level || "",v=>courseData.level=v);
+  field(root,"Autore",courseData.author || "",v=>courseData.author=v);
+  field(root,"Versione",courseData.version || "1.0.0",v=>courseData.version=v);
+  field(root,"Descrizione",courseData.description || "",v=>courseData.description=v,{wide:true,multiline:true});
+}
+function renderModules() {
+  const host = document.getElementById("modules"); host.replaceChildren();
+  if (!Array.isArray(courseData.modules)) courseData.modules = [];
+  if (!courseData.modules.length) { const empty=document.createElement("div"); empty.className="empty"; empty.textContent="Aggiungi il primo modulo per iniziare."; host.append(empty); return; }
+  courseData.modules.forEach((module, mi) => {
+    if (!Array.isArray(module.lessons)) module.lessons=[];
+    const card=document.createElement("section"); card.className="module";
+    const head=document.createElement("div"); head.className="module-head";
+    const title=document.createElement("h3"); title.textContent=`Modulo ${mi+1}`;
+    const actions=document.createElement("div"); actions.className="module-actions";
+    const up=document.createElement("button"); up.type="button"; up.className="small"; up.textContent="Sposta su"; up.disabled=mi===0; up.addEventListener("click",()=>moveItem(courseData.modules,mi,-1));
+    const down=document.createElement("button"); down.type="button"; down.className="small"; down.textContent="Sposta giù"; down.disabled=mi===courseData.modules.length-1; down.addEventListener("click",()=>moveItem(courseData.modules,mi,1));
+    const addLesson=document.createElement("button"); addLesson.type="button"; addLesson.className="small"; addLesson.textContent="Aggiungi lezione"; addLesson.addEventListener("click",()=>{module.lessons.push({id:makeId("lesson",courseData.modules.flatMap(m=>m.lessons||[]),"id"),title:"Nuova lezione",source:(courseData.modules.flatMap(m=>m.lessons||[]).find(l=>l.source||l.path)||{}).source || (courseData.modules.flatMap(m=>m.lessons||[]).find(l=>l.source||l.path)||{}).path || "assets/knowledge_models/example.md"});render();});
+    const remove=document.createElement("button"); remove.type="button"; remove.className="small danger"; remove.textContent="Elimina modulo"; remove.addEventListener("click",()=>{courseData.modules.splice(mi,1);render();});
+    actions.append(up,down,addLesson,remove); head.append(title,actions); card.append(head);
+    const fields=document.createElement("div"); fields.className="fields";
+    field(fields,"ID modulo",module.id,v=>module.id=v); field(fields,"Titolo modulo",module.title,v=>module.title=v);
+    field(fields,"Descrizione modulo",module.description||"",v=>module.description=v,{wide:true,multiline:true}); card.append(fields);
+    module.lessons.forEach((lesson,li)=>{
+      const lessonBox=document.createElement("div"); lessonBox.className="lesson";
+      const lessonHead=document.createElement("div"); lessonHead.className="lesson-head";
+      const lessonTitle=document.createElement("strong"); lessonTitle.textContent=`Lezione ${mi+1}.${li+1}`;
+      const lessonActions=document.createElement("div"); lessonActions.className="lesson-actions";
+      const lu=document.createElement("button"); lu.type="button"; lu.className="small"; lu.textContent="Su"; lu.disabled=li===0; lu.addEventListener("click",()=>moveItem(module.lessons,li,-1));
+      const ld=document.createElement("button"); ld.type="button"; ld.className="small"; ld.textContent="Giù"; ld.disabled=li===module.lessons.length-1; ld.addEventListener("click",()=>moveItem(module.lessons,li,1));
+      const lr=document.createElement("button"); lr.type="button"; lr.className="small danger"; lr.textContent="Rimuovi"; lr.addEventListener("click",()=>{module.lessons.splice(li,1);render();});
+      lessonActions.append(lu,ld,lr); lessonHead.append(lessonTitle,lessonActions); lessonBox.append(lessonHead);
+      const lf=document.createElement("div"); lf.className="fields";
+      field(lf,"ID lezione",lesson.id,v=>lesson.id=v); field(lf,"Titolo lezione",lesson.title,v=>lesson.title=v);
+      field(lf,"File sorgente Markdown",lesson.source||lesson.path||"",v=>{lesson.source=v;delete lesson.path;},{wide:true});
+      field(lf,"Durata (minuti)",lesson.duration_minutes??"",v=>setOptionalNumber(lesson,"duration_minutes",v),{type:"number"});
+      lessonBox.append(lf); card.append(lessonBox);
+    });
+    host.append(card);
+  });
+}
+function render(){ if(!courseData)return; renderCourseFields(); renderModules(); }
+async function load(){
+  try { const data=await api("/api/course"); documentData=data.document; courseData=data.course; etag=data.etag; render(); setStatus(data.valid?"Corso caricato. Le modifiche non sono ancora state salvate.":`Il manifest ha problemi: ${data.errors.join(" ")}`,data.valid?"":"error"); }
+  catch(error){setStatus(error.message,"error");}
+}
+document.getElementById("add-module").addEventListener("click",()=>{
+  if(!Array.isArray(courseData.modules))courseData.modules=[];
+  const lessons=courseData.modules.flatMap(m=>m.lessons||[]);
+  const first=lessons.find(item=>item.source||item.path);
+  const source=first?(first.source||first.path):"assets/knowledge_models/example.md";
+  const lesson={id:makeId("lesson",lessons,"id"),title:"Nuova lezione",source};
+  courseData.modules.push({id:makeId("module",courseData.modules,"id"),title:"Nuovo modulo",lessons:[lesson]});render();
+});
+document.getElementById("save").addEventListener("click",async()=>{
+  if(!documentData||!courseData)return;
+  const wrapped=Object.prototype.hasOwnProperty.call(documentData,"course")&&documentData.course&&typeof documentData.course==="object"&&!Array.isArray(documentData.course);
+  if(wrapped)documentData.course=courseData;else Object.assign(documentData,courseData);
+  const button=document.getElementById("save");button.disabled=true;setStatus("Convalida e salvataggio…");
+  try {const result=await api("/api/course",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({document:documentData,etag})});etag=result.etag;setStatus("Modifiche salvate e corso convalidato.","success");}
+  catch(error){const items=error.payload?.errors||[];setStatus(items.length?`${error.message} ${items.join(" ")}`:error.message,"error");if(error.payload?.reload)setStatus(`${error.message} Ricarica la pagina per evitare di sovrascrivere modifiche esterne.`,"error");}
+  finally{button.disabled=false;}
+});
+load();
+</script>
+</body>
+</html>

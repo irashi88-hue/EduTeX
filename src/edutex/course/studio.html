@@ -24,6 +24,12 @@ label{font-size:.88rem;font-weight:650;color:#34465f}input,textarea{border:1px s
 .status{min-height:1.5rem;margin:.7rem 0;color:#475569}.status.error{color:#a32020}.status.success{color:#17633b}.hint{font-size:.88rem;color:#617087;line-height:1.5}
 .empty{padding:1.2rem;text-align:center;border:1px dashed #b8c2cf;color:#617087;border-radius:5px}
 @media(max-width:650px){.fields,.lesson .fields{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-direction:column}.module-head,.lesson-head{align-items:flex-start;flex-direction:column}}
+
+.lesson-editor{border-top:4px solid #1c5d8f}.lesson-toolbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.6rem 0 1rem}.lesson-toolbar select{min-width:190px;max-width:100%;padding:.55rem;border:1px solid #b8c2cf;border-radius:4px;background:#fff}.palette{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;padding:.8rem;background:#f2f6fa;border:1px solid #d8e1e9;border-radius:5px;margin:1rem 0}.palette select{padding:.55rem;border:1px solid #b8c2cf;border-radius:4px;background:#fff}.content-block{border:1px solid #d5dce5;border-left:4px solid #7793af;border-radius:5px;padding:.9rem;margin:.75rem 0;background:#fff}.content-block.readonly{border-left-color:#c58a39;background:#fffbf2}.block-head{display:flex;justify-content:space-between;align-items:center;gap:.7rem;margin-bottom:.75rem}.block-title{font-weight:700;color:#283e57}.block-actions{display:flex;gap:.35rem}.block-list{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem}.block-list input{min-width:0}.block-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.5fr) auto;gap:.5rem;margin:.5rem 0}.readonly-note{margin:0;color:#695638;font-size:.9rem}.saved-indicator{color:#17633b}.exercise-tag{display:inline-block;margin-left:.4rem;padding:.15rem .4rem;background:#e8f0f7;border-radius:3px;font-size:.78rem;color:#34516f}.compact{min-height:2.7rem}.editor-error{color:#a32020;white-space:pre-wrap}.editor-ok{color:#17633b}@media(max-width:650px){.block-head{align-items:flex-start;flex-direction:column}.block-pair{grid-template-columns:1fr}.lesson-toolbar select{width:100%;max-width:none}}
+
+
+.readonly-preview{margin:.5rem 0 0;padding:.65rem .75rem;border-left:2px solid #d6b16a;background:#fff;color:#39495c;line-height:1.55;overflow-wrap:anywhere}.readonly-empty{color:#6b7280;font-style:italic}
+
 </style>
 </head>
 <body>
@@ -34,6 +40,15 @@ label{font-size:.88rem;font-weight:650;color:#34465f}input,textarea{border:1px s
 <section class="panel" aria-labelledby="course-title"><h2 id="course-title">Dettagli del corso</h2><div id="course-fields" class="fields"></div></section>
 <section class="panel" aria-labelledby="modules-title"><div class="module-head"><h2 id="modules-title">Moduli e lezioni</h2><button id="add-module" type="button">Aggiungi modulo</button></div><div id="modules"></div></section>
 <p class="hint">Questa prima versione modifica il manifest <code>course.yaml</code>. I file delle lezioni restano invariati. L’editor gira solo sul computer locale; premi Ctrl+C nel terminale per chiuderlo.</p>
+
+<section class="panel lesson-editor" aria-labelledby="lesson-editor-title">
+<h2 id="lesson-editor-title">Contenuto delle lezioni</h2>
+<p class="hint">Modifica i blocchi riconosciuti con campi guidati. Frontmatter e blocchi non supportati restano intatti e non vengono mostrati come Markdown.</p>
+<div class="lesson-toolbar"><label for="lesson-choice">Lezione</label><select id="lesson-choice" aria-label="Seleziona una lezione"><option value="">Caricamento lezioni...</option></select><button id="open-lesson" type="button">Apri editor</button><button id="save-lesson" class="primary" type="button" disabled>Salva lezione</button></div>
+<div id="lesson-status" class="status" role="status" aria-live="polite">Seleziona una lezione collegata al corso.</div>
+<div id="lesson-workspace" hidden><div class="palette"><label for="block-type">Aggiungi un blocco</label><select id="block-type"><option value="heading">Titolo / intestazione</option><option value="text">Testo</option><option value="list">Elenco</option><option value="note">Nota</option><option value="rule">Regola</option><option value="example">Esempio</option><option value="exercise">Esercizio</option></select><button id="add-block" type="button">Aggiungi blocco</button></div><div id="lesson-blocks"></div></div>
+</section>
+
 </main>
 <script>
 "use strict";
@@ -109,7 +124,7 @@ function renderModules() {
 }
 function render(){ if(!courseData)return; renderCourseFields(); renderModules(); }
 async function load(){
-  try { const data=await api("/api/course"); documentData=data.document; courseData=data.course; etag=data.etag; render(); setStatus(data.valid?"Corso caricato. Le modifiche non sono ancora state salvate.":`Il manifest ha problemi: ${data.errors.join(" ")}`,data.valid?"":"error"); }
+  try { const data=await api("/api/course"); documentData=data.document; courseData=data.course; etag=data.etag; render(); populateLessonSelect(); setStatus(data.valid?"Corso caricato. Le modifiche non sono ancora state salvate.":`Il manifest ha problemi: ${data.errors.join(" ")}`,data.valid?"":"error"); }
   catch(error){setStatus(error.message,"error");}
 }
 document.getElementById("add-module").addEventListener("click",()=>{
@@ -129,6 +144,149 @@ document.getElementById("save").addEventListener("click",async()=>{
   catch(error){const items=error.payload?.errors||[];setStatus(items.length?`${error.message} ${items.join(" ")}`:error.message,"error");if(error.payload?.reload)setStatus(`${error.message} Ricarica la pagina per evitare di sovrascrivere modifiche esterne.`,"error");}
   finally{button.disabled=false;}
 });
+
+let lessonDoc = null;
+let lessonSource = "";
+const lessonStatus = document.getElementById("lesson-status");
+const lessonStatusSet = (message, kind = "") => { lessonStatus.textContent = message; lessonStatus.className = `status ${kind}`.trim(); };
+function populateLessonSelect() {
+  const select = document.getElementById("lesson-choice");
+  select.replaceChildren();
+  const empty = document.createElement("option"); empty.value = ""; empty.textContent = "Seleziona una lezione"; select.append(empty);
+  for (const module of (courseData?.modules || [])) for (const lesson of (module.lessons || [])) {
+    const source = lesson.source || lesson.path; if (!source) continue;
+    const option = document.createElement("option"); option.value = source;
+    option.textContent = `${module.title || module.id} / ${lesson.title || lesson.id}`;
+    select.append(option);
+  }
+}
+function blockField(parent, labelText, value, setter, multiline = false) {
+  const wrap = document.createElement("div"); wrap.className = "field";
+  const label = document.createElement("label"); label.textContent = labelText;
+  const input = multiline ? document.createElement("textarea") : document.createElement("input");
+  if (!multiline) input.type = "text";
+  input.value = value == null ? "" : String(value);
+  input.addEventListener("input", () => { setter(input.value); });
+  wrap.append(label, input); parent.append(wrap); return input;
+}
+function touchBlock(block) { block.dirty = true; }
+function renderStringList(parent, block, key, title) {
+  const wrap = document.createElement("div"); wrap.className = "field wide";
+  const label = document.createElement("label"); label.textContent = title; wrap.append(label);
+  if (!Array.isArray(block.data[key])) block.data[key] = [];
+  const list = document.createElement("div"); list.className = "block-list";
+  block.data[key].forEach((item, index) => {
+    const input = document.createElement("input"); input.value = String(item); input.setAttribute("aria-label", `${title} ${index+1}`);
+    input.addEventListener("input", () => { block.data[key][index] = input.value; touchBlock(block); });
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "small danger"; remove.textContent = "Rimuovi";
+    remove.addEventListener("click", () => { block.data[key].splice(index, 1); touchBlock(block); renderLessonBlocks(); });
+    list.append(input, remove);
+  });
+  const add = document.createElement("button"); add.type = "button"; add.className = "small"; add.textContent = "Aggiungi elemento";
+  add.addEventListener("click", () => { block.data[key].push(""); touchBlock(block); renderLessonBlocks(); });
+  wrap.append(list, add); parent.append(wrap);
+}
+function addBlockField(host, block, key, label, value, multiline = false) {
+  blockField(host, label, value, next => { block.data[key] = next; touchBlock(block); }, multiline);
+}
+function renderExerciseFields(host, block) {
+  const data = block.data; const type = data.exercise_type;
+  const typeWrap = document.createElement("div"); typeWrap.className = "field";
+  const typeLabel = document.createElement("label"); typeLabel.textContent = "Tipo di esercizio";
+  const typeSelect = document.createElement("select");
+  const exerciseNames = {choice:"Scelta multipla",true_false:"Vero o falso",cloze:"Completamento cloze",matching:"Abbinamento",short_answer:"Risposta breve",translation:"Traduzione",builder:"Costruzione della frase"};
+  for (const [value, text] of Object.entries(exerciseNames)) { const option=document.createElement("option"); option.value=value; option.textContent=text; typeSelect.append(option); }
+  typeSelect.value = type; typeSelect.addEventListener("change",()=>{ const previous=block.data; const next={exercise_type:typeSelect.value,title:previous.title||"",solution:previous.solution||""}; if(next.exercise_type==="choice")Object.assign(next,{question:"",multiple:false,options:[""],answer:""}); else if(next.exercise_type==="true_false")next.pairs=[{statement:"",answer:"true"}]; else if(next.exercise_type==="cloze")Object.assign(next,{sentence:"",answers:[""]}); else if(next.exercise_type==="matching")Object.assign(next,{words:[""],meanings:[""]}); else if(next.exercise_type==="short_answer")Object.assign(next,{prompt:"",response_hint:"",answer:""}); else if(next.exercise_type==="translation")Object.assign(next,{source:"",answer:""}); else if(next.exercise_type==="builder")Object.assign(next,{tokens:[""],answer:""}); block.data=next; touchBlock(block); renderLessonBlocks(); });
+  typeWrap.append(typeLabel,typeSelect); host.append(typeWrap);
+  addBlockField(host, block, "title", "Titolo dell'esercizio", data.title || "");
+  if (type === "choice") {
+    addBlockField(host, block, "question", "Consegna", data.question || "", true);
+    const wrap = document.createElement("div"); wrap.className = "field";
+    const label = document.createElement("label"); label.textContent = "Consenti piu risposte";
+    const input = document.createElement("input"); input.type = "checkbox"; input.checked = !!data.multiple; input.style.width = "auto";
+    input.addEventListener("change", () => { data.multiple = input.checked; touchBlock(block); }); wrap.append(label, input); host.append(wrap);
+    renderStringList(host, block, "options", "Opzioni"); addBlockField(host, block, "answer", "Risposta corretta (separa le alternative con |)", data.answer || "");
+  } else if (type === "true_false") {
+    const label = document.createElement("strong"); label.textContent = "Affermazioni"; host.append(label);
+    if (!Array.isArray(data.pairs)) data.pairs = [];
+    data.pairs.forEach((pair, index) => {
+      const row = document.createElement("div"); row.className = "block-pair";
+      const statement = document.createElement("input"); statement.value = pair.statement || ""; statement.setAttribute("aria-label", `Affermazione ${index+1}`);
+      statement.addEventListener("input", () => { pair.statement = statement.value; touchBlock(block); });
+      const answer = document.createElement("select");
+      for (const [value, text] of [["true","Vero"],["false","Falso"]]) { const option = document.createElement("option"); option.value = value; option.textContent = text; answer.append(option); }
+      answer.value = pair.answer === "vero" ? "true" : pair.answer === "falso" ? "false" : pair.answer || "true";
+      answer.addEventListener("change", () => { pair.answer = answer.value; touchBlock(block); });
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "small danger"; remove.textContent = "Rimuovi"; remove.addEventListener("click", () => { data.pairs.splice(index,1); touchBlock(block); renderLessonBlocks(); });
+      row.append(statement, answer, remove); host.append(row);
+    });
+    const add = document.createElement("button"); add.type = "button"; add.className = "small"; add.textContent = "Aggiungi affermazione"; add.addEventListener("click", () => { data.pairs.push({statement:"",answer:"true"}); touchBlock(block); renderLessonBlocks(); }); host.append(add);
+  } else if (type === "cloze") {
+    addBlockField(host, block, "sentence", "Frase (usa __ per ogni spazio)", data.sentence || "", true); renderStringList(host, block, "answers", "Risposte in ordine, poi eventuali distrattori");
+  } else if (type === "matching") {
+    renderStringList(host, block, "words", "Elementi da abbinare"); renderStringList(host, block, "meanings", "Corrispondenze nello stesso ordine");
+  } else if (type === "short_answer") {
+    addBlockField(host, block, "prompt", "Consegna", data.prompt || data.question || "", true); addBlockField(host, block, "response_hint", "Suggerimento sul formato", data.response_hint || ""); addBlockField(host, block, "answer", "Risposta attesa (varianti con |)", data.answer || data.expected || "");
+  } else if (type === "translation") {
+    addBlockField(host, block, "source", "Testo da tradurre", data.source || data.prompt || "", true); addBlockField(host, block, "answer", "Traduzioni accettate (separa con |)", data.answer || data.expected || "");
+  } else if (type === "builder") {
+    renderStringList(host, block, "tokens", "Parole o segmenti disponibili"); addBlockField(host, block, "answer", "Frase attesa", data.answer || "");
+  }
+  addBlockField(host, block, "solution", "Soluzione mostrata nell'appendice (facoltativa)", data.solution || "", true);
+}
+function renderLessonBlocks() {
+  const host = document.getElementById("lesson-blocks"); host.replaceChildren();
+  for (const [index, block] of (lessonDoc?.blocks || []).entries()) {
+    const card = document.createElement("article"); card.className = `content-block ${block.editable ? "" : "readonly"}`;
+    const head = document.createElement("div"); head.className = "block-head";
+    const title = document.createElement("span"); title.className = "block-title";
+    const names = {heading:"Titolo",text:"Testo",list:"Elenco",note:"Nota",rule:"Regola",example:"Esempio",exercise:"Esercizio",preserved:"Contenuto mantenuto"};
+    title.textContent = names[block.kind] || "Contenuto mantenuto"; head.append(title);
+    const actions = document.createElement("div"); actions.className = "block-actions";
+    for (const [label, delta] of [["Su",-1],["Giu",1]]) { const button=document.createElement("button"); button.type="button"; button.className="small"; button.textContent=label; button.disabled=index+delta<0||index+delta>=lessonDoc.blocks.length; button.addEventListener("click",()=>{const target=index+delta;[lessonDoc.blocks[index],lessonDoc.blocks[target]]=[lessonDoc.blocks[target],lessonDoc.blocks[index]];renderLessonBlocks();}); actions.append(button); }
+    if (block.editable) { const remove=document.createElement("button"); remove.type="button"; remove.className="small danger"; remove.textContent="Elimina"; remove.addEventListener("click",()=>{lessonDoc.blocks.splice(index,1);renderLessonBlocks();}); actions.append(remove); }
+    head.append(actions); card.append(head);
+    if (!block.editable) {
+      const note=document.createElement("p"); note.className="readonly-note";
+      note.textContent = block.display || "Contenuto mantenuto invariato.";
+      const preview = document.createElement("p"); preview.className = "readonly-preview";
+      preview.textContent = block.preview || "Anteprima testuale non disponibile; il contenuto originale sara conservato.";
+      if (!block.preview) preview.classList.add("readonly-empty");
+      card.append(note, preview); host.append(card); continue;
+    }
+    const fields=document.createElement("div"); fields.className="fields"; card.append(fields);
+    if (block.kind === "heading") {
+      const select=document.createElement("select"); for(let level=1;level<=6;level++){const option=document.createElement("option");option.value=String(level);option.textContent=`Titolo ${level}`;select.append(option);} select.value=String(block.data.level||2);select.addEventListener("change",()=>{block.data.level=Number(select.value);touchBlock(block);}); const wrap=document.createElement("div");wrap.className="field";const label=document.createElement("label");label.textContent="Livello";wrap.append(label,select);fields.append(wrap);addBlockField(fields,block,"text","Testo del titolo",block.data.text||"");
+    } else if (block.kind === "text") addBlockField(fields,block,"text","Testo",block.data.text||"",true);
+    else if (block.kind === "list") renderStringList(fields,block,"items","Voci dell'elenco");
+    else if (["note","rule","example"].includes(block.kind)) {
+      if (block.kind === "example") {const wrap=document.createElement("div");wrap.className="field";const label=document.createElement("label");label.textContent="Tipo di esempio";const select=document.createElement("select");for(const value of ["simple","comparative","contextual"]){const option=document.createElement("option");option.value=value;option.textContent=value;select.append(option);}select.value=block.data.subtype||"simple";select.addEventListener("change",()=>{block.data.subtype=select.value;touchBlock(block);});wrap.append(label,select);fields.append(wrap);}
+      addBlockField(fields,block,"content","Contenuto",block.data.content||"",true);
+    } else if (block.kind === "exercise") renderExerciseFields(fields,block);
+    host.append(card);
+  }
+}
+async function openLesson() {
+  const source = document.getElementById("lesson-choice").value;
+  if (!source) { lessonStatusSet("Seleziona prima una lezione.","error"); return; }
+  lessonSource = source;
+  try { lessonDoc = await api(`/api/lesson?source=${encodeURIComponent(source)}`); document.getElementById("lesson-workspace").hidden=false; document.getElementById("save-lesson").disabled=false; renderLessonBlocks(); lessonStatusSet("Lezione caricata. I contenuti avanzati sono conservati senza esporre il Markdown."); }
+  catch(error) { lessonStatusSet(error.message,"error"); }
+}
+document.getElementById("open-lesson").addEventListener("click",openLesson);
+document.getElementById("save-lesson").addEventListener("click",async()=>{
+  if(!lessonDoc)return; const button=document.getElementById("save-lesson"); button.disabled=true; lessonStatusSet("Verifica e salvataggio della lezione...");
+  try { const result=await api("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({source:lessonSource,etag:lessonDoc.etag,blocks:lessonDoc.blocks,tail:lessonDoc.tail})}); lessonDoc.etag=result.etag; await openLesson(); lessonStatusSet("Lezione salvata e convalidata.","success"); }
+  catch(error) { const details=error.payload?.errors||[]; lessonStatusSet(details.length?`${error.message} ${details.join(" ")}`:error.message,"error"); }
+  finally { button.disabled=false; }
+});
+document.getElementById("add-block").addEventListener("click",()=>{
+  if(!lessonDoc)return; const kind=document.getElementById("block-type").value;
+  const prefix=lessonDoc.blocks.length?"\n\n":""; let data={};
+  if(kind==="heading")data={level:2,text:"Nuovo titolo"}; else if(kind==="text")data={text:""}; else if(kind==="list")data={ordered:false,items:[""]}; else if(["note","rule"].includes(kind))data={content:""}; else if(kind==="example")data={content:"",subtype:"simple"}; else if(kind==="exercise")data={exercise_type:"choice",title:"",question:"",multiple:false,options:[""],answer:"",solution:""};
+  lessonDoc.blocks.push({kind,editable:true,raw:"",prefix,dirty:true,ending:"\n",data});renderLessonBlocks();
+});
+
 load();
 </script>
 </body>

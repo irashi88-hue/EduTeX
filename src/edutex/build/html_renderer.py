@@ -59,7 +59,7 @@ _EDUTEX_UI_LABELS = {
         "choice_correct": "Correct", "choice_wrong": "Not correct",
         "choice_missing": "Select an answer", "choice_result": "Choice result",
         "special_chars": "Special characters",
-        "skip": "Skip to content", "document_content": "Document content","contents": "Contents",
+        "skip": "Skip to content", "document_content": "Document content","contents": "Contents", "back_to_top": "Back to top",
     },
     "it": {
         "rule": "Regola", "note": "Nota", "example": "Esempio", "exercise": "Esercizio",
@@ -103,7 +103,7 @@ _EDUTEX_UI_LABELS = {
         "choice_correct": "Corretta", "choice_wrong": "Non corretta",
         "choice_missing": "Seleziona una risposta", "choice_result": "Risultato scelta",
         "special_chars": "Caratteri speciali",
-        "skip": "Vai al contenuto", "document_content": "Contenuto del documento","contents": "Indice",
+        "skip": "Vai al contenuto", "document_content": "Contenuto del documento","contents": "Indice", "back_to_top": "Torna in cima alla lezione",
     },
 }
 
@@ -118,7 +118,7 @@ _EDUTEX_UI_LABELS["ja"] = {
     "solutions": "解答",
     "contents": "目次",
     "skip": "コンテンツへ移動",
-    "document_content": "文書の内容",
+    "document_content": "文書の内容", "back_to_top": "ページの先頭へ",
 }
 
 
@@ -184,6 +184,7 @@ class HtmlRenderer:
         colors = self._theme_colors(theme)
         palette = self._theme_palette(theme)
         author_html = f'<p class="author">{author}</p>' if author else ""
+        back_to_top_label = html.escape(self._labels["back_to_top"], quote=True)
         return f"""<!doctype html>
 <html lang="{language}">
 <head>
@@ -284,6 +285,41 @@ class HtmlRenderer:
       }}
     }}    * {{ box-sizing: border-box; }}
     :focus-visible {{ outline: 3px solid var(--rule-color); outline-offset: 3px; }}
+    html {{ scroll-behavior: smooth; }}
+    @media (prefers-reduced-motion: reduce) {{
+      html {{ scroll-behavior: auto; }}
+    }}
+    .back-to-top {{
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      bottom: max(1rem, env(safe-area-inset-bottom));
+      z-index: 20;
+      width: 3.5rem;
+      height: 3.5rem;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--neutral-line);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 4px 16px var(--shadow);
+      text-decoration: none;
+      font-size: 1.65rem;
+      font-weight: 700;
+      line-height: 1;
+    }}
+    .back-to-top-icon {{
+      display: block;
+      width: 2rem;
+      height: 2rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }}
+    .back-to-top:hover {{ background: var(--control-bg-hover); }}
+    .back-to-top:focus-visible {{ outline-offset: 4px; }}
     .skip-link {{
       position: absolute;
       left: 1rem;
@@ -1036,6 +1072,7 @@ class HtmlRenderer:
   </style>
 </head>
 <body>
+  <a class="back-to-top" href="#" aria-label="{back_to_top_label}" title="{back_to_top_label}"><svg class="back-to-top-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
   <a class="skip-link" href="#content">{html.escape(self._labels["skip"])}</a>
   <main>
     <header class="masthead">

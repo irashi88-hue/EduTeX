@@ -179,3 +179,49 @@ def test_selected_theme_must_remain_inside_theme_root(tmp_path: Path) -> None:
     outside = write_theme(tmp_path / "outside", "theme", "id: outside")
     with pytest.raises(ThemeCompositionError, match="outside theme root"):
         load_composed_theme(outside, root)
+
+def test_public_theme_inspection_reports_effective_styles_and_overrides(tmp_path: Path) -> None:
+    from edutex.theme.composition import inspect_composed_theme
+
+    root = tmp_path / "themes"
+    write_theme(root, "base", """
+        id: base
+        name: Base
+        styles:
+          exercise:
+            border_color: "#111111"
+            display: block
+        palette:
+          ink: "#111111"
+    """)
+    active = write_theme(root, "active", """
+        id: active
+        name: Active
+        extends: [base]
+        styles:
+          exercise:
+            border_color: "#222222"
+        palette:
+          ink: "#222222"
+    """)
+
+    report = inspect_composed_theme(active, root)
+    composition = report["composition"]
+    assert report["effective"]["styles"]["exercise"] == {
+        "label": "",
+        "border_color": "#222222",
+        "background_color": "",
+        "font_weight": "normal",
+        "display": "block",
+    }
+    assert [layer["source"] for layer in composition["layers"]] == [
+        "base/theme.yaml",
+        "active/theme.yaml",
+    ]
+    assert composition["provenance"]["styles.exercise.border_color"] == "active/theme.yaml"
+    assert any(
+        item["field"] == "styles.exercise.border_color"
+        and item["overridden_from"] == "base/theme.yaml"
+        and item["overridden_by"] == "active/theme.yaml"
+        for item in composition["overrides"]
+    )

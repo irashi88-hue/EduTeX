@@ -59,7 +59,7 @@ _EDUTEX_UI_LABELS = {
         "choice_correct": "Correct", "choice_wrong": "Not correct",
         "choice_missing": "Select an answer", "choice_result": "Choice result",
         "special_chars": "Special characters",
-        "skip": "Skip to content", "document_content": "Document content","contents": "Contents",
+        "skip": "Skip to content", "document_content": "Document content","contents": "Contents", "back_to_top": "Back to top",
     },
     "it": {
         "rule": "Regola", "note": "Nota", "example": "Esempio", "exercise": "Esercizio",
@@ -103,7 +103,7 @@ _EDUTEX_UI_LABELS = {
         "choice_correct": "Corretta", "choice_wrong": "Non corretta",
         "choice_missing": "Seleziona una risposta", "choice_result": "Risultato scelta",
         "special_chars": "Caratteri speciali",
-        "skip": "Vai al contenuto", "document_content": "Contenuto del documento","contents": "Indice",
+        "skip": "Vai al contenuto", "document_content": "Contenuto del documento","contents": "Indice", "back_to_top": "Torna in cima alla lezione",
     },
 }
 
@@ -118,7 +118,7 @@ _EDUTEX_UI_LABELS["ja"] = {
     "solutions": "解答",
     "contents": "目次",
     "skip": "コンテンツへ移動",
-    "document_content": "文書の内容",
+    "document_content": "文書の内容", "back_to_top": "ページの先頭へ",
 }
 
 
@@ -184,6 +184,7 @@ class HtmlRenderer:
         colors = self._theme_colors(theme)
         palette = self._theme_palette(theme)
         author_html = f'<p class="author">{author}</p>' if author else ""
+        back_to_top_label = html.escape(self._labels["back_to_top"], quote=True)
         return f"""<!doctype html>
 <html lang="{language}">
 <head>
@@ -284,6 +285,41 @@ class HtmlRenderer:
       }}
     }}    * {{ box-sizing: border-box; }}
     :focus-visible {{ outline: 3px solid var(--rule-color); outline-offset: 3px; }}
+    html {{ scroll-behavior: smooth; }}
+    @media (prefers-reduced-motion: reduce) {{
+      html {{ scroll-behavior: auto; }}
+    }}
+    .back-to-top {{
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      bottom: max(1rem, env(safe-area-inset-bottom));
+      z-index: 20;
+      width: 3.5rem;
+      height: 3.5rem;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--neutral-line);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 4px 16px var(--shadow);
+      text-decoration: none;
+      font-size: 1.65rem;
+      font-weight: 700;
+      line-height: 1;
+    }}
+    .back-to-top-icon {{
+      display: block;
+      width: 2rem;
+      height: 2rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }}
+    .back-to-top:hover {{ background: var(--control-bg-hover); }}
+    .back-to-top:focus-visible {{ outline-offset: 4px; }}
     .skip-link {{
       position: absolute;
       left: 1rem;
@@ -1036,6 +1072,7 @@ class HtmlRenderer:
   </style>
 </head>
 <body>
+  <a class="back-to-top" href="#" aria-label="{back_to_top_label}" title="{back_to_top_label}"><svg class="back-to-top-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
   <a class="skip-link" href="#content">{html.escape(self._labels["skip"])}</a>
   <main>
     <header class="masthead">
@@ -2459,6 +2496,10 @@ class HtmlRenderer:
 
     def _render_formula(self, node: StyledNode, body: str) -> str:
         """Render mathematical and chemical formulas with semantic HTML."""
+        if node.subtype == "chem":
+            molecule_html = self._render_molecule(body)
+            if molecule_html is not None:
+                return molecule_html
         escaped = html.escape(body, quote=False)
         if node.subtype == "chem":
             escaped = self._render_chemistry(escaped)
@@ -2475,10 +2516,392 @@ class HtmlRenderer:
 
     @staticmethod
     def _render_chemistry(escaped: str) -> str:
-        """Render common chemical subscripts without interpreting HTML input."""
+        """Render common chemical notation without interpreting HTML input."""
         escaped = escaped.replace("-&gt;", "&#8594;").replace("->", "&#8594;")
+
+        # Support common TeX-like reaction symbols used in formula.chem blocks.
+        # The body is HTML-escaped before this method is called.
+        symbols = {
+            "longleftrightarrow": "&#10231;",
+            "rightleftharpoons": "&#8652;",
+            "leftrightharpoons": "&#8651;",
+            "leftrightarrow": "&#8596;",
+            "longrightarrow": "&#10230;",
+            "longleftarrow": "&#10229;",
+            "rightarrow": "&#8594;",
+            "leftarrow": "&#8592;",
+            "leftharpoons": "&#8651;",
+            "uparrow": "&#8593;",
+            "downarrow": "&#8595;",
+            "Delta": "&#916;",
+            "delta": "&#948;",
+            "times": "&#215;",
+            "cdot": "&#183;",
+        }
+        command_pattern = r"\\(" + "|".join(
+            sorted(symbols, key=len, reverse=True)
+        ) + r")\b"
+        escaped = re.sub(
+            command_pattern,
+            lambda match: symbols[match.group(1)],
+            escaped,
+        )
+
         escaped = re.sub(r"_\{([^{}]+)\}", r"<sub>\1</sub>", escaped)
-        return re.sub(r"_([0-9]+)", r"<sub>\1</sub>", escaped)
+        escaped = re.sub(r"_([0-9]+)", r"<sub>\1</sub>", escaped)
+        escaped = re.sub(r"\^\{([^{}]+)\}", r"<sup>\1</sup>", escaped)
+        return re.sub(r"\^([0-9+\-]+)", r"<sup>\1</sup>", escaped)
+
+    @staticmethod
+    def _render_molecule(body: str) -> str | None:
+        """Render an expanded acyclic molecule with explicit C and H labels."""
+        if not re.search(r"(?m)^\s*molecule\s*:", body):
+            return None
+
+        try:
+            import yaml
+            document = yaml.safe_load(body)
+        except Exception:
+            return (
+                '<div class="formula-molecule-error" role="note">'
+                'Molecular structure could not be rendered.</div>'
+            )
+
+        if not isinstance(document, dict) or "molecule" not in document:
+            return None
+        molecule = document.get("molecule")
+        if not isinstance(molecule, dict):
+            return '<div class="formula-molecule-error" role="note">Invalid molecule data.</div>'
+
+        def invalid() -> str:
+            return (
+                '<div class="formula-molecule-error" role="note">'
+                'Molecule not rendered. Check atoms, bonds, valence, connectivity, '
+                'and the no-ring limit.'
+                '</div>'
+            )
+
+        raw_atoms = molecule.get("atoms")
+        raw_bonds = molecule.get("bonds")
+        if not isinstance(raw_atoms, list) or not isinstance(raw_bonds, list):
+            return invalid()
+        if not 2 <= len(raw_atoms) <= 32 or len(raw_bonds) != len(raw_atoms) - 1:
+            return invalid()
+
+        valences = {"C": 4, "H": 1, "O": 2, "N": 3,
+                    "F": 1, "Cl": 1, "Br": 1, "I": 1}
+        atom_pattern = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,23}$")
+        atoms: dict[str, str] = {}
+        atom_order: list[str] = []
+        for raw_atom in raw_atoms:
+            if not isinstance(raw_atom, dict):
+                return invalid()
+            atom_id = raw_atom.get("id")
+            element = raw_atom.get("element")
+            if (
+                not isinstance(atom_id, str)
+                or not atom_pattern.fullmatch(atom_id)
+                or atom_id in atoms
+                or not isinstance(element, str)
+                or element not in valences
+            ):
+                return invalid()
+            atoms[atom_id] = element
+            atom_order.append(atom_id)
+
+        adjacency: dict[str, list[str]] = {atom_id: [] for atom_id in atoms}
+        edge_order: dict[tuple[str, str], int] = {}
+        valence_sum = {atom_id: 0 for atom_id in atoms}
+        edge_set: set[tuple[str, str]] = set()
+        for raw_bond in raw_bonds:
+            if not isinstance(raw_bond, dict):
+                return invalid()
+            left, right = raw_bond.get("from"), raw_bond.get("to")
+            order = raw_bond.get("order", "single")
+            if not isinstance(left, str) or not isinstance(right, str):
+                return invalid()
+            if isinstance(order, bool) or not isinstance(order, (str, int)):
+                return invalid()
+            order_value = {"single": 1, "double": 2, "triple": 3}.get(order)
+            if order_value is None and order in (1, 2, 3):
+                order_value = order
+            if (
+                left not in atoms or right not in atoms or left == right
+                or order_value not in (1, 2, 3)
+            ):
+                return invalid()
+            edge = tuple(sorted((left, right)))
+            if edge in edge_set:
+                return invalid()
+            edge_set.add(edge)
+            edge_order[(left, right)] = order_value
+            edge_order[(right, left)] = order_value
+            adjacency[left].append(right)
+            adjacency[right].append(left)
+            valence_sum[left] += order_value
+            valence_sum[right] += order_value
+
+        if any(valence_sum[key] > valences[atoms[key]] for key in atoms):
+            return invalid()
+
+        # Root at a highly connected carbon so common carbonyls are centred.
+        atom_rank = {atom_id: index for index, atom_id in enumerate(atom_order)}
+        root = max(
+            atom_order,
+            key=lambda atom_id: (
+                len(adjacency[atom_id]), atoms[atom_id] == "C", -atom_rank[atom_id]
+            ),
+        )
+        parent: dict[str, str | None] = {root: None}
+        children: dict[str, list[str]] = {atom_id: [] for atom_id in atoms}
+        stack = [root]
+        while stack:
+            current = stack.pop()
+            for neighbor in adjacency[current]:
+                if neighbor == parent[current]:
+                    continue
+                if neighbor in parent:
+                    return invalid()
+                parent[neighbor] = current
+                children[current].append(neighbor)
+                stack.append(neighbor)
+        if len(parent) != len(atoms):
+            return invalid()
+
+        import math
+
+        bond_length = 88.0
+        positions: dict[str, tuple[float, float]] = {root: (0.0, 0.0)}
+        depths = {root: 0}
+        pi = math.pi
+
+        def root_angles(neighbors: list[str]) -> dict[str, float]:
+            assigned: dict[str, float] = {}
+            vertical = [
+                atom_id for atom_id in neighbors
+                if atoms[atom_id] != "C" and edge_order[(root, atom_id)] > 1
+            ]
+            for index, atom_id in enumerate(vertical):
+                assigned[atom_id] = pi / 2 if index % 2 == 0 else -pi / 2
+            preferred = [pi, 0.0, -pi / 2, pi / 2, -pi / 3, pi / 3,
+                         -2 * pi / 3, 2 * pi / 3, pi / 4, -pi / 4]
+            for atom_id in neighbors:
+                if atom_id in assigned:
+                    continue
+                for angle in preferred:
+                    if all(abs(math.atan2(math.sin(angle - used),
+                                          math.cos(angle - used))) > 0.35
+                           for used in assigned.values()):
+                        assigned[atom_id] = angle
+                        break
+                else:
+                    assigned[atom_id] = (len(assigned) * 2 * pi) / max(1, len(neighbors))
+            return assigned
+
+        def place_children(atom_id: str) -> None:
+            descendants = children[atom_id]
+            if not descendants:
+                return
+            if atom_id == root:
+                angles = root_angles(descendants)
+            else:
+                px, py = positions[parent[atom_id]]  # type: ignore[index]
+                x, y = positions[atom_id]
+                forward = math.atan2(y - py, x - px)
+                count = len(descendants)
+                if count == 1:
+                    side = 1 if depths[atom_id] % 2 else -1
+                    angles = {descendants[0]: forward + side * pi / 6}
+                else:
+                    span = pi / 3 if count == 2 else 2 * pi / 5
+                    angles = {
+                        child: forward + (index - (count - 1) / 2) * span / max(1, count - 1)
+                        for index, child in enumerate(descendants)
+                    }
+                # Put a multiple bond to a heteroatom off the chain axis.
+                for child in descendants:
+                    if atoms[child] != "C" and edge_order[(atom_id, child)] > 1:
+                        base = forward + pi / 2
+                        if any(abs(angles[other] - base) < 0.2
+                               for other in descendants if other != child):
+                            base = forward - pi / 2
+                        angles[child] = base
+            for child in descendants:
+                angle = angles[child]
+                x, y = positions[atom_id]
+                positions[child] = (
+                    x + bond_length * math.cos(angle),
+                    y + bond_length * math.sin(angle),
+                )
+                depths[child] = depths[atom_id] + 1
+                place_children(child)
+
+        place_children(root)
+
+        # Add implicit hydrogens as visible atoms, choosing open directions.
+        implicit_hydrogens: list[tuple[str, float, float]] = []
+        hydrogen_length = 58.0
+        for atom_id, element in atoms.items():
+            if element not in {"C", "N", "O"}:
+                continue
+            missing = valences[element] - valence_sum[atom_id]
+            if missing <= 0:
+                continue
+            x, y = positions[atom_id]
+            occupied = [
+                math.atan2(positions[neighbor][1] - y,
+                           positions[neighbor][0] - x)
+                for neighbor in adjacency[atom_id]
+            ]
+            chosen: list[float] = []
+            candidates = [math.radians(degree) for degree in range(0, 360, 5)]
+            for _ in range(missing):
+                references = occupied + chosen
+                angle = max(
+                    candidates,
+                    key=lambda candidate: min(
+                        (abs(math.atan2(math.sin(candidate - used),
+                                        math.cos(candidate - used)))
+                         for used in references),
+                    ) if references else 0.0,
+                )
+                chosen.append(angle)
+                implicit_hydrogens.append((
+                    atom_id,
+                    x + hydrogen_length * math.cos(angle),
+                    y + hydrogen_length * math.sin(angle),
+                ))
+
+        all_points = list(positions.values()) + [
+            (x, y) for _, x, y in implicit_hydrogens
+        ]
+        margin = 28.0
+        min_x = min(point[0] for point in all_points)
+        max_x = max(point[0] for point in all_points)
+        min_y = min(point[1] for point in all_points)
+        max_y = max(point[1] for point in all_points)
+        shift_x, shift_y = margin - min_x, margin - min_y
+        positions = {
+            atom_id: (x + shift_x, y + shift_y)
+            for atom_id, (x, y) in positions.items()
+        }
+        implicit_hydrogens = [
+            (atom_id, x + shift_x, y + shift_y)
+            for atom_id, x, y in implicit_hydrogens
+        ]
+        width = max_x - min_x + margin * 2
+        height = max_y - min_y + margin * 2
+
+        # Render bonds between labelled atom centres, trimming to label edges.
+        radius = {"C": 14.0, "H": 12.0, "O": 15.0, "N": 15.0,
+                  "F": 14.0, "Cl": 17.0, "Br": 18.0, "I": 12.0}
+        bond_svg: list[str] = []
+
+        def draw_bond(
+            x1: float, y1: float, x2: float, y2: float,
+            order_value: int, left_element: str, right_element: str,
+            bond_class: str = "",
+        ) -> None:
+            dx, dy = x2 - x1, y2 - y1
+            length = (dx * dx + dy * dy) ** 0.5
+            if length == 0:
+                return
+            ux, uy = dx / length, dy / length
+            px, py = -uy, ux
+            start_trim = radius[left_element]
+            end_trim = radius[right_element]
+            offsets = {1: (0.0,), 2: (-5.0, 5.0), 3: (-7.0, 0.0, 7.0)}[order_value]
+            kind = {1: "single", 2: "double", 3: "triple"}[order_value]
+            extra = f" {bond_class}" if bond_class else ""
+            for offset in offsets:
+                sx = x1 + ux * start_trim + px * offset
+                sy = y1 + uy * start_trim + py * offset
+                ex = x2 - ux * end_trim + px * offset
+                ey = y2 - uy * end_trim + py * offset
+                bond_svg.append(
+                    f'<line class="bond bond-{kind}{extra}" '
+                    f'x1="{sx:.2f}" y1="{sy:.2f}" '
+                    f'x2="{ex:.2f}" y2="{ey:.2f}" '
+                    'stroke="currentColor" stroke-width="2.2" '
+                    'stroke-linecap="round" />'
+                )
+
+        for left, right in edge_set:
+            x1, y1 = positions[left]
+            x2, y2 = positions[right]
+            draw_bond(x1, y1, x2, y2, edge_order[(left, right)],
+                      atoms[left], atoms[right])
+        for atom_id, x, y in implicit_hydrogens:
+            px, py = positions[atom_id]
+            draw_bond(px, py, x, y, 1, atoms[atom_id], "H", "bond-implicit-h")
+
+        atom_svg: list[str] = []
+        for atom_id in atom_order:
+            x, y = positions[atom_id]
+            element = atoms[atom_id]
+            atom_svg.append(
+                f'<text class="atom atom-{element}" x="{x:.2f}" y="{y:.2f}" '
+                'text-anchor="middle" dominant-baseline="central" '
+                'font-family="Arial, sans-serif" font-size="21" '
+                'font-weight="500" fill="currentColor">'
+                f'{html.escape(element)}</text>'
+            )
+        for _, x, y in implicit_hydrogens:
+            atom_svg.append(
+                f'<text class="atom atom-H implicit-hydrogen" '
+                f'x="{x:.2f}" y="{y:.2f}" '
+                'text-anchor="middle" dominant-baseline="central" '
+                'font-family="Arial, sans-serif" font-size="20" '
+                'font-weight="500" fill="currentColor">H</text>'
+            )
+
+        counts: dict[str, int] = {}
+        for atom_id, element in atoms.items():
+            counts[element] = counts.get(element, 0) + 1
+            if element in {"C", "N", "O"}:
+                counts["H"] = counts.get("H", 0) + (
+                    valences[element] - valence_sum[atom_id]
+                )
+        formula_order = ["C", "H"] + sorted(
+            element for element in counts if element not in {"C", "H"}
+        )
+        formula_html: list[str] = []
+        plain_formula: list[str] = []
+        for element in formula_order:
+            count = counts.get(element, 0)
+            if count:
+                formula_html.append(
+                    html.escape(element) + (f"<sub>{count}</sub>" if count > 1 else "")
+                )
+                plain_formula.append(element + (str(count) if count > 1 else ""))
+
+        name = molecule.get("name", "")
+        if not isinstance(name, str) or len(name) > 120:
+            return invalid()
+        formula_text = "".join(plain_formula)
+        accessible_name = (name.strip() + ": " if name.strip() else "Molecule: ") + formula_text
+        safe_name = html.escape(name.strip())
+        caption = "".join(formula_html)
+        if safe_name:
+            caption = f"{safe_name} - {caption}"
+        svg = (
+            f'<svg role="img" aria-label="{html.escape(accessible_name, quote=True)}" '
+            f'viewBox="0 0 {width:.0f} {height:.0f}" width="{width:.0f}" '
+            f'height="{height:.0f}" style="display:block;max-width:none;margin:0 auto">'
+            f'<title>{html.escape(accessible_name)}</title>'
+            + "".join(bond_svg)
+            + "".join(atom_svg)
+            + "</svg>"
+        )
+        return (
+            '<figure class="body-line formula-display formula-molecule formula-expanded" '
+            'style="margin:1em 0;max-width:100%">'
+            '<div style="max-width:100%;overflow-x:auto">'
+            + svg
+            + '</div><figcaption class="molecule-caption">'
+            + caption
+            + '</figcaption></figure>'
+        )
 
     def _render_vocab(self, node: StyledNode) -> str:
         data = self._vocab_data(node)

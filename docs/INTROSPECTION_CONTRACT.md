@@ -219,3 +219,30 @@ La forma di errore resta invariata. Errori di configurazione, asset, manifest, r
 - la nuova sezione `runtime` è additiva: i campi di successo già pubblicati non cambiano;
 - la forma del rapporto di errore resta invariata;
 - i rapporti di `edutex lint --format json`, `edutex validate --format json`, `edutex build --format json` e `edutex course validate --format json` restano invariati.
+
+## Introspection visuale
+
+Il rapporto di successo include inoltre `inspection.visual.layout` e
+`inspection.visual.theme`. Questi campi descrivono le definizioni effettive
+composte, senza eseguire il build o il codice delle estensioni.
+
+Le API Python pubbliche sono:
+
+```python
+from edutex.layout.composition import inspect_composed_layout
+from edutex.theme.composition import inspect_composed_theme
+```
+
+Ogni rapporto visuale contiene:
+
+- `source_path`: percorso relativo stabile, oppure un identificatore `package:` per l'asset predefinito incluso;
+- `effective`: definizione risultante dalla composizione; il tema espone stili con tutti i campi effettivi;
+- `composition.layers`: layer nell'ordine di applicazione, dalla base al layer selezionato;
+- `composition.provenance`: mappa dei campi puntati alla sorgente che ne determina il valore;
+- `composition.overrides`: campi sostituiti da un layer successivo, con sorgente precedente e nuova.
+
+Per il layout, `effective` espone i metadati, la configurazione di pagina,
+l'ordine delle sezioni, le regole di placement, l'appendice e la configurazione
+adattiva risultanti dalla composizione. Per il tema espone metadati, regole di
+stile, palette e token effettivi. I percorsi di layer sono relativi alla radice
+di composizione e il rapporto mantiene un ordine deterministico.

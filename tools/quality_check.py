@@ -92,7 +92,7 @@ PACKAGING_CONTRACT = (
     (
         "src/edutex/core/cli.py",
         (
-            'CLI_VERSION = "1.6.0"',
+            'CLI_VERSION = "1.7.0"',
             '@main.command("init")',
             '@main.command("preview")',
             '@main.command("lint")',

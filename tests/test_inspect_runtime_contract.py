@@ -10,7 +10,6 @@ from click.testing import CliRunner
 
 from edutex.core.cli import main
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "docs" / "INTROSPECTION_CONTRACT.md"
 
@@ -158,6 +157,33 @@ def test_inspect_invalid_enabled_extension_keeps_failure_shape(tmp_path: Path) -
     assert "configuration" not in inspection
 
 
+def test_inspect_reports_effective_visual_models_and_provenance(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    result = inspect_project(project)
+
+    assert result.exit_code == 0, result.output
+    inspection = json.loads(result.output)["inspection"]
+    visual = inspection["visual"]
+    assert list(visual) == ["layout", "theme"]
+
+    layout = visual["layout"]
+    assert layout["effective"]["id"]
+    assert layout["composition"]["layers"]
+    assert layout["composition"]["provenance"]
+    assert isinstance(layout["effective"].get("section_order", []), list)
+
+    theme = visual["theme"]
+    assert theme["source_path"]
+    assert not Path(theme["source_path"]).is_absolute()
+    assert theme["composition"]["layers"]
+    assert theme["composition"]["provenance"]
+    assert theme["effective"]["styles"]
+    assert all(
+        set(rule) == {"label", "border_color", "background_color", "font_weight", "display"}
+        for rule in theme["effective"]["styles"].values()
+    )
+
+
 def test_inspection_runtime_contract_documentation() -> None:
     contract = CONTRACT.read_text(encoding="utf-8")
     required_markers = (
@@ -175,6 +201,13 @@ def test_inspection_runtime_contract_documentation() -> None:
         "non deve importare",
         "Rapporto JSON di errore",
         "determinismo",
+        "inspection.visual",
+        "visual.layout",
+        "visual.theme",
+        "inspect_composed_layout",
+        "inspect_composed_theme",
+        "provenance",
+        "overrides",
     )
     for marker in required_markers:
         assert marker in contract, f"Marker mancante: {marker}"

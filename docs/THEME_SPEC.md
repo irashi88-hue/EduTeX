@@ -536,13 +536,13 @@ Theme: sets page margin for rule node                ✗
 
 13. Future Evolution
 
-13.1 Anticipated Extensions
+13.1 Implemented V1.5 Capabilities
 
-Future versions of Theme MAY introduce:
+The following capabilities are implemented in V1.5:
 
-a theme composition mechanism allowing multiple themes to be layered;
+theme composition through ordered layers;
 
-a style introspection API within THEME-002 for design tooling and preview generation;
+style introspection through THEME-002 for design tooling and preview generation;
 
 a default theme bundled with the framework for zero-configuration document generation.
 

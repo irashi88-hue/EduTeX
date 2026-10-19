@@ -605,13 +605,13 @@ Layout: writes the final PDF page                  ✗  (Build System's responsi
 
 13. Future Evolution
 
-13.1 Anticipated Extensions
+13.1 Implemented V1.5 Capabilities
 
-Future versions of Layout MAY introduce:
+The following capabilities are implemented in V1.5:
 
-a layout composition mechanism allowing multiple layout regions to be combined;
+layout composition through ordered overlays;
 
-a document structure introspection API within LAYOUT-002 for preview and tooling;
+document structure introspection through LAYOUT-002 for preview and tooling;
 
 adaptive layout support that adjusts structural organization based on content model properties.
 

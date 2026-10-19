@@ -120,3 +120,90 @@ def load_composed_layout(layout_path: Path, project_root: Path) -> dict[str, obj
         return compose_layout_definitions((*parents, own_layer))
 
     return load_layer(initial, ())
+
+def inspect_composed_layout(layout_path: Path, project_root: Path) -> dict[str, object]:
+    """Return the effective layout plus deterministic layer provenance.
+
+    ``source`` paths are relative to ``project_root``. Layers are listed in
+    application order (base first, selected layout last). Existing loading
+    APIs and their return values are unchanged.
+    """
+    root = project_root.resolve()
+    initial = _layout_file(layout_path, root)
+    effective = load_composed_layout(initial, root)
+    layers: list[tuple[str, dict[str, object]]] = []
+
+    def collect(path: Path, active_stack: tuple[Path, ...]) -> None:
+        resolved = _layout_file(path, root)
+        if resolved in active_stack:
+            chain = (*active_stack, resolved)
+            rendered = " -> ".join(str(item) for item in chain)
+            raise LayoutCompositionError(f"Layout composition cycle detected: {rendered}")
+        raw = yaml.safe_load(resolved.read_text(encoding="utf-8"))
+        if not isinstance(raw, Mapping):
+            raise LayoutCompositionError("Layout asset must be a YAML mapping.")
+        references = raw.get("extends", [])
+        if isinstance(references, str):
+            references = [references]
+        for reference in references:
+            parent_path = _layout_file(resolved.parent / Path(reference), root)
+            collect(parent_path, (*active_stack, resolved))
+        own = dict(raw)
+        own.pop("extends", None)
+        source = resolved.relative_to(root).as_posix()
+        layers.append((source, own))
+
+    collect(initial, ())
+
+    provenance: dict[str, str] = {}
+    overrides: list[dict[str, str]] = []
+
+    def record_fields(value: object, prefix: str, source: str) -> None:
+        if isinstance(value, Mapping) and value:
+            for key, child in value.items():
+                field = f"{prefix}.{key}" if prefix else str(key)
+                record_fields(child, field, source)
+            return
+        previous = provenance.get(prefix)
+        if previous is not None:
+            overrides.append({
+                "field": prefix,
+                "overridden_from": previous,
+                "overridden_by": source,
+            })
+        provenance[prefix] = source
+
+    layer_records: list[dict[str, object]] = []
+    for source, definition in layers:
+        layer_records.append({
+            "source": source,
+            "id": definition.get("id"),
+            "name": definition.get("name"),
+            "version": definition.get("version"),
+        })
+        for key, value in definition.items():
+            record_fields(value, str(key), source)
+
+    selected_source = layers[-1][0]
+    for field in ("id", "name", "version"):
+        previous_source = provenance.get(field)
+        if previous_source != selected_source:
+            if previous_source is not None:
+                overrides.append(
+                    {
+                        "field": field,
+                        "overridden_from": previous_source,
+                        "overridden_by": selected_source,
+                    }
+                )
+            provenance[field] = selected_source
+
+    return {
+        "source_path": initial.relative_to(root).as_posix(),
+        "effective": effective,
+        "composition": {
+            "layers": layer_records,
+            "provenance": provenance,
+            "overrides": overrides,
+        },
+    }

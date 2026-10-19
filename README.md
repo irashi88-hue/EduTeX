@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.7.0 - Visual introspection and lesson authoring
+
+EduTeX 1.7.0 adds composition-aware layout and theme introspection to `edutex inspect`, including effective values and layer provenance. It also includes the local lesson-authoring studio, accessible back-to-top navigation, and expanded chemical-structure rendering.
+
 ## Release 1.6.0 - Course authoring and interactive HTML
 
 EduTeX 1.6.0 builds on the stable 1.0.0 baseline, consolidating improvements to course HTML generation, printable course material, interactive exercise contracts, and authoring documentation.

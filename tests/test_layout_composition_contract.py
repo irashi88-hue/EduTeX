@@ -12,7 +12,6 @@ from edutex.layout.composition import (
 )
 from edutex.layout.service import LayoutService
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "docs" / "LAYOUT_COMPOSITION_CONTRACT.md"
 COMPOSITION = ROOT / "src" / "edutex" / "layout" / "composition.py"
@@ -226,3 +225,84 @@ def test_layout_composition_contract_markers_are_present() -> None:
     for marker in ("compose_layout_definitions", "load_composed_layout", "cycle"):
         assert marker in implementation
     assert "load_composed_layout" in service
+
+def test_public_layout_inspection_reports_provenance_and_overrides(tmp_path: Path) -> None:
+    from edutex.layout.composition import inspect_composed_layout
+
+    project = tmp_path / "project"
+    base = project / "layouts" / "base" / "layout.yaml"
+    active = project / "layouts" / "active" / "layout.yaml"
+    write_layout(base, """
+        id: base
+        name: Base
+        page:
+          margin_top_mm: 10
+        section_order: [rule, exercise]
+    """)
+    write_layout(active, """
+        id: active
+        name: Active
+        extends: ../base/layout.yaml
+        page:
+          margin_top_mm: 15
+        section_order: [exercise, rule]
+    """)
+
+    report = inspect_composed_layout(active, project)
+    composition = report["composition"]
+    assert report["effective"]["page"]["margin_top_mm"] == 15
+    assert report["effective"]["section_order"] == ["exercise", "rule"]
+    assert [layer["source"] for layer in composition["layers"]] == [
+        "layouts/base/layout.yaml",
+        "layouts/active/layout.yaml",
+    ]
+    assert composition["provenance"]["page.margin_top_mm"] == "layouts/active/layout.yaml"
+    assert any(
+        item["field"] == "page.margin_top_mm"
+        and item["overridden_from"] == "layouts/base/layout.yaml"
+        and item["overridden_by"] == "layouts/active/layout.yaml"
+        for item in composition["overrides"]
+    )
+
+def test_layout_inspection_tracks_selected_identity_defaults(tmp_path: Path) -> None:
+    from edutex.layout.composition import inspect_composed_layout
+
+    project = tmp_path / "project"
+    base = project / "layouts" / "base" / "layout.yaml"
+    active = project / "layouts" / "active" / "layout.yaml"
+
+    write_layout(
+        base,
+        """
+        id: base
+        name: Base
+        version: 9.0.0
+        """,
+    )
+    write_layout(
+        active,
+        """
+        extends: ../base/layout.yaml
+        """,
+    )
+
+    report = inspect_composed_layout(active, project)
+    effective = report["effective"]
+    provenance = report["composition"]["provenance"]
+    selected_source = "layouts/active/layout.yaml"
+
+    assert effective["id"] == "unknown"
+    assert effective["name"] == ""
+    assert effective["version"] == "1.0.0"
+    assert all(
+        provenance[field] == selected_source
+        for field in ("id", "name", "version")
+    )
+
+    overrides = {
+        item["field"]: item
+        for item in report["composition"]["overrides"]
+    }
+    for field in ("id", "name", "version"):
+        assert overrides[field]["overridden_from"] == "layouts/base/layout.yaml"
+        assert overrides[field]["overridden_by"] == selected_source

@@ -12,8 +12,8 @@ import html
 import json
 import logging
 import shutil
-from importlib.resources import as_file, files
 from dataclasses import dataclass
+from importlib.resources import as_file, files
 from pathlib import Path
 
 import click
@@ -21,25 +21,32 @@ import click
 from edutex.activator.activator import Activator
 from edutex.build.service import BuildService
 from edutex.configuration.loader import load_config
-from edutex.course.service import CourseBuildError, CourseLesson, CourseManifest, build_course, validate_course
-from edutex.course.studio import run_author_studio
-from edutex.core.errors import ConfigurationError, EduTeXError, KnowledgeError
 from edutex.core.context import LifecyclePhase, RuntimeContext
 from edutex.core.diagnostics import format_diagnostics_text, serialize_diagnostics
-from edutex.extension.models import ExtensionDiagnostic
+from edutex.core.errors import ConfigurationError, EduTeXError, KnowledgeError
+from edutex.course.service import (
+    CourseBuildError,
+    CourseLesson,
+    CourseManifest,
+    build_course,
+    validate_course,
+)
+from edutex.course.studio import run_author_studio
 from edutex.extension.loader import ExtensionLoader
+from edutex.extension.models import ExtensionDiagnostic
 from edutex.extension.service import ExtensionService
 from edutex.knowledge.authoring import validate_authoring
 from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
+from edutex.layout.composition import LayoutCompositionError, inspect_composed_layout
 from edutex.layout.service import LayoutService
 from edutex.registry.models import EntityRecord, EntityType
 from edutex.registry.registry import Registry
 from edutex.resolver.resolver import Resolver
+from edutex.theme.composition import ThemeCompositionError, inspect_composed_theme
 from edutex.theme.service import ThemeService
 
-
-CLI_VERSION = "1.6.0"
+CLI_VERSION = "1.7.0"
 
 
 def _configure_logging(level: str) -> None:
@@ -418,6 +425,31 @@ def _inspect_project(
     graph_edges = [_inspection_edge(edge) for edge in graph.edges]
     output_dir = _resolve_path(project_root, config.build.output_dir)
 
+    try:
+        layout_visual = inspect_composed_layout(layout_path, project_root)
+        layout_visual["source_path"] = (
+            layout_path.resolve()
+            .relative_to(project_root.resolve())
+            .as_posix()
+        )
+        if theme_path is None:
+            bundled_resource = files("edutex.theme").joinpath("default_theme.yaml")
+            with as_file(bundled_resource) as bundled_theme_path:
+                theme_visual = inspect_composed_theme(bundled_theme_path, bundled_theme_path.parent)
+            theme_visual["source_path"] = "package:edutex.theme/default_theme.yaml"
+        else:
+            theme_visual = inspect_composed_theme(
+                theme_path,
+                project_root / "assets" / "themes",
+            )
+            theme_visual["source_path"] = (
+                theme_path.resolve()
+                .relative_to(project_root.resolve())
+                .as_posix()
+            )
+    except (LayoutCompositionError, ThemeCompositionError) as exc:
+        raise ConfigurationError(str(exc)) from exc
+
     return {
         "inspection": {
             "status": "completed",
@@ -445,6 +477,10 @@ def _inspect_project(
                     _inspection_asset(extension_path)
                     for extension_path in extension_paths
                 ],
+            },
+            "visual": {
+                "layout": layout_visual,
+                "theme": theme_visual,
             },
             "runtime": {
                 "registry": {

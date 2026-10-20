@@ -7,7 +7,7 @@
 
 ## 1. Objective
 
-EduTeX 2.0 should make runtime execution selective, explicit, deterministic, and scalable. Each runtime operation should have a clearly defined scope; only the entities needed for that scope and their dependencies should be resolved and activated. Full-project operations must not silently omit configured entities.
+EduTeX 2.0 should make runtime execution explicit, deterministic, and scalable. Each operation should have a defined asset scope and dependency lifecycle. The 1.7.0 CLI already limits registration to assets selected by configuration; V2 should formalize this behavior and evolve graph and lifecycle capabilities. Lazy activation is conditional on a measured need, not a performance promise. Full-project operations must not silently omit configured entities.
 
 Selective or lazy activation is a runtime capability to define and evaluate, not a performance promise. The current Activator primarily creates activated wrappers, so performance claims require a representative baseline and evidence that activation is a material cost.
 
@@ -16,8 +16,11 @@ Selective or lazy activation is a runtime capability to define and evaluate, not
 The following observations come from the current source and focused tests:
 
 - `RuntimeContext` enforces explicit phase transitions, including configuration, registration, resolution, activation, processing, build, completion, and failure.
-- The shared `_prepare_project_pipeline` in `src/edutex/core/cli.py` registers project assets, resolves the registry, activates the resolved graph, and processes Knowledge, Theme, and Layout services. The current Build and Validate commands call this shared pipeline.
-- Runtime inspection registers assets and resolves the graph for reporting but does not call the Activator.
+- `_register_project_assets` registers only the Knowledge Model selected in configuration, the explicit Theme if configured, the selected Layout, and enabled Extensions; it does not register every asset file on disk. When no Theme is explicitly configured, the bundled default is handled later by the processing pipeline.
+- The shared `_prepare_project_pipeline` in `src/edutex/core/cli.py` resolves and activates this configured set, then processes Knowledge, Theme, and Layout services. Build and Validate call this shared pipeline.
+- `preview` overrides the configured Knowledge Model with its selected source file before calling `build_project`; the remaining configured support assets are retained.
+- `course build` supplies a per-lesson builder that overrides the Knowledge Model with each lesson source and invokes `build_project` for that lesson.
+- Runtime inspection registers the configuration-selected asset set and resolves that graph for reporting; it does not call the Activator.
 - `Registry` uses `(EntityType, entity_id)` as its key and closes registration before resolution. The current identity model has no hierarchical namespace field.
 - `Resolver.resolve()` reads all registered entities, skips an absent optional reference, fails on an absent required reference, detects cycles, and freezes the resolved graph.
 - `Activator.activate()` topologically orders and activates every entity in the supplied graph. `deactivate()` visits activated entities in reverse order. The current entity activation path creates an `ActivatedEntity` wrapper; no per-entity activation hook is evident in that path.
@@ -29,12 +32,13 @@ These are baseline observations, not a guarantee that all runtime behaviors are 
 
 ### 3.1 Operation scope
 
-1. The runtime contract SHALL define what constitutes the scope of each operation before implementation introduces scoped resolution or activation.
-2. Full-project Build and Validate SHALL retain their current full-project behavior by default. Any target-specific scope SHALL be an explicit opt-in and SHALL NOT silently omit configured entities.
-3. Runtime inspection SHALL remain capable of reporting the full registered and resolved graph and SHALL NOT activate entities merely to inspect them.
-4. A target-specific operation MAY declare a smaller set of root entities. If so, the resolved and activated set SHALL include the declared roots and the dependency closure required by them.
-5. Entities outside the declared scope SHALL NOT be activated as an incidental side effect.
-6. The public mechanism for declaring roots and the treatment of operations that do not declare roots remain open design decisions.
+1. The runtime contract SHALL define the asset scope for each operation.
+2. Full-project Build and Validate SHALL retain the full set selected by project configuration by default. Any narrower scope SHALL be an explicit opt-in and SHALL NOT silently omit configured entities.
+3. Preview SHALL use its explicitly selected source file as the Knowledge Model input while retaining the other configured support assets.
+4. Course build SHALL use the lesson sources declared by the manifest; each per-lesson build SHALL use that lesson's source as its Knowledge Model input.
+5. Runtime inspection SHALL report the complete configuration-selected registered and resolved graph and SHALL NOT activate entities merely to inspect them.
+6. The current configuration and CLI source selection define the existing operation scope. A new generic root-selection mechanism SHOULD be introduced only for a concrete operation and use case.
+7. If a future target-specific operation declares root entities, its resolved and activated set SHALL include those roots and their required dependency closure; entities outside that scope SHALL NOT be activated incidentally.
 
 ### 3.2 Resolution and graph behavior
 

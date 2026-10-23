@@ -1,7 +1,7 @@
 document_id:      COMP-RES-001
 title:            EduTeX Resolver Component Specification
 type:             Component Specification
-version:          1.0.1
+version:          2.0.0
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -150,7 +150,7 @@ Resolver SHALL resolve relationships and references between registered runtime e
 
 Resolver is responsible for:
 
-reading all registered entities from Registry through REG-001 after the registration window closes;
+reading every registered entity in the current operation scope from Registry through REG-001 after the registration window closes;
 
 identifying all declared relationships and references between registered entities;
 
@@ -204,7 +204,9 @@ The resolution window closes upon successful completion of the resolution pass.
 
 Resolver SHALL complete the resolution pass before Activator begins activation.
 
-The resolution pass is a single, complete traversal of all registered entities and their declared relationships.
+The resolution pass is a single, complete traversal of every registered entity in the operation scope supplied by the Runtime and its declared relationships.
+
+Unless the Runtime supplies a narrower scope under an approved operation contract, the scope SHALL include the full configuration-selected scope for that operation. Resolver SHALL NOT infer a narrower scope or silently omit configured entities.
 
 7.3 Reference Types
 
@@ -220,23 +222,33 @@ typed: the relationship has a declared type that constrains how Resolver interpr
 
 The set of recognized reference types is determined by the entity registration contract (REG-002) and the configuration (CFG-001).
 
+Reference targets SHALL be identified by the typed pair `(target_type, target_id)`. Entities with the same identifier and different entity types SHALL be treated as distinct.
+
+Reference targets SHALL be resolved only against entities in the current operation scope. A registered entity outside that scope SHALL be treated as absent for reference resolution.
+
+Each declared reference SHALL be classified as required or optional. If its target exists, Resolver SHALL include the reference edge regardless of this classification. If a required target is absent, resolution SHALL fail. If an optional target is absent, Resolver SHALL omit that reference; it SHALL NOT create a graph node or edge.
+
 7.4 Error Conditions
 
-Resolver identifies two categories of resolution errors.
+Resolver treats a missing required reference target and a circular dependency as fatal resolution errors.
 
-The first category is unresolvable references: a declared reference points to an entity identifier that does not exist in the registry.
+Each absent required reference target SHALL produce a `RUNTIME_REFERENCE_MISSING` diagnostic. Its `details` SHALL identify `source` and `expected_target` entities, each with `type` and `id`, and include `reference_type`.
 
-The second category is circular dependencies: a set of entities form a reference cycle with no acyclic resolution order.
+An absent optional reference target SHALL NOT be a resolution error. Resolver SHALL omit that reference from the graph and SHALL NOT create a target node or edge.
 
-Both error categories SHALL be propagated through the Error Contract (CC-003) as fatal errors.
+A circular dependency SHALL produce a `RUNTIME_DEPENDENCY_CYCLE` diagnostic. Its `details.cycle` SHALL be an ordered list of entity identities, each with `type` and `id`; it SHALL follow edge direction, begin at the canonically smallest identity in the cycle, and repeat that identity at the end.
 
-The framework SHALL NOT proceed to the activation phase if resolution errors are present.
+If multiple cycles exist, Resolver SHALL report one cycle: the first encountered by deterministic depth-first traversal, visiting entities in canonical entity order and each entity's outgoing edges in canonical edge order.
+
+Resolution errors SHALL be propagated through the Error Contract (CC-003) as fatal errors. The framework SHALL NOT proceed to activation when a required target is absent or a cycle exists.
 
 7.5 Resolved Entity Graph
 
-The resolved entity graph is an augmented representation of the registered entities.
+The resolved entity graph is an augmented representation of the registered entities in the current operation scope.
 
-It preserves all entity records from the authoritative registry and adds explicit, navigable relationship edges.
+It SHALL contain every in-scope registered entity exactly once, including entities with no resolved references. It SHALL add an edge for every successfully resolved present reference, including an optional reference whose target exists.
+
+Entities SHALL be ordered canonically by `(entity_type.name, entity_id)`. Edges SHALL be ordered canonically by `(source_type.name, source_id, target_type.name, target_id, reference_type)`. Equivalent registry contents and operation scopes SHALL produce the same graph and ordering regardless of registration order.
 
 The resolved entity graph is the sole input to Activator for determining activation order and entity relationships.
 
@@ -262,7 +274,7 @@ Purpose: Provides read-only access to the resolved entity graph produced by the 
 
 Consumers: Activator.
 
-Guarantee: The resolved entity graph exposed through this contract SHALL reflect all registered entities and their resolved relationships, with no unresolvable references or circular dependencies.
+Guarantee: The resolved entity graph exposed through this contract SHALL reflect every registered entity in the operation scope exactly once and every successfully resolved present reference, with no missing required targets or circular dependencies. Missing optional targets SHALL be omitted without creating a node or edge.
 
 Constraint: This contract is strictly read-only. Consumers SHALL NOT modify the resolved entity graph.
 
@@ -270,11 +282,11 @@ Constraint: This contract SHALL NOT be available before the resolution pass comp
 
 RES-002 — Resolution Error Contract
 
-Purpose: Defines the structure of resolution error reports produced when unresolvable references or circular dependencies are detected.
+Purpose: Defines the structure of resolution error reports for missing required reference targets and circular dependencies.
 
 Consumers: Core (via CC-003), diagnostic tooling.
 
-Guarantee: Every resolution error SHALL be represented in a consistent structure identifying the affected entities and the nature of the error.
+Guarantee: Missing required targets SHALL use `RUNTIME_REFERENCE_MISSING` with the `source`, `expected_target`, and `reference_type` details defined in §7.4. Circular dependencies SHALL use `RUNTIME_DEPENDENCY_CYCLE` with the canonical `cycle` details defined in §7.4. Human-readable message text MAY evolve without changing these codes or fields.
 
 Constraint: Resolution errors SHALL be propagated through CC-003 as fatal errors.
 
@@ -428,17 +440,21 @@ RES-C-004 — Resolution After Registration Closure
 
 Resolver SHALL NOT begin the resolution pass before the registration window of Registry closes.
 
-RES-C-005 — Fatal Error on Unresolvable Reference
+RES-C-005 — Required and Optional Reference Outcomes
 
-If a declared reference cannot be resolved to a registered entity, Resolver SHALL propagate a fatal error through CC-003.
+If a required reference target is absent, Resolver SHALL propagate a fatal error through CC-003 using `RUNTIME_REFERENCE_MISSING`.
 
-The framework SHALL NOT proceed to the activation phase.
+An absent optional reference target SHALL NOT be fatal and SHALL be omitted from the resolved graph without creating a node or edge.
 
-RES-C-006 — Fatal Error on Circular Dependency
+The framework SHALL NOT proceed to activation when a required target is absent.
 
-If the entity graph contains a circular dependency, Resolver SHALL propagate a fatal error through CC-003.
+RES-C-006 — Deterministic Cycle Diagnostic
 
-The framework SHALL NOT proceed to the activation phase.
+If the entity graph contains a circular dependency, Resolver SHALL propagate a fatal error through CC-003 using `RUNTIME_DEPENDENCY_CYCLE`.
+
+If multiple cycles exist, Resolver SHALL report only the first cycle encountered by the deterministic traversal defined in §7.4. The diagnostic cycle SHALL use the canonical identity sequence defined there.
+
+The framework SHALL NOT proceed to activation.
 
 RES-C-007 — Immutable Resolved Graph
 
@@ -455,6 +471,10 @@ Resolver SHALL NOT depend on Activator or any Framework Service.
 RES-C-010 — Technology Independence
 
 Resolver SHALL remain independent from any specific implementation technology.
+
+RES-C-011 — Canonical Resolution Output
+
+For equivalent registries and operation scopes, the resolved entity and edge collections SHALL use the canonical ordering defined in §7.5 and SHALL NOT depend on registration order.
 
 This specification defines behavior and contracts, not implementation.
 
@@ -488,12 +508,12 @@ Registry: registration window closes
 Resolver: resolution window opens
     │
     ▼
-Resolver: reads all entities via REG-001
+Resolver: reads all in-scope entities via REG-001
     │
     ▼
 Resolver: traverses declared references between entities
     │
-    ├── Unresolvable reference detected
+    ├── Required reference target missing
     │       │
     │       ▼
     │   CC-003 Error Contract: fatal error propagated
@@ -517,7 +537,7 @@ Resolver: traverses declared references between entities
 
 The following illustrates how Resolver handles a direct reference between two entities.
 
-Entity A (type: Theme) declares reference → Entity B (type: Layout, id: "default")
+Entity A (type: Theme) declares a required reference → Entity B (type: Layout, id: "default")
     │
     ▼
 Resolver: looks up entity with type Layout and id "default" in REG-001
@@ -525,7 +545,7 @@ Resolver: looks up entity with type Layout and id "default" in REG-001
     ├── Entity not found
     │       │
     │       ▼
-    │   RES-002: unresolvable reference error for Entity A → "default"
+    │   RES-002: RUNTIME_REFERENCE_MISSING diagnostic for Entity A → "default"
     │   CC-003: fatal error propagated                              ✗
     │
     └── Entity found
@@ -541,7 +561,7 @@ Future versions of Resolver MAY introduce:
 
 a richer resolution error report within RES-002, including suggested corrections;
 
-support for optional references that do not cause fatal errors when unresolvable;
+additional reference policies beyond the required and optional outcomes defined in this specification;
 
 a resolution introspection API for diagnostic tooling.
 
@@ -634,5 +654,11 @@ Add REG-002 to §8.2 consumed contracts table (review fix)
 2026-08-11
 
 Initial release
+
+2.0.0
+
+2026-10-22
+
+Draft revision defining required and optional reference outcomes, canonical graph ordering, and stable resolution diagnostics.
 
 End of document.

@@ -104,6 +104,19 @@ The output contains `output/course.html` and one generated page per lesson under
 `output/lessons/`. The index includes the configured metadata and progress UI.
 Progress is stored in browser `localStorage`, scoped to the course ID.
 
+
+To make a shareable, self-contained course file instead, use:
+
+```powershell
+edutex course build --project . --format single-html
+```
+
+This writes `output/course-single.html`. It embeds the generated lesson pages,
+styles, scripts, and course navigation into one HTML file; no separate lesson
+files or network connection are needed to open the exported course. The regular
+`--format html` option continues to produce the course index and separate lesson
+pages.
+
 ## Build a printable roadmap
 
 ```powershell

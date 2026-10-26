@@ -875,7 +875,7 @@ def _course_build_report(
 @course_group.command("build")
 @click.option("--project", "project_root", type=click.Path(file_okay=False, dir_okay=True, path_type=Path), default=Path("."), show_default=True)
 @click.option("--manifest", "manifest_file", type=click.Path(dir_okay=False, path_type=Path), default="course.yaml", show_default=True)
-@click.option("--format", "output_format", type=click.Choice(("html", "latex", "pdf"), case_sensitive=False), default="html", show_default=True)
+@click.option("--format", "output_format", type=click.Choice(("html", "single-html", "latex", "pdf"), case_sensitive=False), default="html", show_default=True)
 @click.option("--output", "output_file", type=click.Path(dir_okay=False, path_type=Path), default=None)
 @click.option(
     "--profile",
@@ -899,7 +899,7 @@ def course_build_command(
     profile: str | None = None,
     report_format: str = "text",
 ) -> None:
-    """Build a course index or a complete printable course document."""
+    """Build a course index, one-file HTML course, or printable course document."""
     project_root = project_root.resolve()
     manifest_path = (
         manifest_file
@@ -911,9 +911,9 @@ def course_build_command(
 
     try:
         if profile is not None:
-            if output_format != "html":
+            if output_format not in {"html", "single-html"}:
                 raise CourseBuildError(
-                    "--profile is supported for course build only with --format html."
+                    "--profile is supported for course build only with --format html or single-html."
                 )
             try:
                 load_config(project_root / "edutex.config.yaml", profile=profile)
@@ -921,8 +921,8 @@ def course_build_command(
                 raise CourseBuildError(str(exc)) from exc
 
         lesson_builder = None
-        if output_format in {"html", "latex", "pdf"}:
-            lesson_output_format = "html" if output_format == "html" else "latex"
+        if output_format in {"html", "single-html", "latex", "pdf"}:
+            lesson_output_format = "html" if output_format in {"html", "single-html"} else "latex"
             lesson_builder = lambda manifest, lesson, module_number, lesson_number: _build_course_lesson(
                 manifest,
                 lesson,

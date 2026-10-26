@@ -1,7 +1,7 @@
 document_id:      COMP-CORE-001
 title:            EduTeX Core Component Specification
 type:             Component Specification
-version:          1.0.0
+version:          1.1.0
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -239,7 +239,7 @@ Purpose: Defines how fatal lifecycle errors are represented and propagated.
 
 Consumers: All Runtime Infrastructure components and Framework Services.
 
-Guarantee: Fatal errors SHALL be propagated through a consistent error representation.
+Guarantee: Fatal runtime errors serialized as JSON SHALL retain the existing `type` and `message` fields, preserve command-specific JSON nesting, and expose a stable `code` and structured `details` as defined by the specification that owns the error category. Human-readable `message` text MAY evolve without changing the stable code or its code-specific details.
 
 Constraint: Error handling strategies SHALL NOT be embedded inside Core. Core propagates; consumers handle.
 
@@ -495,5 +495,11 @@ Description
 2026-08-10
 
 Initial release
+
+1.1.0
+
+2026-10-22
+
+Draft revision defining the structured JSON runtime error envelope for CC-003.
 
 End of document.

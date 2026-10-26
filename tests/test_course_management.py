@@ -1241,3 +1241,56 @@ def test_course_lesson_navigation_aria_labels_are_localized(tmp_path: Path) -> N
         assert 'aria-label="次へ lesson: Goodbye"' not in first
         assert "Ã" not in first
         assert "ã" not in first
+
+
+def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: Path) -> None:
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code == 0, result.output
+
+    output = tmp_path / "output/course-single.html"
+    source = output.read_text(encoding="utf-8")
+    assert output.is_file()
+    assert 'href="#edutex-single-lesson-lesson-01"' in source
+    assert 'id="edutex-single-lesson-lesson-01" data-course-single-lesson' in source
+    assert 'href="#edutex-single-lesson-lesson-02"' in source
+    assert 'id="edutex-single-lesson-lesson-02" data-course-single-lesson' in source
+    assert 'id="edutex-single-course-navigation"' in source
+    assert "contentDocument" in source
+    assert 'link.classList.contains("back-to-top")' in source
+    assert 'frame.scrollIntoView({ behavior: scrollBehavior, block: "start" })' in source
+    assert source.count("<iframe") == 2
+    assert source.count("</html>") == 1
+
+    class EmbeddedPageParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.pages: list[str] = []
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "iframe":
+                self.pages.append(dict(attrs).get("srcdoc") or "")
+
+    parser = EmbeddedPageParser()
+    parser.feed(source)
+    assert len(parser.pages) == 2
+    for embedded in parser.pages:
+        assert "<!doctype html>" in embedded.lower()
+        assert 'class="course-lesson-nav"' in embedded
+        assert "data-course-complete" in embedded
+
+    assert (tmp_path / "output/lessons/lesson-01.html").is_file()
+    assert (tmp_path / "output/lessons/lesson-02.html").is_file()

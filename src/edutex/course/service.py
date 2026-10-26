@@ -1223,6 +1223,166 @@ def _clean_stale_lesson_pages(output_dir: Path, expected_lesson_ids: set[str]) -
             page.unlink()
 
 
+def _render_single_course_html(
+    manifest: CourseManifest,
+    lesson_pages: dict[str, str],
+) -> str:
+    """Render a self-contained course page with each lesson in an isolated frame."""
+    lessons = [lesson for module in manifest.modules for lesson in module.lessons]
+    missing = [lesson.lesson_id for lesson in lessons if lesson.lesson_id not in lesson_pages]
+    if missing:
+        raise CourseBuildError(
+            "Single-file HTML is missing generated lessons: " + ", ".join(missing)
+        )
+
+    lesson_links = {
+        lesson.lesson_id: f"#edutex-single-lesson-{lesson.lesson_id}" for lesson in lessons
+    }
+    page = render_course_html(manifest, lesson_links)
+    panels: list[str] = []
+    lesson_ids = [lesson.lesson_id for lesson in lessons]
+
+    for module_number, module in enumerate(manifest.modules, start=1):
+        for lesson_number, lesson in enumerate(module.lessons, start=1):
+            title = html.escape(lesson.title)
+            module_title = html.escape(module.title)
+            frame_title = html.escape(f"{module.title}: {lesson.title}", quote=True)
+            srcdoc = html.escape(lesson_pages[lesson.lesson_id], quote=True)
+            panels.append(
+                f'<details class="course-single-lesson" '
+                f'id="edutex-single-lesson-{lesson.lesson_id}" data-course-single-lesson>'
+                f'<summary><span class="course-single-lesson-title">'
+                f'{module_number}.{lesson_number} {title}</span>'
+                f'<span class="course-single-module-title">{module_title}</span>'
+                f'</summary>'
+                f'<div class="course-single-frame-wrap">'
+                f'<iframe class="course-single-frame" title="{frame_title}" '
+                f'loading="lazy" srcdoc="{srcdoc}"></iframe>'
+                f'</div></details>'
+            )
+
+    style = """<style id="edutex-single-course-style">
+.course-single-lesson{margin:1rem 0;border:1px solid rgba(83,97,118,.3);border-radius:.5rem;background:var(--surface,#fff);color:var(--ink,#172033);overflow:clip}
+.course-single-lesson>summary{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 1.1rem;cursor:pointer;font-weight:650}
+.course-single-lesson>summary:focus-visible{outline:3px solid var(--accent,#26734d);outline-offset:2px}
+.course-single-module-title{font-size:.9rem;font-weight:500;color:var(--muted,#536176)}
+.course-single-frame-wrap{padding:0 .4rem .4rem}
+.course-single-frame{display:block;width:100%;min-height:42rem;border:0;background:transparent}
+@media(max-width:640px){.course-single-lesson>summary{align-items:flex-start;flex-direction:column;gap:.25rem}.course-single-frame{min-height:36rem}}
+@media(prefers-reduced-motion:reduce){html:focus-within{scroll-behavior:auto}}
+</style>"""
+
+    script = r"""<script id="edutex-single-course-navigation">
+(() => {
+  const lessonIds = new Set(__LESSON_IDS__);
+  const panels = [...document.querySelectorAll("[data-course-single-lesson]")];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const scrollBehavior = reducedMotion ? "auto" : "smooth";
+
+  function openLesson(lessonId, updateHistory = false) {
+    if (!lessonIds.has(lessonId)) return;
+    const target = document.getElementById(`edutex-single-lesson-${lessonId}`);
+    if (!target) return;
+    for (const panel of panels) panel.open = panel === target;
+    if (updateHistory && location.hash !== `#edutex-single-lesson-${lessonId}`) {
+      history.pushState(null, "", `#edutex-single-lesson-${lessonId}`);
+    }
+    requestAnimationFrame(() => target.scrollIntoView({ behavior: scrollBehavior, block: "start" }));
+  }
+
+  function openCourseIndex() {
+    for (const panel of panels) panel.open = false;
+    const target = document.getElementById("course-content");
+    if (location.hash !== "#course-content") {
+      history.pushState(null, "", "#course-content");
+    }
+    if (target) target.scrollIntoView({ behavior: scrollBehavior, block: "start" });
+  }
+
+  function syncFromHash() {
+    const value = decodeURIComponent(location.hash.slice(1));
+    const prefix = "edutex-single-lesson-";
+    if (value.startsWith(prefix)) openLesson(value.slice(prefix.length));
+  }
+
+  function wireFrame(frame) {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+
+    const resize = () => {
+      const height = Math.max(672, doc.documentElement.scrollHeight);
+      if (Math.abs(frame.getBoundingClientRect().height - height) < 1) return;
+      frame.style.height = `${height}px`;
+    };
+    resize();
+    if (frame.contentWindow && frame.contentWindow.ResizeObserver) {
+      const observer = new frame.contentWindow.ResizeObserver(resize);
+      observer.observe(doc.documentElement);
+    }
+    if (frame.contentWindow) frame.contentWindow.addEventListener("resize", resize);
+
+    doc.addEventListener("click", (event) => {
+      let element = event.target;
+      if (element && element.nodeType !== 1) element = element.parentElement;
+      const link = element && element.closest ? element.closest("a[href]") : null;
+      if (!link) return;
+      const href = link.getAttribute("href") || "";
+      if (link.classList.contains("back-to-top")) {
+        event.preventDefault();
+        frame.scrollIntoView({ behavior: scrollBehavior, block: "start" });
+        return;
+      }
+      if (href === "../course.html") {
+        event.preventDefault();
+        openCourseIndex();
+        return;
+      }
+      const match = /^([a-z0-9_-]+)\.html$/.exec(href);
+      if (match && lessonIds.has(match[1])) {
+        event.preventDefault();
+        openLesson(match[1], true);
+      }
+    });
+  }
+
+  for (const frame of document.querySelectorAll(".course-single-frame")) {
+    let wired = false;
+    const attach = () => {
+      if (wired) return;
+      wired = true;
+      wireFrame(frame);
+    };
+    frame.addEventListener("load", attach, { once: true });
+    if (frame.contentDocument && frame.contentDocument.readyState === "complete") attach();
+  }
+
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented) return;
+    let target = event.target;
+    if (target && target.nodeType !== 1) target = target.parentElement;
+    const link = target && target.closest ? target.closest('a[href^="#edutex-single-lesson-"]') : null;
+    if (!link) return;
+    const match = /^#edutex-single-lesson-(.+)$/.exec(link.getAttribute("href") || "");
+    if (!match || !lessonIds.has(match[1])) return;
+    event.preventDefault();
+    openLesson(match[1], true);
+  });
+  window.addEventListener("hashchange", syncFromHash);
+  syncFromHash();
+})();
+</script>""".replace(
+        "__LESSON_IDS__",
+        json.dumps(lesson_ids, ensure_ascii=False),
+    )
+
+    if page.count("</head>") != 1 or page.count("</main>") != 1 or page.count("</body>") != 1:
+        raise CourseBuildError("The course HTML template is missing a required document landmark.")
+    page = page.replace("</head>", style + "\n</head>", 1)
+    page = page.replace("</main>", "\n".join(panels) + "\n</main>", 1)
+    page = page.replace("</body>", script + "\n</body>", 1)
+    return page
+
+
 def build_course(
     manifest_path: Path,
     project_root: Path,
@@ -1230,35 +1390,46 @@ def build_course(
     output_path: Path | None = None,
     lesson_builder: Callable[[CourseManifest, CourseLesson, int, int], Path] | None = None,
 ) -> Path:
-    """Build a course index or a printable course document.
+    """Build a course index, one-file HTML course, or printable course document.
 
-    HTML builds use the callback to generate lesson pages. LaTeX and PDF builds
-    use the same callback to render each lesson through EduTeX's normal lesson
-    pipeline, then compose the lesson bodies and solutions into one document.
-    When no callback is supplied, the public service retains its roadmap-only
-    behavior for compatibility with direct callers.
+    HTML builds use the callback to generate lesson pages through the ordinary
+    EduTeX pipeline. ``single-html`` embeds those complete pages, including their
+    styles and scripts, into one standalone course file. LaTeX and PDF builds
+    compose the rendered lesson bodies and solutions. Without a callback, the
+    service retains its roadmap-only behavior for legacy direct callers.
     """
     report = validate_course(manifest_path, project_root)
     if not report.valid or report.manifest is None:
         raise CourseBuildError("Course manifest is invalid: " + " ".join(report.errors))
 
     output_format = output_format.lower()
-    if output_format not in {"html", "latex", "pdf"}:
-        raise CourseBuildError("Course output format must be html, latex, or pdf.")
+    if output_format not in {"html", "single-html", "latex", "pdf"}:
+        raise CourseBuildError(
+            "Course output format must be html, single-html, latex, or pdf."
+        )
+
+    if output_format == "single-html" and lesson_builder is None:
+        raise CourseBuildError(
+            "Single-file HTML course output requires the normal lesson builder."
+        )
 
     output_dir = project_root / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     if output_path is None:
-        extension = "tex" if output_format == "latex" else output_format
-        destination = output_dir / f"course.{extension}"
+        if output_format == "single-html":
+            destination = output_dir / "course-single.html"
+        else:
+            extension = "tex" if output_format == "latex" else output_format
+            destination = output_dir / f"course.{extension}"
     else:
         destination = output_path
         if not destination.is_absolute():
             destination = project_root / destination
-        destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.parent.mkdir(parents=True, exist_ok=True)
 
-    if output_format == "html":
+    if output_format in {"html", "single-html"}:
         lesson_links: dict[str, str] = {}
+        lesson_pages: dict[str, str] = {}
         if lesson_builder is not None:
             expected_lesson_ids = {
                 lesson.lesson_id
@@ -1279,8 +1450,17 @@ def build_course(
                         raise CourseBuildError(
                             f"Could not build lesson '{lesson.lesson_id}': {exc}"
                         ) from exc
+
+                    generated_path = Path(generated)
+                    if not generated_path.is_absolute():
+                        generated_path = project_root / generated_path
+                    if output_format == "single-html" and not generated_path.is_file():
+                        raise CourseBuildError(
+                            f"Lesson builder did not create HTML for '{lesson.lesson_id}': "
+                            f"{generated_path}"
+                        )
                     try:
-                        lesson_links[lesson.lesson_id] = generated.relative_to(
+                        lesson_links[lesson.lesson_id] = generated_path.relative_to(
                             destination.parent
                         ).as_posix()
                     except ValueError as exc:
@@ -1288,10 +1468,22 @@ def build_course(
                             f"Generated lesson '{lesson.lesson_id}' is outside the course output directory."
                         ) from exc
 
-        destination.write_text(
-            render_course_html(report.manifest, lesson_links),
-            encoding="utf-8",
-        )
+                    if output_format == "single-html":
+                        try:
+                            lesson_pages[lesson.lesson_id] = generated_path.read_text(
+                                encoding="utf-8"
+                            )
+                        except (OSError, UnicodeError) as exc:
+                            raise CourseBuildError(
+                                f"Could not read generated HTML for lesson "
+                                f"'{lesson.lesson_id}': {exc}"
+                            ) from exc
+
+        if output_format == "single-html":
+            rendered = _render_single_course_html(report.manifest, lesson_pages)
+        else:
+            rendered = render_course_html(report.manifest, lesson_links)
+        destination.write_text(rendered, encoding="utf-8")
         return destination
 
     lesson_sources: dict[str, Path] = {}
@@ -1314,7 +1506,8 @@ def build_course(
                     generated_path = project_root / generated_path
                 if not generated_path.is_file():
                     raise CourseBuildError(
-                        f"Lesson builder did not create LaTeX for '{lesson.lesson_id}': {generated_path}"
+                        f"Lesson builder did not create LaTeX for '{lesson.lesson_id}': "
+                        f"{generated_path}"
                     )
                 lesson_sources[lesson.lesson_id] = generated_path
 

@@ -42,70 +42,59 @@ These are baseline observations, not a guarantee that all runtime behaviors are 
 
 ### 3.2 Resolution and graph behavior
 
-1. Required and optional references SHALL have distinct, documented missing-target behavior.
-2. Cyclic dependencies SHALL be rejected with a diagnostic that identifies the cycle.
-3. A resolved graph exposed after resolution SHALL be immutable, unless a future contract explicitly revises this guarantee.
-4. Equivalent registries SHALL yield equivalent resolved relationships and diagnostics regardless of entity registration order. The exact canonical ordering and diagnostic format remain to be specified.
-5. V2 SHALL preserve existing reference behavior by default unless the migration contract explicitly changes it.
+1. Resolution SHALL begin after the Registry registration window closes. The Resolver SHALL treat registered entities as read-only.
+2. The resolved graph SHALL contain each entity in the operation scope exactly once, including entities with no resolved references.
+3. Reference identity SHALL use the typed pair `(target_type, target_id)`. Entities with the same ID and different types are distinct. Hierarchical namespaces are outside this contract.
+4. Each present, successfully resolved reference SHALL create an edge preserving its source, target, and reference type. A present optional reference SHALL resolve normally.
+5. A missing required target SHALL fail resolution before activation using `RUNTIME_REFERENCE_MISSING`, with structured `source`, `expected_target`, and `reference_type` details.
+6. A missing optional target SHALL NOT fail resolution and SHALL be omitted without creating a graph node or edge.
+7. A dependency cycle SHALL fail resolution before activation using `RUNTIME_DEPENDENCY_CYCLE`, with the canonical ordered cycle identities defined by the Resolver specification.
+8. The resolved graph structure and its entity and edge collections SHALL be immutable to consumers. Deep immutability of arbitrary entity metadata is outside this contract.
+9. Equivalent registry contents and operation scopes SHALL produce the same graph, with canonical entity and edge ordering independent of registration order.
+10. JSON diagnostics SHALL preserve command-specific nesting and the `type` and `message` fields, and use stable `code` and `details` fields as defined by the owning specification.
 
 ### 3.3 Activation and termination
 
-1. Activation SHALL respect dependency order for the selected operation scope.
-2. Activation SHALL be deterministic for equivalent resolved inputs.
-3. Termination or deactivation SHALL occur in reverse activation order for entities that were successfully activated, unless a revised lifecycle contract defines a more precise failure or cleanup rule.
-4. The contract SHALL distinguish entity discovery, graph resolution, activation, and service processing; these terms SHALL NOT be treated as interchangeable.
-5. V2 SHALL define observable activation semantics before promising lazy-loading performance benefits.
-6. Behavior after partial activation failure, including cleanup of already activated entities, remains open and must be specified before lifecycle implementation changes.
+This closeout does not revise activation or deactivation behavior. Partial-activation rollback, runtime resource hooks, cleanup aggregation, and TERMINATING/COMPLETE/FAILED state transitions are deferred. The existing Runtime Architecture remains authoritative. Any future lifecycle change requires a separate contract and implementation-backed tests.
 
 ### 3.4 Concurrency
 
-1. Serial deterministic behavior SHALL remain the reference contract during the initial V2 runtime work.
-2. Parallel activation SHALL be considered only after dependency ordering, shared-state rules, failure propagation, termination, and equivalence to the serial contract are testable.
-3. This proposal does not require parallel activation or authorize it by default.
+Serial execution remains the default reference behavior. Parallel activation is outside the scope of this closeout; it is neither required nor enabled by this contract. Any future concurrency proposal requires a separate use case, contract, and tests.
 
 ## 4. Compatibility direction
 
-- Existing 1.x projects SHALL retain full-project operation semantics by default. Any narrower target scope SHALL be an explicit opt-in and SHALL NOT be enabled silently.
-- Changed or unsupported project patterns SHALL receive actionable diagnostics and migration guidance rather than being silently ignored.
-- The exact supported 1.x compatibility matrix, deprecation policy, and migration duration remain open decisions.
+1. EduTeX 1.7.x is the compatibility baseline for this contract.
+2. For that baseline, V2 SHALL preserve the operation scopes in Section 3.1, typed entity identity, and the reference outcomes in Section 3.2.
+3. V2 SHALL NOT silently omit configured entities, reinterpret existing entity identities, or apply an identity migration.
+4. This contract does not promise support for releases earlier than 1.7.x or define extension API compatibility and deprecation periods. Those require a separate published policy.
+5. Stable diagnostic codes and structured fields SHALL remain stable; human-readable message text MAY evolve.
 
-## 5. Acceptance criteria for the normative contract and implementation
+## 5. Acceptance criteria
 
-The eventual contract and implementation should have tests demonstrating that:
+The contract is covered when repository tests demonstrate that:
+- the operation scopes in Section 3.1 are preserved;
+- missing required references, missing optional references, and dependency cycles follow Section 3.2;
+- equivalent registry contents produce equivalent graphs and canonical ordering regardless of registration order;
+- JSON diagnostics preserve command-specific nesting and the stable fields defined by the owning specification.
 
-- current full-project Build and Validate behavior remains intact under the compatibility default;
-- inspection can report the full graph without activating entities;
-- a declared root scope includes its transitive required dependencies and excludes unrelated entities from activation;
-- missing required references, missing optional references, and dependency cycles follow distinct and stable documented outcomes;
-- registration-order changes do not change canonical graph results, activation order, or diagnostics;
-- deactivation order is the reverse of successful activation order;
-- partial activation failure has explicitly tested cleanup behavior;
-- any later parallel mode is equivalent to the serial reference for observable results and diagnostics.
+This closeout adds no acceptance criteria for activation lifecycle changes, rollback, resource hooks, or parallel execution.
 
-Performance targets SHALL be established only after a reproducible baseline is measured on representative project fixtures.
+## 6. Closeout checklist
 
-## 6. Recommended implementation sequence
+1. Verify each normative statement against the current implementation and its tests.
+2. Run the complete test suite and the repository quality checks.
+3. Keep this closeout limited to documented, verifiable behavior; do not introduce runtime behavior changes in this work.
+4. Treat the deferred items in Section 7 as separate future work, not as requirements of this closeout.
 
-1. Complete the 1.7.0 runtime audit and record representative full-project behavior and measurements.
-2. Finalize operation-scope terminology and the compatibility policy.
-3. Define graph identity, namespace, reference, determinism, and diagnostic contracts.
-4. Define scoped resolution and activation semantics, including partial-failure cleanup.
-5. Add contract tests before implementing behavior changes.
-6. Evaluate lazy activation and performance against the baseline.
-7. Evaluate parallel activation as a separate, later tranche.
+## 7. Deferred work
 
-## 7. Open decisions
-
-The following decisions SHALL be resolved in the owning specifications before implementation:
-
-- What identifies a runtime operation and its root entities?
-- Which target-aware operations (including any opt-in Build or Validate mode) have a concrete use case and require root selection?
-- How are hierarchical namespaces represented and kept compatible with existing `(EntityType, entity_id)` identities?
-- Are unresolved optional references omitted from the graph, represented explicitly, or reported as diagnostics?
-- How is canonical ordering defined for entities, edges, activation, and diagnostics?
-- What cleanup guarantee applies if activation fails partway through?
-- What work, beyond wrapper creation, is considered entity activation?
-- Which representative projects and measurements justify a scalability or performance target?
+The following topics are explicitly deferred and are not blockers for this bounded contract:
+- public APIs for selecting target roots;
+- support and migration promises for releases earlier than the 1.7.x baseline;
+- extension API compatibility and deprecation policy;
+- activation/deactivation hooks, partial-activation rollback, cleanup aggregation, and new termination states;
+- additional stable diagnostic codes beyond those defined by the owning specifications;
+- performance targets and parallel activation.
 
 ## 8. Change control
 

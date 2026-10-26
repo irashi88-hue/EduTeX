@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.8.0 - Single-file interactive courses
+
+EduTeX 1.8.0 adds a single-file HTML course output (`--format single-html`) that bundles generated interactive lessons into one navigable HTML document.
+
 ## Release 1.7.0 - Visual introspection and lesson authoring
 
 EduTeX 1.7.0 adds composition-aware layout and theme introspection to `edutex inspect`, including effective values and layer provenance. It also includes the local lesson-authoring studio, accessible back-to-top navigation, and expanded chemical-structure rendering.

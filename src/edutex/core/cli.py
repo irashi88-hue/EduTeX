@@ -46,7 +46,7 @@ from edutex.resolver.resolver import Resolver
 from edutex.theme.composition import ThemeCompositionError, inspect_composed_theme
 from edutex.theme.service import ThemeService
 
-CLI_VERSION = "1.7.0"
+CLI_VERSION = "1.8.0"
 
 
 def _configure_logging(level: str) -> None:

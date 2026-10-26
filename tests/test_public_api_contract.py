@@ -164,7 +164,7 @@ def test_contratto_course_build() -> None:
 
     assert find_option(command, "--project").default == Path(".")
     assert find_option(command, "--manifest").default == "course.yaml"
-    assert get_choices(command, "--format") == ("html", "latex", "pdf")
+    assert get_choices(command, "--format") == ("html", "single-html", "latex", "pdf")
     assert find_option(command, "--output").default is None
     assert get_choices(command, "--report-format") == ("text", "json")
     assert find_option(command, "--report-format").default == "text"

@@ -12,6 +12,7 @@ import html
 import json
 import logging
 import shutil
+import tempfile
 from dataclasses import dataclass
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -628,6 +629,7 @@ def _build_course_lesson(
     project_root: Path,
     profile: str | None = None,
     output_format: str = "html",
+    lesson_output_dir: Path | None = None,
 ) -> Path:
     """Build one course lesson through the normal EduTeX pipeline."""
     config_path = project_root / "edutex.config.yaml"
@@ -644,7 +646,11 @@ def _build_course_lesson(
             "build": config.build.model_copy(
                 update={
                     "output_format": output_format,
-                    "output_dir": Path("output") / "lessons",
+                    "output_dir": (
+                        lesson_output_dir
+                        if lesson_output_dir is not None
+                        else Path("output") / "lessons"
+                    ),
                     "output_file": lesson.lesson_id,
                 }
             ),
@@ -944,26 +950,50 @@ def course_build_command(
             except ConfigurationError as exc:
                 raise CourseBuildError(str(exc)) from exc
 
-        lesson_builder = None
-        if output_format in {"html", "single-html", "latex", "pdf"}:
-            lesson_output_format = "html" if output_format in {"html", "single-html"} else "latex"
-            lesson_builder = lambda manifest, lesson, module_number, lesson_number: _build_course_lesson(
-                manifest,
-                lesson,
-                module_number,
-                lesson_number,
-                project_root=project_root,
-                profile=profile,
-                output_format=lesson_output_format,
+        lesson_output_context = None
+        if output_format == "single-html":
+            temporary_parent = project_root / "output"
+            temporary_parent.mkdir(parents=True, exist_ok=True)
+            lesson_output_context = tempfile.TemporaryDirectory(
+                prefix=".edutex-single-html-",
+                dir=temporary_parent,
             )
 
-        output = build_course(
-            manifest_path,
-            project_root,
-            output_format,
-            output_file,
-            lesson_builder=lesson_builder,
-        )
+        try:
+            lesson_output_dir = (
+                Path(lesson_output_context.name).relative_to(project_root)
+                if lesson_output_context is not None
+                else None
+            )
+            lesson_builder = None
+            if output_format in {"html", "single-html", "latex", "pdf"}:
+                lesson_output_format = (
+                    "html" if output_format in {"html", "single-html"} else "latex"
+                )
+                lesson_builder = (
+                    lambda manifest, lesson, module_number, lesson_number:
+                    _build_course_lesson(
+                        manifest,
+                        lesson,
+                        module_number,
+                        lesson_number,
+                        project_root=project_root,
+                        profile=profile,
+                        output_format=lesson_output_format,
+                        lesson_output_dir=lesson_output_dir,
+                    )
+                )
+
+            output = build_course(
+                manifest_path,
+                project_root,
+                output_format,
+                output_file,
+                lesson_builder=lesson_builder,
+            )
+        finally:
+            if lesson_output_context is not None:
+                lesson_output_context.cleanup()
     except Exception as exc:
         if report_format == "json":
             click.echo(

@@ -1274,6 +1274,8 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
     assert 'frame.scrollIntoView({ behavior: scrollBehavior, block: "start" })' in source
     assert source.count("<iframe") == 2
     assert source.count("</html>") == 1
+    lesson_output_dir = tmp_path / "output" / "lessons"
+    assert not list(lesson_output_dir.glob("*.html"))
 
     class EmbeddedPageParser(HTMLParser):
         def __init__(self) -> None:
@@ -1292,5 +1294,62 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
         assert 'class="course-lesson-nav"' in embedded
         assert "data-course-complete" in embedded
 
-    assert (tmp_path / "output/lessons/lesson-01.html").is_file()
-    assert (tmp_path / "output/lessons/lesson-02.html").is_file()
+
+def test_single_html_build_does_not_modify_existing_multi_file_outputs(
+    tmp_path: Path,
+) -> None:
+    """Single-file builds must not clean or overwrite regular HTML outputs."""
+    make_project(tmp_path)
+
+    html_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert html_result.exit_code == 0, html_result.output
+
+    output_dir = tmp_path / "output"
+    course_index = output_dir / "course.html"
+    lesson_page = output_dir / "lessons" / "lesson-01.html"
+    assert course_index.is_file()
+    assert lesson_page.is_file()
+    original_index = course_index.read_bytes()
+    original_lesson = lesson_page.read_bytes()
+
+    stale_lesson = output_dir / "lessons" / "stale-lesson.html"
+    stale_lesson.write_text("preserve this unrelated existing output", encoding="utf-8")
+
+    single_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert single_result.exit_code == 0, single_result.output
+    assert (output_dir / "course-single.html").is_file()
+
+    assert course_index.read_bytes() == original_index
+    assert lesson_page.read_bytes() == original_lesson
+    assert stale_lesson.read_text(encoding="utf-8") == "preserve this unrelated existing output"
+
+
+def test_single_html_build_failure_preserves_previous_artifact(tmp_path: Path) -> None:
+    """A failed lesson render must not truncate an existing single-file course."""
+    from edutex.course.service import CourseBuildError, build_course
+
+    make_project(tmp_path)
+    destination = tmp_path / "output" / "course-single.html"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    previous_artifact = "previous-valid-course-artifact"
+    destination.write_text(previous_artifact, encoding="utf-8")
+
+    def fail_lesson_builder(manifest, lesson, module_number, lesson_number):
+        raise RuntimeError("intentional contract-test failure")
+
+    with pytest.raises(CourseBuildError):
+        build_course(
+            tmp_path / "course.yaml",
+            tmp_path,
+            "single-html",
+            output_path=destination,
+            lesson_builder=fail_lesson_builder,
+        )
+
+    assert destination.read_text(encoding="utf-8") == previous_artifact

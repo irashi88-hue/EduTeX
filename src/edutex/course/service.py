@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -1383,6 +1385,33 @@ def _render_single_course_html(
     return page
 
 
+def _write_text_atomically(path: Path, text: str) -> None:
+    """Replace a text artifact only after its complete contents are written."""
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="",
+            delete=False,
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except OSError:
+                pass
+
+
 def build_course(
     manifest_path: Path,
     project_root: Path,
@@ -1436,7 +1465,8 @@ def build_course(
                 for module in report.manifest.modules
                 for lesson in module.lessons
             }
-            _clean_stale_lesson_pages(output_dir, expected_lesson_ids)
+            if output_format == "html":
+                _clean_stale_lesson_pages(output_dir, expected_lesson_ids)
             for module_number, module in enumerate(report.manifest.modules, start=1):
                 for lesson_number, lesson in enumerate(module.lessons, start=1):
                     try:
@@ -1459,14 +1489,15 @@ def build_course(
                             f"Lesson builder did not create HTML for '{lesson.lesson_id}': "
                             f"{generated_path}"
                         )
-                    try:
-                        lesson_links[lesson.lesson_id] = generated_path.relative_to(
-                            destination.parent
-                        ).as_posix()
-                    except ValueError as exc:
-                        raise CourseBuildError(
-                            f"Generated lesson '{lesson.lesson_id}' is outside the course output directory."
-                        ) from exc
+                    if output_format == "html":
+                        try:
+                            lesson_links[lesson.lesson_id] = generated_path.relative_to(
+                                destination.parent
+                            ).as_posix()
+                        except ValueError as exc:
+                            raise CourseBuildError(
+                                f"Generated lesson '{lesson.lesson_id}' is outside the course output directory."
+                            ) from exc
 
                     if output_format == "single-html":
                         try:
@@ -1483,7 +1514,10 @@ def build_course(
             rendered = _render_single_course_html(report.manifest, lesson_pages)
         else:
             rendered = render_course_html(report.manifest, lesson_links)
-        destination.write_text(rendered, encoding="utf-8")
+        if output_format == "single-html":
+            _write_text_atomically(destination, rendered)
+        else:
+            destination.write_text(rendered, encoding="utf-8")
         return destination
 
     lesson_sources: dict[str, Path] = {}

@@ -823,6 +823,14 @@ def render_course_html(manifest: CourseManifest, lesson_links: dict[str, str] | 
       save();
       refresh();
   }}));
+  window.addEventListener("storage", (event) => {{
+    if (event.key !== storageKey && event.key !== null) return;
+    try {{
+      const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      completed = new Set(Array.isArray(stored) ? stored : []);
+    }} catch (error) {{ completed = new Set(); }}
+    refresh();
+  }});
   refresh();
 }})();
 </script>"""
@@ -1285,6 +1293,27 @@ def _render_single_course_html(
     if (!lessonIds.has(lessonId)) return;
     const target = document.getElementById(`edutex-single-lesson-${lessonId}`);
     if (!target) return;
+
+    const courseLink = [...document.querySelectorAll(".lesson-link[data-lesson-id]")]
+      .find((link) => link.dataset.lessonId === lessonId);
+    if (!courseLink || courseLink.getAttribute("aria-disabled") === "true") {
+      const lessonRow = courseLink ? courseLink.closest(".lesson") : null;
+      const status = lessonRow ? lessonRow.querySelector(".lesson-lock") : null;
+      if (status) {
+        status.id = `edutex-prerequisite-status-${lessonId}`;
+        status.classList.add("is-visible");
+        courseLink.setAttribute("aria-describedby", status.id);
+      }
+      if (location.hash === `#edutex-single-lesson-${lessonId}`) {
+        history.replaceState(null, "", "#course-content");
+      }
+      if (courseLink) {
+        courseLink.focus({ preventScroll: true });
+        courseLink.scrollIntoView({ behavior: scrollBehavior, block: "center" });
+      }
+      return;
+    }
+
     for (const panel of panels) panel.open = panel === target;
     if (updateHistory && location.hash !== `#edutex-single-lesson-${lessonId}`) {
       history.pushState(null, "", `#edutex-single-lesson-${lessonId}`);

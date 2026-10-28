@@ -1295,6 +1295,37 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
         assert "data-course-complete" in embedded
 
 
+def test_single_html_prerequisite_gate_covers_hash_and_frame_navigation(
+    tmp_path: Path,
+) -> None:
+    """The shared lesson opener must enforce the course prerequisite state."""
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n"
+        "        prerequisites: [lesson-01]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output" / "course-single.html").read_text(encoding="utf-8")
+    assert "data-prerequisites" in source
+    assert 'if (!courseLink || courseLink.getAttribute("aria-disabled") === "true")' in source
+    assert 'history.replaceState(null, "", "#course-content")' in source
+    assert 'openLesson(value.slice(prefix.length))' in source
+    assert 'openLesson(match[1], true)' in source
+    assert 'window.addEventListener("storage", (event) =>' in source
+
+
 def test_single_html_build_does_not_modify_existing_multi_file_outputs(
     tmp_path: Path,
 ) -> None:

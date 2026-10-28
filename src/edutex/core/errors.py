@@ -13,6 +13,17 @@ from __future__ import annotations
 class EduTeXError(Exception):
     """Base class for all EduTeX framework errors."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.details = details
+
 
 class ConfigurationError(EduTeXError):
     """Raised when configuration validation fails. (CFG-001)"""

@@ -170,13 +170,19 @@ def _format_build_error_json(
     message: str,
     *,
     error_type: str = "build_error",
+    code: str | None = None,
+    details: dict[str, object] | None = None,
     diagnostics: Sequence[ExtensionDiagnostic] | None = None,
 ) -> str:
     """Serialize one build failure without Click's human-readable prefix."""
-    error = {
+    error: dict[str, object] = {
         "type": error_type,
         "message": message,
     }
+    if code is not None:
+        error["code"] = code
+    if details is not None:
+        error["details"] = details
     if diagnostics:
         error["diagnostics"] = serialize_diagnostics(diagnostics)
 
@@ -197,15 +203,21 @@ def _format_validate_json(
     status: str,
     error_type: str | None = None,
     message: str | None = None,
+    code: str | None = None,
+    details: dict[str, object] | None = None,
     diagnostics: Sequence[ExtensionDiagnostic] | None = None,
 ) -> str:
     """Serialize one validation result without Click's human-readable prefix."""
-    validation = {"status": status}
+    validation: dict[str, object] = {"status": status}
     if error_type is not None:
-        error = {
+        error: dict[str, object] = {
             "type": error_type,
             "message": message or "",
         }
+        if code is not None:
+            error["code"] = code
+        if details is not None:
+            error["details"] = details
         if diagnostics:
             error["diagnostics"] = serialize_diagnostics(diagnostics)
         validation["error"] = error
@@ -215,8 +227,6 @@ def _format_validate_json(
         ensure_ascii=False,
         indent=2,
     )
-
-
 
 @dataclass(frozen=True)
 class _PreparedPipeline:
@@ -304,22 +314,29 @@ def _format_inspection_error_json(
     message: str,
     *,
     error_type: str = "inspection_error",
+    code: str | None = None,
+    details: dict[str, object] | None = None,
 ) -> str:
     """Serialize an inspection failure without human-readable prefixes."""
+    error: dict[str, object] = {
+        "type": error_type,
+        "message": message,
+    }
+    if code is not None:
+        error["code"] = code
+    if details is not None:
+        error["details"] = details
+
     return json.dumps(
         {
             "inspection": {
                 "status": "failed",
-                "error": {
-                    "type": error_type,
-                    "message": message,
-                },
+                "error": error,
             }
         },
         ensure_ascii=False,
         indent=2,
     )
-
 
 def _inspection_entity(record: EntityRecord) -> dict[str, str]:
     """Serialize one runtime entity using stable public field names."""
@@ -422,6 +439,13 @@ def _inspect_project(
     graph = Resolver(registry).resolve()
     registry_entities = [_inspection_entity(record) for record in registry.get_all()]
     graph_entities = [_inspection_entity(record) for record in graph.entities]
+    registry_order = {
+        (entity["type"], entity["id"]): index
+        for index, entity in enumerate(registry_entities)
+    }
+    graph_entities.sort(
+        key=lambda entity: registry_order[(entity["type"], entity["id"])]
+    )
     graph_edges = [_inspection_edge(edge) for edge in graph.edges]
     output_dir = _resolve_path(project_root, config.build.output_dir)
 
@@ -1291,6 +1315,8 @@ def build_command(project_root: Path, config_file: Path, run_lint: bool, output_
                 _format_build_error_json(
                     message,
                     error_type=exc.__class__.__name__,
+                    code=getattr(exc, 'code', None),
+                    details=getattr(exc, 'details', None),
                     diagnostics=extension_diagnostics,
                 )
             )
@@ -1374,6 +1400,8 @@ def inspect_command(
             _format_inspection_error_json(
                 str(exc),
                 error_type=exc.__class__.__name__,
+                code=getattr(exc, "code", None),
+                details=getattr(exc, "details", None),
             )
         )
         raise click.exceptions.Exit(1) from exc
@@ -1467,6 +1495,8 @@ def validate_command(
                     status="failed",
                     error_type=exc.__class__.__name__,
                     message=str(exc),
+                    code=getattr(exc, 'code', None),
+                    details=getattr(exc, 'details', None),
                     diagnostics=extension_diagnostics,
                 )
             )
@@ -1484,6 +1514,8 @@ def validate_command(
                     status="failed",
                     error_type=exc.__class__.__name__,
                     message=message,
+                    code=getattr(exc, 'code', None),
+                    details=getattr(exc, 'details', None),
                     diagnostics=extension_diagnostics,
                 )
             )
@@ -1497,6 +1529,8 @@ def validate_command(
                     status="failed",
                     error_type=exc.__class__.__name__,
                     message=str(exc),
+                    code=getattr(exc, 'code', None),
+                    details=getattr(exc, 'details', None),
                     diagnostics=extension_diagnostics,
                 )
             )

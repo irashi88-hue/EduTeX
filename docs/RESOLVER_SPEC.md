@@ -224,17 +224,17 @@ The set of recognized reference types is determined by the entity registration c
 
 Reference targets SHALL be identified by the typed pair `(target_type, target_id)`. Entities with the same identifier and different entity types SHALL be treated as distinct.
 
-Reference targets SHALL be resolved only against entities in the current operation scope. A registered entity outside that scope SHALL be treated as absent for reference resolution.
+Resolver SHALL establish the operation scope, including the transitive closure of required references, before resolving references. Reference targets SHALL then be resolved only against the resulting scope. A registered entity outside that scope SHALL be treated as absent for optional reference resolution; an optional reference SHALL NOT expand the operation scope.
 
-Each declared reference SHALL be classified as required or optional. If its target exists, Resolver SHALL include the reference edge regardless of this classification. If a required target is absent, resolution SHALL fail. If an optional target is absent, Resolver SHALL omit that reference; it SHALL NOT create a graph node or edge.
+Each declared reference SHALL be classified as required or optional. For an in-scope source, a required target that exists in the registry SHALL be included through the required-dependency closure and its edge SHALL be included; if the target is absent from the registry, resolution SHALL fail. An optional target already in the operation scope SHALL be resolved normally and its edge SHALL be included. An optional target outside the operation scope SHALL NOT expand that scope and SHALL be omitted from the scoped graph without a resolution error.
 
 7.4 Error Conditions
 
 Resolver treats a missing required reference target and a circular dependency as fatal resolution errors.
 
-Each absent required reference target SHALL produce a `RUNTIME_REFERENCE_MISSING` diagnostic. Its `details` SHALL identify `source` and `expected_target` entities, each with `type` and `id`, and include `reference_type`.
+If one or more required reference targets are absent, Resolver SHALL produce one fatal `RUNTIME_REFERENCE_MISSING` error for the resolution pass. Its `details.missing_references` SHALL be an array containing one entry per absent target, ordered by the canonical reference key defined in §7.5. Each entry SHALL identify `source` and `expected_target` entities, each with `type` and `id`, and include `reference_type`.
 
-An absent optional reference target SHALL NOT be a resolution error. Resolver SHALL omit that reference from the graph and SHALL NOT create a target node or edge.
+A missing optional target SHALL NOT be a resolution error and SHALL be omitted without creating a graph node or edge. A registered optional target outside the operation scope SHALL also be omitted without error or scope expansion. An optional target already in scope SHALL be resolved normally and SHALL contribute its edge.
 
 A circular dependency SHALL produce a `RUNTIME_DEPENDENCY_CYCLE` diagnostic. Its `details.cycle` SHALL be an ordered list of entity identities, each with `type` and `id`; it SHALL follow edge direction, begin at the canonically smallest identity in the cycle, and repeat that identity at the end.
 
@@ -286,7 +286,7 @@ Purpose: Defines the structure of resolution error reports for missing required 
 
 Consumers: Core (via CC-003), diagnostic tooling.
 
-Guarantee: Missing required targets SHALL use `RUNTIME_REFERENCE_MISSING` with the `source`, `expected_target`, and `reference_type` details defined in §7.4. Circular dependencies SHALL use `RUNTIME_DEPENDENCY_CYCLE` with the canonical `cycle` details defined in §7.4. Human-readable message text MAY evolve without changing these codes or fields.
+Guarantee: Missing required targets SHALL use `RUNTIME_REFERENCE_MISSING` with the `details.missing_references` collection defined in §7.4. Circular dependencies SHALL use `RUNTIME_DEPENDENCY_CYCLE` with the canonical `cycle` details defined in §7.4. Human-readable message text MAY evolve without changing these codes or fields.
 
 Constraint: Resolution errors SHALL be propagated through CC-003 as fatal errors.
 
@@ -444,7 +444,7 @@ RES-C-005 — Required and Optional Reference Outcomes
 
 If a required reference target is absent, Resolver SHALL propagate a fatal error through CC-003 using `RUNTIME_REFERENCE_MISSING`.
 
-An absent optional reference target SHALL NOT be fatal and SHALL be omitted from the resolved graph without creating a node or edge.
+An optional target absent from the registry or outside the operation scope SHALL NOT be fatal and SHALL be omitted without creating a graph node or edge. An optional target already in the operation scope SHALL be resolved normally and its edge SHALL be included.
 
 The framework SHALL NOT proceed to activation when a required target is absent.
 
@@ -660,5 +660,9 @@ Initial release
 2026-10-22
 
 Draft revision defining required and optional reference outcomes, canonical graph ordering, and stable resolution diagnostics.
+
+2026-10-27
+
+Draft revision clarifying operation-scoped required-dependency closure and optional-reference behavior.
 
 End of document.

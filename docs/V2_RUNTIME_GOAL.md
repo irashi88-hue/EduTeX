@@ -1,101 +1,110 @@
-# EduTeX V2 Runtime Evolution Charter
+# EduTeX V2 Runtime Completion Charter
 
 **Status:** Draft proposal
-
-**Version:** 0.1.0
-**Scope:** Define the goal, boundaries, and acceptance direction for EduTeX 2.0 runtime work. This charter is not yet a normative runtime contract.
+**Version:** 0.2.0
+**Scope:** Define the goal, boundaries, decisions, and acceptance direction for EduTeX 2.0 runtime work. This charter is not a normative runtime contract.
 
 ## 1. Goal
 
-EduTeX 2.0 will make runtime execution **selective, explicit, deterministic, and scalable**. For a requested operation, EduTeX should resolve the relevant dependency graph and activate only the components required for that operation, while providing actionable diagnostics and a controlled migration path for projects created with EduTeX 1.x.
+EduTeX 2.0 will make runtime execution explicit, deterministic, diagnosable, and appropriately scoped. Operations that already identify a target, such as Preview and per-lesson Course build, will use that target together with the configured support assets and their required dependency closure. Full-project Build and Validate will retain their configured full-project behavior.
 
-The purpose of V2 is not parallelism for its own sake. It is to make runtime behavior and dependency relationships sufficiently explicit that larger projects can be executed predictably and efficiently.
+The V2 runtime will define typed graph identity, canonical ordering, stable structured diagnostics, lifecycle termination, and cleanup behavior for both normal termination and partial activation failure. It will provide an actionable compatibility and migration path for projects using supported EduTeX 1.8.x releases.
 
-## 2. Guiding principles
+V2 does not promise a particular speedup. Scoping is a correctness and isolation contract first; performance claims require representative measurements.
+
+## 2. Decisions and guiding principles
 
 1. **Specification before implementation.** Define runtime and migration contracts before changing runtime behavior.
-2. **Determinism before concurrency.** Equivalent inputs must lead to equivalent graph and activation outcomes. Parallel execution is considered only after that property can be tested.
-3. **Explicit dependency semantics.** Required and optional references, identity, namespaces, and failure behavior must be documented rather than inferred.
-4. **One authoritative registry.** Registry remains the authoritative source of runtime entities; resolution and activation retain distinct responsibilities unless an approved architecture revision says otherwise.
-5. **Migration, not silent breakage.** Incompatible 1.x behavior must be identified and accompanied by actionable migration guidance.
-6. **Measure before optimizing.** Establish representative runtime and build baselines before setting numeric performance targets.
+2. **Determinism by default.** Equivalent registries and operation scopes produce equivalent graphs, activation order, and diagnostics, independent of registration order.
+3. **Typed identity.** An entity is identified by its entity type and entity ID. Hierarchical namespaces are not part of this V2 scope.
+4. **Operation scope without a generic CLI selector.** Existing operation inputs determine roots. V2 does not add a generic root-selection flag.
+5. **Serial activation as the reference behavior.** Activation is deterministic and serial. Parallel activation is outside this scope.
+6. **One authoritative registry.** Registry remains authoritative for registered runtime entities; Resolver and Activator retain distinct responsibilities.
+7. **Cleanup is part of the lifecycle contract.** A fatal failure must not expose partial activated state or skip required cleanup attempts.
+8. **Migration, not silent breakage.** Changed or unsupported project behavior receives actionable diagnostics and migration guidance.
+9. **Measure before optimizing.** Do not make numeric performance promises without a reproducible baseline.
 
-## 3. Intended scope
+## 3. Operation scope
 
-The V2 runtime work is expected to specify and evaluate:
+The runtime contract will preserve and formalize the following operation scopes:
 
-- dependency graph identity and resolution, including cycle and unresolved-reference diagnostics;
-- required versus optional references and their runtime semantics;
-- hierarchical or scoped entity namespaces, including uniqueness and lookup rules;
-- operation-scoped activation and lazy activation of the required dependency closure;
-- lifecycle transitions, activation failures, and termination behavior for the selected runtime scope;
-- observability of the resolved graph and activation decisions;
-- safe parallel activation only where dependency ordering, shared state, and deterministic outcomes are demonstrably controlled;
-- compatibility and migration behavior for 1.x projects.
+- **Build and Validate:** use the complete runtime entity set selected by project configuration, preserving existing full-project behavior.
+- **Preview:** use the explicitly selected source file as the Knowledge Model root and retain the configured support assets.
+- **Course build:** use each lesson source declared by the course manifest as that build's Knowledge Model root and retain the configured support assets for each lesson build.
+- **Runtime inspection:** report the complete configuration-selected registered and resolved graph without activating entities.
 
-This list defines areas for specification and review; it does not pre-approve a particular API, algorithm, namespace syntax, or concurrency model.
+For operations with roots, the runtime will include the roots and their required dependency closure. Configured support assets that belong to the operation remain in scope. Entities outside the operation scope are not activated incidentally.
 
-## 4. Out of scope
+The initial V2 contract adds no generic CLI root-selection option. A future target-selection interface requires a concrete use case and a separate review.
 
-Unless separately justified by a V2 runtime requirement, this work does not include:
+## 4. In scope
 
-- a wholesale rewrite of EduTeX;
-- unrelated lesson-authoring, course-content, theme, or output-format features;
-- parallelizing builds without explicit safety and determinism contracts;
-- arbitrary changes to educational content models;
-- numeric speedup promises before a reproducible baseline exists.
+V2 runtime work will specify and test:
 
-## 5. V2 acceptance direction
+- typed entity identity and canonical graph and edge ordering;
+- required and optional reference outcomes;
+- deterministic cycle detection and stable, structured diagnostics;
+- operation scopes and dependency closure for the operations listed in Section 3;
+- serial, dependency-ordered activation;
+- the `TERMINATING` lifecycle phase and valid completion/failure transitions;
+- activation failure rollback, normal deactivation, cleanup continuation, and structured cleanup-error aggregation;
+- the guarantee that partial activation state is not exposed;
+- compatibility behavior and migration guidance for supported 1.8.x projects.
 
-The runtime contract and its implementation should make it possible to verify that:
+## 5. Out of scope
 
-1. Equivalent inputs produce an equivalent resolved graph and equivalent runtime outcomes, independent of registration order.
-2. Missing required references and dependency cycles produce stable, actionable diagnostics.
-3. An absent optional reference follows documented behavior and does not accidentally behave like a missing required reference.
-4. A requested operation activates only its declared dependency closure; unrelated components are not activated as a side effect.
-5. Any parallel activation mode is opt-in or otherwise explicitly governed, and its observable result matches the deterministic serial contract.
-6. A documented compatibility matrix and migration path cover supported 1.x project patterns and explain unsupported or changed behavior.
+This V2 runtime contract does not include:
 
-The exact test strategy and any quantitative performance goals are to be set during contract design, after a baseline and representative project fixtures are agreed.
+- hierarchical entity namespaces or a namespace migration;
+- parallel activation or parallel build execution;
+- a generic CLI flag or public API for selecting arbitrary roots;
+- a wholesale framework rewrite or unrelated authoring, course-content, theme, or output-format work;
+- numeric performance targets without a reproducible representative baseline;
+- a compatibility promise for releases earlier than 1.8.x.
 
-## 6. Recommended sequence
+## 6. Acceptance direction
 
-### Phase 0 — Runtime and compatibility audit
+The normative contract and implementation should make it possible to verify that:
 
-Compare the released runtime architecture and component specifications with the 1.7.0 implementation. Identify current lifecycle behavior, implicit assumptions, compatibility-sensitive inputs, and measurable baselines.
+1. Build and Validate preserve their configured full-project behavior.
+2. Preview and each Course build use the selected Knowledge Model source and retain the configured support assets.
+3. Runtime inspection can report the full configuration-selected graph without activating entities.
+4. Scoped operations include their roots and required dependency closure and do not activate unrelated entities.
+5. Typed identity, canonical graph order, activation order, and diagnostics do not depend on registration order.
+6. Missing required references, missing optional references, and cycles have distinct, stable, actionable outcomes.
+7. Activation is serial and dependency ordered, and no partial activated state is exposed.
+8. A failure after activation has begun triggers cleanup of the failing entity and previously activated entities in reverse order.
+9. Cleanup continues after individual cleanup errors; errors are structured and aggregated while the original activation failure remains primary.
+10. Normal termination deactivates successfully activated entities in reverse activation order before completion.
+11. Lifecycle tests cover `TERMINATING`, `COMPLETE`, and `FAILED` outcomes.
+12. Compatibility and migration documentation identifies supported 1.8.x patterns and explains relevant changes.
 
-### Phase 1 — Resolution and identity contract
+## 7. Recommended sequence
 
-Specify graph identity, namespace rules, required and optional references, cycle behavior, and deterministic diagnostics. Keep Registry, Resolver, and Activator responsibilities explicit.
+### Phase 0 - Freeze scope and baseline
 
-### Phase 2 — Operation-scoped and lazy activation
+Confirm operation scopes, supported compatibility baseline, and the current 1.8.0 runtime behavior before implementation changes.
 
-Specify how a command or runtime operation declares its required scope, how the dependency closure is obtained, and how activation and termination behave for that scope.
+### Phase 1 - Finalize graph and diagnostic contracts
 
-### Phase 3 — Lifecycle evolution
+Specify typed identity, canonical graph and edge ordering, reference outcomes, cycle diagnostics, and JSON error details in the owning specifications.
 
-Specify lifecycle extension points and failure/termination behavior, including how partial activation is reported and cleaned up. Preserve existing guarantees unless a deliberate, documented migration changes them.
+### Phase 2 - Finalize operation-scoped activation
 
-### Phase 4 — Concurrency evaluation
+Specify how existing operation inputs establish roots, how configured support assets are retained, and how the required dependency closure is resolved and activated serially.
 
-Evaluate parallel activation only after graph, lifecycle, shared-state, determinism, and failure contracts are testable. Retain a serial execution path as the reference behavior unless the final contract establishes another equivalent baseline.
+### Phase 3 - Finalize lifecycle and cleanup
 
-## 7. Decisions required before implementation
+Specify `TERMINATING`, normal deactivation, partial activation rollback, cleanup continuation, structured aggregation, and failure transitions. Add contract tests before implementation.
 
-The following items remain open and must be resolved in the relevant specifications:
+### Phase 4 - Compatibility and migration
 
-- what constitutes an activation unit and how each CLI operation declares its runtime scope;
-- the syntax, ownership, and lookup rules for hierarchical namespaces;
-- whether optional references are absent, deferred, or represented explicitly in the resolved graph;
-- which lifecycle hooks exist and which component owns each hook;
-- how activation failures affect already-activated dependencies and termination;
-- which entities, if any, may be activated concurrently and how that eligibility is declared;
-- which 1.x behaviors are preserved, deprecated, or replaced, and for how long.
+Publish the supported 1.8.x compatibility matrix and migration guidance. Validate the contract against representative existing projects and the complete test suite.
 
 ## 8. Relationship to existing specifications
 
-This charter proposes evolution of the runtime model described in `RUNTIME_ARCHITECTURE.md` and its component contracts, especially `REGISTRY_SPEC.md`, `RESOLVER_SPEC.md`, and `ACTIVATOR_SPEC.md`. It does not replace those specifications. Changes to normative behavior must be made in the authoritative specification that owns the relevant concept, with cross-references updated as needed.
+This charter proposes evolution of `RUNTIME_ARCHITECTURE.md` and the relevant component contracts, especially `CORE_SPEC.md`, `REGISTRY_SPEC.md`, `RESOLVER_SPEC.md`, and `ACTIVATOR_SPEC.md`. It does not replace them. Normative behavior must be added to the specification that owns the relevant concept, with cross-references updated consistently.
 
 ## 9. First deliverable
 
-The first V2 deliverable is a reviewed runtime and migration contract, not a runtime implementation. It should define the terms, invariants, compatibility policy, and testable acceptance criteria needed to implement the phases above without prematurely fixing implementation details.
+The first V2 deliverable is a reviewed runtime and migration contract, followed by corresponding updates to the authoritative runtime and component specifications. Runtime implementation changes begin only after those contracts and their acceptance tests are agreed.

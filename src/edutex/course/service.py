@@ -1252,12 +1252,86 @@ def _render_single_course_html(
     panels: list[str] = []
     lesson_ids = [lesson.lesson_id for lesson in lessons]
 
+    lesson_bridge = r'''<script id="edutex-single-html-frame-bridge">
+(() => {
+  const channel = "edutex-single-html-navigation";
+  const send = (type, details = {}) => {
+    parent.postMessage({ channel, type, ...details }, "*");
+  };
+
+  function reportHeight() {
+    const bodyHeight = document.body ? document.body.scrollHeight : 0;
+    const documentHeight = document.documentElement
+      ? document.documentElement.scrollHeight : 0;
+    send("resize", { height: Math.max(672, bodyHeight, documentHeight) });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented) return;
+    let element = event.target;
+    if (element && element.nodeType !== 1) element = element.parentElement;
+    const link = element && element.closest ? element.closest("a[href]") : null;
+    if (!link) return;
+
+    const href = link.getAttribute("href") || "";
+    if (link.classList.contains("back-to-top") || href === "#") {
+      event.preventDefault();
+      send("back-to-top");
+      return;
+    }
+    if (href === "../course.html" || href.startsWith("../course.html#")) {
+      event.preventDefault();
+      send("course-index");
+      return;
+    }
+
+    const lessonMatch = /^([a-z0-9_-]+)\.html(?:[?#].*)?$/.exec(href);
+    if (lessonMatch) {
+      event.preventDefault();
+      send("lesson", { lessonId: lessonMatch[1] });
+      return;
+    }
+
+    if (href.startsWith("#") && href.length > 1) {
+      let anchorId;
+      try {
+        anchorId = decodeURIComponent(href.slice(1));
+      } catch (error) {
+        return;
+      }
+      const target = document.getElementById(anchorId);
+      if (!target) return;
+      event.preventDefault();
+      const offsetTop = Math.max(
+        0,
+        target.getBoundingClientRect().top + window.scrollY
+      );
+      send("anchor", { offsetTop });
+    }
+  });
+
+  if (window.ResizeObserver && document.documentElement) {
+    const observer = new ResizeObserver(reportHeight);
+    observer.observe(document.documentElement);
+  }
+  window.addEventListener("load", reportHeight);
+  window.addEventListener("resize", reportHeight);
+  requestAnimationFrame(reportHeight);
+})();
+</script>'''
+
     for module_number, module in enumerate(manifest.modules, start=1):
         for lesson_number, lesson in enumerate(module.lessons, start=1):
             title = html.escape(lesson.title)
             module_title = html.escape(module.title)
             frame_title = html.escape(f"{module.title}: {lesson.title}", quote=True)
-            srcdoc = html.escape(lesson_pages[lesson.lesson_id], quote=True)
+            lesson_page = lesson_pages[lesson.lesson_id]
+            if lesson_page.count("</body>") != 1:
+                raise CourseBuildError(
+                    f"Generated lesson '{lesson.lesson_id}' is missing its unique body landmark."
+                )
+            lesson_page = lesson_page.replace("</body>", lesson_bridge + "\n</body>", 1)
+            srcdoc = html.escape(lesson_page, quote=True)
             panels.append(
                 f'<details class="course-single-lesson" '
                 f'id="edutex-single-lesson-{lesson.lesson_id}" data-course-single-lesson>'
@@ -1284,10 +1358,15 @@ def _render_single_course_html(
 
     script = r"""<script id="edutex-single-course-navigation">
 (() => {
+  const channel = "edutex-single-html-navigation";
   const lessonIds = new Set(__LESSON_IDS__);
   const panels = [...document.querySelectorAll("[data-course-single-lesson]")];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scrollBehavior = reducedMotion ? "auto" : "smooth";
+  const frameByWindow = new Map();
+  for (const frame of document.querySelectorAll(".course-single-frame")) {
+    if (frame.contentWindow) frameByWindow.set(frame.contentWindow, frame);
+  }
 
   function openLesson(lessonId, updateHistory = false) {
     if (!lessonIds.has(lessonId)) return;
@@ -1299,7 +1378,7 @@ def _render_single_course_html(
     if (!courseLink || courseLink.getAttribute("aria-disabled") === "true") {
       const lessonRow = courseLink ? courseLink.closest(".lesson") : null;
       const status = lessonRow ? lessonRow.querySelector(".lesson-lock") : null;
-      if (status) {
+      if (status && courseLink) {
         status.id = `edutex-prerequisite-status-${lessonId}`;
         status.classList.add("is-visible");
         courseLink.setAttribute("aria-describedby", status.id);
@@ -1331,67 +1410,55 @@ def _render_single_course_html(
   }
 
   function syncFromHash() {
-    const value = decodeURIComponent(location.hash.slice(1));
+    let value = location.hash.slice(1);
+    try { value = decodeURIComponent(value); }
+    catch (error) { return; }
     const prefix = "edutex-single-lesson-";
     if (value.startsWith(prefix)) openLesson(value.slice(prefix.length));
   }
 
-  function wireFrame(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
+  function handleFrameMessage(event) {
+    // file:// frames can have an opaque "null" origin; trust only known frame windows.
+    const frame = frameByWindow.get(event.source);
+    if (!frame) return;
+    const message = event.data;
+    if (!message || message.channel !== channel || typeof message.type !== "string") return;
 
-    const resize = () => {
-      const height = Math.max(672, doc.documentElement.scrollHeight);
-      if (Math.abs(frame.getBoundingClientRect().height - height) < 1) return;
-      frame.style.height = `${height}px`;
-    };
-    resize();
-    if (frame.contentWindow && frame.contentWindow.ResizeObserver) {
-      const observer = new frame.contentWindow.ResizeObserver(resize);
-      observer.observe(doc.documentElement);
+    if (message.type === "resize") {
+      const height = Number(message.height);
+      if (!Number.isFinite(height) || height < 0) return;
+      frame.style.height = `${Math.min(Math.max(672, height), 1000000)}px`;
+      return;
     }
-    if (frame.contentWindow) frame.contentWindow.addEventListener("resize", resize);
-
-    doc.addEventListener("click", (event) => {
-      let element = event.target;
-      if (element && element.nodeType !== 1) element = element.parentElement;
-      const link = element && element.closest ? element.closest("a[href]") : null;
-      if (!link) return;
-      const href = link.getAttribute("href") || "";
-      if (link.classList.contains("back-to-top")) {
-        event.preventDefault();
-        frame.scrollIntoView({ behavior: scrollBehavior, block: "start" });
-        return;
-      }
-      if (href === "../course.html") {
-        event.preventDefault();
-        openCourseIndex();
-        return;
-      }
-      const match = /^([a-z0-9_-]+)\.html$/.exec(href);
-      if (match && lessonIds.has(match[1])) {
-        event.preventDefault();
-        openLesson(match[1], true);
-      }
-    });
+    if (message.type === "course-index") {
+      openCourseIndex();
+      return;
+    }
+    if (message.type === "back-to-top") {
+      frame.scrollIntoView({ behavior: scrollBehavior, block: "start" });
+      return;
+    }
+    if (message.type === "anchor") {
+      const offsetTop = Number(message.offsetTop);
+      if (!Number.isFinite(offsetTop) || offsetTop < 0) return;
+      const top = window.scrollY + frame.getBoundingClientRect().top
+        + Math.min(offsetTop, 1000000);
+      window.scrollTo({ top, behavior: scrollBehavior });
+      return;
+    }
+    if (message.type === "lesson" && typeof message.lessonId === "string"
+        && lessonIds.has(message.lessonId)) {
+      openLesson(message.lessonId, true);
+    }
   }
 
-  for (const frame of document.querySelectorAll(".course-single-frame")) {
-    let wired = false;
-    const attach = () => {
-      if (wired) return;
-      wired = true;
-      wireFrame(frame);
-    };
-    frame.addEventListener("load", attach, { once: true });
-    if (frame.contentDocument && frame.contentDocument.readyState === "complete") attach();
-  }
-
+  window.addEventListener("message", handleFrameMessage);
   document.addEventListener("click", (event) => {
     if (event.defaultPrevented) return;
     let target = event.target;
     if (target && target.nodeType !== 1) target = target.parentElement;
-    const link = target && target.closest ? target.closest('a[href^="#edutex-single-lesson-"]') : null;
+    const link = target && target.closest
+      ? target.closest('a[href^="#edutex-single-lesson-"]') : null;
     if (!link) return;
     const match = /^#edutex-single-lesson-(.+)$/.exec(link.getAttribute("href") || "");
     if (!match || !lessonIds.has(match[1])) return;

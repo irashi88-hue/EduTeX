@@ -1269,8 +1269,8 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
     assert 'href="#edutex-single-lesson-lesson-02"' in source
     assert 'id="edutex-single-lesson-lesson-02" data-course-single-lesson' in source
     assert 'id="edutex-single-course-navigation"' in source
-    assert "contentDocument" in source
-    assert 'link.classList.contains("back-to-top")' in source
+    assert "frameByWindow.get(event.source)" in source
+    assert 'link.classList.contains(&quot;back-to-top&quot;)' in source
     assert 'frame.scrollIntoView({ behavior: scrollBehavior, block: "start" })' in source
     assert source.count("<iframe") == 2
     assert source.count("</html>") == 1
@@ -1324,6 +1324,44 @@ def test_single_html_prerequisite_gate_covers_hash_and_frame_navigation(
     assert 'openLesson(value.slice(prefix.length))' in source
     assert 'openLesson(match[1], true)' in source
     assert 'window.addEventListener("storage", (event) =>' in source
+
+
+def test_single_html_navigation_uses_postmessage_for_local_frames(
+    tmp_path: Path,
+) -> None:
+    """Opaque local iframe origins use a validated message bridge, not DOM access."""
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output" / "course-single.html").read_text(encoding="utf-8")
+    assert 'window.addEventListener("message", handleFrameMessage)' in source
+    assert "frameByWindow.get(event.source)" in source
+    assert 'if (message.type === "anchor")' in source
+    assert 'if (message.type === "course-index")' in source
+    assert 'if (message.type === "back-to-top")' in source
+    assert "frame.contentDocument" not in source
+    assert "wireFrame" not in source
+
+    class EmbeddedPageParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.pages: list[str] = []
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "iframe":
+                self.pages.append(dict(attrs).get("srcdoc") or "")
+
+    parser = EmbeddedPageParser()
+    parser.feed(source)
+    assert len(parser.pages) == 1
+    embedded = parser.pages[0]
+    assert 'id="edutex-single-html-frame-bridge"' in embedded
+    assert "parent.postMessage" in embedded
+    assert "target.getBoundingClientRect().top + window.scrollY" in embedded
 
 
 def test_single_html_build_does_not_modify_existing_multi_file_outputs(

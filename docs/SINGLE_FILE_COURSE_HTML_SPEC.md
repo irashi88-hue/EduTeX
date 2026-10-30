@@ -121,6 +121,10 @@ The successful build SHALL produce one learner-facing `.html` artifact. That art
 
 All EduTeX-owned styles, scripts, fonts, images, and other local resources required to render or use the course SHALL be embedded in, or resolved entirely within, the artifact. Opening or moving the artifact SHALL NOT require a companion directory, generated lesson page, project source file, or relative local asset.
 
+Markdown image destinations in lesson content SHALL be resolved relative to the source Knowledge Model file. Local image files with supported media types (`image/gif`, `image/jpeg`, `image/png`, `image/svg+xml`, and `image/webp`) SHALL be embedded in the generated lesson HTML and therefore in the final artifact. The resolved image path SHALL remain within the project root. Missing, empty, unsupported, or out-of-project images SHALL fail the build with an actionable diagnostic.
+
+HTTP(S) and protocol-relative image sources in lesson content SHALL be rejected in `single-html`; they SHALL NOT trigger a network request or remain as external image resources.
+
 The artifact SHALL NOT make automatic network requests for required content or presentation resources. Author-authored external links MAY remain as ordinary links, but they SHALL require an explicit learner action and SHALL NOT be fetched merely because the course is opened or navigated.
 
 Temporary files MAY be used during generation. They SHALL NOT be required by the completed artifact and SHALL be removed or kept outside the learner-facing output set before the build reports success. This mode SHALL NOT emit separate learner-facing lesson HTML pages as required companion outputs.

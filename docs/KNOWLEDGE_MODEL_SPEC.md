@@ -230,6 +230,20 @@ Prose content MAY appear between shortcode blocks.
 
 Shortcode blocks SHALL conform to the syntax and grammar defined in SHORTCODE_SPEC.md.
 
+7.4 Markdown Images
+
+A Knowledge Model MAY include an inline Markdown image in its body:
+
+```markdown
+![Descriptive alternative text](images/example.svg)
+```
+
+The image destination SHALL be a relative path resolved from the directory containing the source Knowledge Model file. The resolved file SHALL remain within the configured EduTeX project root.
+
+For HTML output, local image files with supported media types SHALL be embedded as data URIs. Supported media types are `image/gif`, `image/jpeg`, `image/png`, `image/svg+xml`, and `image/webp`.
+
+A missing, empty, unsupported, or out-of-project local image SHALL cause the HTML build to fail with a diagnostic; it SHALL NOT be silently omitted. HTTP(S) and protocol-relative image destinations remain external resources in ordinary HTML output. Content intended for offline use or `single-html` SHOULD use local images.
+
 8. Content Model
 
 8.1 Shortcode Types

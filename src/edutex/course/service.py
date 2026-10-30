@@ -1245,6 +1245,18 @@ def _render_single_course_html(
             "Single-file HTML is missing generated lessons: " + ", ".join(missing)
         )
 
+    for lesson in lessons:
+        remote_image = re.search(
+            r"<img\b[^>]*?\bsrc\s*=\s*([\"'])(?:(?:https?:)?//)[^\"']*\1",
+            lesson_pages[lesson.lesson_id],
+            re.IGNORECASE,
+        )
+        if remote_image:
+            raise CourseBuildError(
+                f"Single-file HTML cannot include a remote image in lesson "
+                f"'{lesson.lesson_id}'. Use a project-local image file."
+            )
+
     lesson_links = {
         lesson.lesson_id: f"#edutex-single-lesson-{lesson.lesson_id}" for lesson in lessons
     }

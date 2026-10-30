@@ -168,10 +168,15 @@ class BuildService:
 
         if output_fmt == OutputFormat.html:
             try:
+                knowledge_model_path = Path(config.knowledge.model)
+                if not knowledge_model_path.is_absolute():
+                    knowledge_model_path = project_root / knowledge_model_path
                 html_source = HtmlRenderer().render(
                     doc=document_to_render,
                     meta=knowledge.meta,
                     theme=theme.theme_model,
+                    asset_base_dir=knowledge_model_path.resolve().parent,
+                    asset_root=project_root.resolve(),
                 )
             except Exception as exc:
                 raise BuildError(f"HTML rendering failed: {exc}") from exc

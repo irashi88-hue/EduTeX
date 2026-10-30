@@ -1399,6 +1399,88 @@ def test_single_html_build_does_not_modify_existing_multi_file_outputs(
     assert stale_lesson.read_text(encoding="utf-8") == "preserve this unrelated existing output"
 
 
+def test_single_html_embeds_local_markdown_images(tmp_path: Path) -> None:
+    """Local Markdown images render in HTML and are embedded in single-html."""
+    import base64
+
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    image_bytes = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8">'
+        b'<rect width="12" height="8" fill="#0f766e"/></svg>'
+    )
+    (tmp_path / "lessons" / "course-probe.svg").write_bytes(image_bytes)
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Local asset probe](course-probe.svg)\n",
+        encoding="utf-8",
+    )
+    expected_data_uri = (
+        "data:image/svg+xml;base64,"
+        + base64.b64encode(image_bytes).decode("ascii")
+    )
+
+    html_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert html_result.exit_code == 0, html_result.output
+    regular_lesson = (
+        tmp_path / "output" / "lessons" / "lesson-01.html"
+    ).read_text(encoding="utf-8")
+    assert expected_data_uri in regular_lesson
+    assert 'alt="Local asset probe"' in regular_lesson
+    assert "course-probe.svg" not in regular_lesson
+
+    single_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert single_result.exit_code == 0, single_result.output
+    single_course = (tmp_path / "output" / "course-single.html").read_text(
+        encoding="utf-8"
+    )
+    assert expected_data_uri in single_course
+    assert "course-probe.svg" not in single_course
+
+
+def test_single_html_rejects_remote_markdown_images(tmp_path: Path) -> None:
+    """Single-file export must not leave network-loaded image dependencies."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Remote image](https://example.invalid/pixel.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code != 0
+    assert "remote image" in result.output.lower()
+    assert "course-single.html" not in result.output
+
+
+def test_html_build_reports_missing_local_markdown_image(tmp_path: Path) -> None:
+    """A missing local image fails visibly instead of disappearing silently."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Missing image](missing-course-image.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "missing-course-image.png" in result.output
+
+
 def test_single_html_build_failure_preserves_previous_artifact(tmp_path: Path) -> None:
     """A failed lesson render must not truncate an existing single-file course."""
     from edutex.course.service import CourseBuildError, build_course

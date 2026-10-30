@@ -1481,6 +1481,45 @@ def test_html_build_reports_missing_local_markdown_image(tmp_path: Path) -> None
     assert "missing-course-image.png" in result.output
 
 
+def test_html_build_rejects_local_image_outside_project(tmp_path: Path) -> None:
+    """A Markdown image path cannot escape the EduTeX project root."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Outside project](../../outside-project-image.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "outside the project" in result.output.lower()
+
+
+def test_html_build_rejects_unsupported_local_image_type(tmp_path: Path) -> None:
+    """A local resource with an unsupported media type fails visibly."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    (tmp_path / "lessons" / "not-an-image.txt").write_text(
+        "This is not an image.", encoding="utf-8"
+    )
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Unsupported asset](not-an-image.txt)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "unsupported local markdown image type" in result.output.lower()
+
+
 def test_single_html_build_failure_preserves_previous_artifact(tmp_path: Path) -> None:
     """A failed lesson render must not truncate an existing single-file course."""
     from edutex.course.service import CourseBuildError, build_course

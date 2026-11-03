@@ -81,6 +81,21 @@ def test_inspect_success_reports_registry_and_resolved_graph(tmp_path: Path) -> 
     assert runtime["extensions"] == []
 
 
+def test_inspect_resolves_without_activating(tmp_path: Path, monkeypatch) -> None:
+    import edutex.core.cli as cli_module
+
+    project = make_project(tmp_path)
+
+    def fail_activation(self, graph):
+        raise AssertionError("inspect must not activate the resolved graph")
+
+    monkeypatch.setattr(cli_module.Activator, "activate", fail_activation)
+    result = inspect_project(project)
+
+    assert result.exit_code == 0, result.output
+    runtime = json.loads(result.output)["inspection"]["runtime"]
+    assert runtime["resolver"]["status"] == "completed"
+
 def test_inspect_reports_enabled_extension_without_importing_its_module(
     tmp_path: Path,
 ) -> None:

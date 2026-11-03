@@ -1543,3 +1543,49 @@ def test_single_html_build_failure_preserves_previous_artifact(tmp_path: Path) -
         )
 
     assert destination.read_text(encoding="utf-8") == previous_artifact
+
+def test_course_build_registers_each_lesson_with_shared_support_scope(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import edutex.core.cli as cli_module
+
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        GOODBYE_LESSON, encoding="utf-8"
+    )
+    manifest = MANIFEST + (
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n"
+        "        duration_minutes: 10\n"
+        "        objectives: [Say goodbye]\n"
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    registered = []
+    actual_register = cli_module._register_project_assets
+
+    def record_registration(config, project_root):
+        registry = actual_register(config, project_root)
+        registered.append(
+            {Path(entity.source_path).resolve() for entity in registry.get_all()}
+        )
+        return registry
+
+    monkeypatch.setattr(cli_module, "_register_project_assets", record_registration)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    hello = (tmp_path / "lessons/hello.md").resolve()
+    goodbye = (tmp_path / "lessons/goodbye.md").resolve()
+    configured = (
+        tmp_path / "assets/knowledge_models/example.md"
+    ).resolve()
+
+    assert len(registered) == 2
+    support = registered[0] - {hello}
+    assert {path.name for path in support} == {"theme.yaml", "layout.yaml"}
+    assert registered == [support | {hello}, support | {goodbye}]
+    assert all(configured not in scope for scope in registered)

@@ -38,6 +38,30 @@ These observations describe the audited baseline, not a guarantee that all runti
 3. Each Course build SHALL use the lesson source declared by the course manifest as that build's Knowledge Model root and SHALL retain the configured support assets.
 4. Runtime inspection SHALL report the complete configuration-selected registered and resolved graph and SHALL NOT activate entities merely to inspect them.
 5. For an operation with roots, its runtime scope SHALL include the roots, the configured support assets belonging to the operation, and the transitive closure of required references from those roots and support assets.
+**V2 runtime configuration syntax.** The optional `runtime` section contains
+`assets` (candidate entities identified by `type`, `id`, and `path`) and
+`references` (typed `source` and `target` identities). Supported types are
+`knowledge_model`, `theme`, `layout`, `extension`, and `component`.
+`reference_type` defaults to `requires`; `optional` defaults to `false`.
+A candidate asset is not a root merely because it is listed: a required
+reference must make it reachable from the operation's selected assets.
+A reference source not selected by every operation must also be declared in
+`runtime.assets`. For a selected Knowledge Model, its ID is the source file's
+stem. Profile overrides replace the complete `assets` or `references` list
+rather than appending entries. Omitting `runtime` preserves the behavior of
+existing 1.8.x configurations.
+
+    runtime:
+      assets:
+        - type: component
+          id: shared
+          path: assets/components/shared.yaml
+      references:
+        - source: {type: knowledge_model, id: example}
+          target: {type: component, id: shared}
+          reference_type: requires
+          optional: false
+
 6. An optional reference SHALL NOT expand the operation scope by itself. If its target is already in scope, the reference SHALL be resolved normally; otherwise the reference SHALL be omitted from the scoped graph without causing a resolution error.
 7. Entities outside the operation scope SHALL NOT be activated incidentally.
 8. The initial V2 contract SHALL NOT add a generic CLI root-selection flag. Any future public root-selection mechanism requires a concrete use case and separate review.

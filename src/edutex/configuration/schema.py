@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -134,6 +135,41 @@ class EduTexVersionConfig(_ImmutableConfigModel):
         return value
 
 
+class RuntimeIdentity(_ImmutableConfigModel):
+    type: Literal["knowledge_model", "theme", "layout", "extension", "component"]
+    id: str = Field(..., min_length=1)
+
+    @field_validator("id")
+    @classmethod
+    def valid_id(cls, value: str) -> str:
+        if not value.strip() or value != value.strip():
+            raise ValueError("runtime entity IDs must be non-empty without surrounding whitespace")
+        return value
+
+
+class RuntimeAsset(RuntimeIdentity):
+    path: Path
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def valid_path(cls, value: object) -> object:
+        if value is None or not str(value).strip():
+            raise ValueError("runtime asset path must not be empty")
+        return value
+
+
+class RuntimeReference(_ImmutableConfigModel):
+    source: RuntimeIdentity
+    target: RuntimeIdentity
+    reference_type: str = Field("requires", min_length=1)
+    optional: bool = False
+
+
+class RuntimeConfig(_ImmutableConfigModel):
+    assets: tuple[RuntimeAsset, ...] = ()
+    references: tuple[RuntimeReference, ...] = ()
+
+
 class EduTexConfig(_ImmutableConfigModel):
     """Root configuration model for the EduTeX framework."""
 
@@ -144,3 +180,4 @@ class EduTexConfig(_ImmutableConfigModel):
     build: BuildConfig = Field(default_factory=BuildConfig)
     extensions: ExtensionsConfig = Field(default_factory=ExtensionsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)

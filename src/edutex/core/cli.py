@@ -41,7 +41,7 @@ from edutex.knowledge.service import KnowledgeService
 from edutex.knowledge.shortcode_lint import ShortcodeLinter, format_text
 from edutex.layout.composition import LayoutCompositionError, inspect_composed_layout
 from edutex.layout.service import LayoutService
-from edutex.registry.models import EntityRecord, EntityType
+from edutex.registry.models import EntityRecord, EntityReference, EntityType
 from edutex.registry.registry import Registry
 from edutex.resolver.resolver import Resolver
 from edutex.theme.composition import ThemeCompositionError, inspect_composed_theme
@@ -79,6 +79,52 @@ def _theme_is_explicitly_configured(config) -> bool:
     theme_config = getattr(config, "theme", None)
     fields_set = getattr(theme_config, "model_fields_set", None)
     return fields_set is None or "name" in fields_set
+
+
+def _runtime_identity(identity) -> tuple[EntityType, str]:
+    return (EntityType[identity.type.upper()], identity.id)
+
+
+def _extension_processing_order(graph, enabled) -> tuple[str, ...]:
+    """Preserve configured preference without violating extension dependencies."""
+    ids = {e.entity_id for e in graph.entities if e.entity_type is EntityType.EXTENSION}
+    priority = {name: index for index, name in enumerate(enabled)}
+    dependencies = {name: set() for name in ids}
+    for edge in graph.edges:
+        if edge.source_type is EntityType.EXTENSION and edge.target_type is EntityType.EXTENSION:
+            dependencies[edge.source_id].add(edge.target_id)
+    ordered = []
+    while dependencies:
+        ready = [name for name, deps in dependencies.items() if not deps]
+        if not ready:  # The Resolver rejects cycles before this point.
+            raise RuntimeError("Unresolved extension dependency cycle")
+        name = min(ready, key=lambda value: (priority.get(value, len(priority)), value))
+        ordered.append(name)
+        del dependencies[name]
+        for deps in dependencies.values():
+            deps.discard(name)
+    return tuple(ordered)
+
+
+class _SelectedState:
+    """Give processing services the configured primary asset, not an arbitrary first match."""
+    def __init__(self, state, config, project_root: Path):
+        self._state = state
+        km = _resolve_path(project_root, config.knowledge.model)
+        self._selected = {
+            EntityType.KNOWLEDGE_MODEL: km.stem,
+            EntityType.THEME: config.theme.name if _theme_is_explicitly_configured(config) else None,
+            EntityType.LAYOUT: config.layout.name,
+        }
+
+    def get_first(self, entity_type):
+        if entity_type in self._selected:
+            selected_id = self._selected[entity_type]
+            return self._state.get(entity_type, selected_id) if selected_id is not None else None
+        return self._state.get_first(entity_type)
+
+    def __getattr__(self, name):
+        return getattr(self._state, name)
 
 
 def _register_project_assets(config, project_root: Path) -> Registry:
@@ -127,8 +173,57 @@ def _register_project_assets(config, project_root: Path) -> Registry:
             source_path=extension_path,
         ))
 
-    registry.close_registration_window()
-    return registry
+    runtime = getattr(config, "runtime", None)
+    if runtime is None or not (runtime.assets or runtime.references):
+        registry.close_registration_window()
+        return registry
+
+    selected = {(record.entity_type, record.entity_id): record for record in registry.get_all()}
+    candidates = dict(selected)
+    for asset in runtime.assets:
+        key = _runtime_identity(asset)
+        path = _resolve_path(project_root, asset.path)
+        if key in candidates:
+            if key not in selected or candidates[key].source_path.resolve() != path.resolve():
+                raise ConfigurationError(f"Duplicate runtime asset identity: {key[0].name.lower()}:{key[1]}")
+            continue  # Declaration of an already selected asset.
+        candidates[key] = EntityRecord(key[1], key[0], path)
+
+    for declaration in runtime.references:
+        source_key = _runtime_identity(declaration.source)
+        if source_key not in candidates:
+            raise ConfigurationError(
+                f"Runtime reference source is not declared: {source_key[0].name.lower()}:{source_key[1]}"
+            )
+        target_type, target_id = _runtime_identity(declaration.target)
+        candidates[source_key].references.append(EntityReference(
+            reference_type=declaration.reference_type,
+            target_id=target_id,
+            target_type=target_type,
+            optional=declaration.optional,
+        ))
+
+    # Optional references never expand scope. A missing required target is left
+    # to Resolver so it retains its structured RUNTIME_REFERENCE_MISSING error.
+    scope = set(selected)
+    pending = sorted(scope, key=lambda key: (key[0].name, key[1]))
+    while pending:
+        record = candidates[pending.pop(0)]
+        for ref in sorted(record.references, key=lambda item: (item.target_type.name, item.target_id)):
+            key = (ref.target_type, ref.target_id)
+            if not ref.optional and key in candidates and key not in scope:
+                scope.add(key)
+                pending.append(key)
+        pending.sort(key=lambda key: (key[0].name, key[1]))
+
+    scoped_registry = Registry()
+    for key in sorted(scope, key=lambda item: (item[0].name, item[1])):
+        record = candidates[key]
+        if key not in selected:
+            _require_file(record.source_path, f"Runtime asset '{key[0].name.lower()}:{key[1]}'")
+        scoped_registry.register(record)
+    scoped_registry.close_registration_window()
+    return scoped_registry
 
 
 def _run_lint_preflight(config, project_root: Path, *, output_format: str = "text"):
@@ -236,6 +331,7 @@ class _PreparedPipeline:
     knowledge: KnowledgeService
     theme: ThemeService
     layout: LayoutService
+    extension_order: tuple[str, ...] = ()
 
 
 def _prepare_project_pipeline(
@@ -263,22 +359,28 @@ def _prepare_project_pipeline(
 
     context.advance(LifecyclePhase.PROCESSING)
 
+    service_state = (
+        _SelectedState(state, config, project_root)
+        if getattr(config, "runtime", None) is not None
+        and (config.runtime.assets or config.runtime.references)
+        else state
+    )
     knowledge = KnowledgeService()
-    knowledge.process(state, project_root)
+    knowledge.process(service_state, project_root)
 
     theme = ThemeService()
     if _theme_is_explicitly_configured(config):
-        theme.process(state, knowledge, project_root)
+        theme.process(service_state, knowledge, project_root)
     else:
         theme.process(
-            state,
+            service_state,
             knowledge,
             project_root,
             use_bundled_default=True,
         )
 
     layout = LayoutService()
-    layout.process(state, theme, project_root)
+    layout.process(service_state, theme, project_root)
 
     return _PreparedPipeline(
         config=config,
@@ -286,6 +388,12 @@ def _prepare_project_pipeline(
         knowledge=knowledge,
         theme=theme,
         layout=layout,
+        extension_order=(
+            _extension_processing_order(graph, config.extensions.enabled)
+            if getattr(config, "runtime", None) is not None
+            and (config.runtime.assets or config.runtime.references)
+            else tuple(getattr(getattr(config, "extensions", None), "enabled", ()))
+        ),
     )
 
 
@@ -555,7 +663,10 @@ def build_project(
                 pipeline.state,
                 pipeline.layout,
                 project_root,
-                extension_order=pipeline.config.extensions.enabled,
+                extension_order=(
+                    getattr(pipeline, "extension_order", ())
+                    or pipeline.config.extensions.enabled
+                ),
             )
 
             build = BuildService()
@@ -1504,7 +1615,10 @@ def validate_command(
                 pipeline.state,
                 pipeline.layout,
                 project_root,
-                extension_order=pipeline.config.extensions.enabled,
+                extension_order=(
+                    getattr(pipeline, "extension_order", ())
+                    or pipeline.config.extensions.enabled
+                ),
             )
         finally:
             extension_diagnostics.extend(

@@ -42,7 +42,15 @@ def test_build_service_clears_stale_artifacts_on_failure(tmp_path, monkeypatch):
     class FakeHtmlRenderer:
         calls = 0
 
-        def render(self, *, doc, meta, theme):
+        def render(
+            self,
+            *,
+            doc,
+            meta,
+            theme,
+            asset_base_dir=None,
+            asset_root=None,
+        ):
             if self.calls:
                 raise RuntimeError("synthetic renderer failure")
             type(self).calls += 1

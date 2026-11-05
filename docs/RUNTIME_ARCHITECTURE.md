@@ -1,8 +1,8 @@
 document_id:      RT-SPEC-001
 title:            EduTeX Runtime Architecture Specification
 type:             Architecture Specification
-version:          1.1.0
-status:           Released
+version:          2.0.0
+status:           Draft
 owner:            EduTeX Runtime Architecture
 level:            2
 parent:           FRAMEWORK_SPEC.md
@@ -363,10 +363,15 @@ Document Assembly
 
 Output Generation
 
+Termination
+
 Completion
 
-The detailed responsibilities of each Runtime Phase are defined in subsequent sections of this specification.
+Termination is the lifecycle phase in which activated entities and runtime resources are cleaned up before completion or final failure.
 
+In the Lifecycle Contract, Termination maps to TERMINATING, successful Completion maps to COMPLETE, and terminal failure maps to FAILED.
+
+The detailed responsibilities of each Runtime Phase are defined in subsequent sections of this specification.
 10.4 Runtime Transitions
 
 A Runtime Transition represents the movement from one Runtime Phase to another.
@@ -379,6 +384,11 @@ Each Runtime Transition SHALL preserve runtime consistency.
 
 A Runtime Transition SHALL NOT modify the static architecture of the framework.
 
+A successful execution SHALL enter Termination before Completion. Completion SHALL occur only after required termination cleanup succeeds.
+
+When a fatal failure requires cleanup, the Runtime SHALL enter Termination, complete all applicable cleanup attempts, and then enter FAILED. Cleanup SHALL continue after individual failures. This includes failures after activation has begun or while activated entities remain.
+
+A fatal failure that requires no cleanup MAY transition directly to FAILED.
 8.5 Processing Stages
 
 A Processing Stage represents a conceptual processing activity performed within a Runtime Phase.
@@ -398,29 +408,33 @@ Multiple Processing Stages MAY exist within a single Runtime Phase.
 The conceptual Runtime Lifecycle is illustrated below.
 
 Bootstrap
-      │
-      ▼
+    |
+    v
 Initialization
-      │
-      ▼
+    |
+    v
 Resource Loading
-      │
-      ▼
+    |
+    v
 Document Processing
-      │
-      ▼
+    |
+    v
 Document Assembly
-      │
-      ▼
+    |
+    v
 Output Generation
-      │
-      ▼
+    |
+    v
+Termination
+    |
+    v
 Completion
+
+A fatal failure that requires cleanup enters Termination before the Runtime reaches FAILED.
 
 The Runtime Lifecycle defines the conceptual execution order.
 
 It SHALL NOT prescribe implementation details.
-
 10.7 Lifecycle Responsibilities
 
 The Runtime Lifecycle is responsible for:
@@ -433,12 +447,13 @@ maintaining Runtime State;
 
 executing framework processing;
 
+coordinating termination and cleanup of activated entities;
+
 producing framework outputs.
 
 The Runtime Lifecycle SHALL coordinate execution.
 
 Architectural Components SHALL perform their own responsibilities within the Runtime Lifecycle.
-
 10.8 Lifecycle Constraints
 
 The Runtime Lifecycle SHALL satisfy the following constraints.
@@ -452,6 +467,8 @@ Runtime State SHALL remain consistent throughout execution.
 Runtime execution SHALL respect the static Architecture Specification.
 
 Runtime execution SHALL remain independent from implementation technology.
+
+The Runtime SHALL NOT enter Completion until required termination cleanup succeeds. If cleanup is required after a fatal failure, the Runtime SHALL enter Termination before reaching FAILED.
 
 11. Processing Model
 
@@ -714,5 +731,11 @@ Description
 2026-08-05
 
 Initial Runtime Architecture Specification defining the Runtime Model, Runtime Lifecycle, Processing Model and Runtime Rules.
+
+2.0.0
+
+2026-10-26
+
+Draft revision defining the Termination phase and explicit lifecycle transitions.
 
 End of document.

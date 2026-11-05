@@ -1269,11 +1269,13 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
     assert 'href="#edutex-single-lesson-lesson-02"' in source
     assert 'id="edutex-single-lesson-lesson-02" data-course-single-lesson' in source
     assert 'id="edutex-single-course-navigation"' in source
-    assert "contentDocument" in source
-    assert 'link.classList.contains("back-to-top")' in source
+    assert "frameByWindow.get(event.source)" in source
+    assert 'link.classList.contains(&quot;back-to-top&quot;)' in source
     assert 'frame.scrollIntoView({ behavior: scrollBehavior, block: "start" })' in source
     assert source.count("<iframe") == 2
     assert source.count("</html>") == 1
+    lesson_output_dir = tmp_path / "output" / "lessons"
+    assert not list(lesson_output_dir.glob("*.html"))
 
     class EmbeddedPageParser(HTMLParser):
         def __init__(self) -> None:
@@ -1292,5 +1294,298 @@ def test_course_build_single_html_embeds_complete_interactive_lessons(tmp_path: 
         assert 'class="course-lesson-nav"' in embedded
         assert "data-course-complete" in embedded
 
-    assert (tmp_path / "output/lessons/lesson-01.html").is_file()
-    assert (tmp_path / "output/lessons/lesson-02.html").is_file()
+
+def test_single_html_prerequisite_gate_covers_hash_and_frame_navigation(
+    tmp_path: Path,
+) -> None:
+    """The shared lesson opener must enforce the course prerequisite state."""
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(GOODBYE_LESSON, encoding="utf-8")
+    manifest = MANIFEST.replace(
+        "        objectives: [Introduce yourself]\n",
+        "        objectives: [Introduce yourself]\n"
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n"
+        "        prerequisites: [lesson-01]\n",
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output" / "course-single.html").read_text(encoding="utf-8")
+    assert "data-prerequisites" in source
+    assert 'if (!courseLink || courseLink.getAttribute("aria-disabled") === "true")' in source
+    assert 'history.replaceState(null, "", "#course-content")' in source
+    assert 'openLesson(value.slice(prefix.length))' in source
+    assert 'openLesson(match[1], true)' in source
+    assert 'window.addEventListener("storage", (event) =>' in source
+
+
+def test_single_html_navigation_uses_postmessage_for_local_frames(
+    tmp_path: Path,
+) -> None:
+    """Opaque local iframe origins use a validated message bridge, not DOM access."""
+    make_project(tmp_path)
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code == 0, result.output
+
+    source = (tmp_path / "output" / "course-single.html").read_text(encoding="utf-8")
+    assert 'window.addEventListener("message", handleFrameMessage)' in source
+    assert "frameByWindow.get(event.source)" in source
+    assert 'if (message.type === "anchor")' in source
+    assert 'if (message.type === "course-index")' in source
+    assert 'if (message.type === "back-to-top")' in source
+    assert "frame.contentDocument" not in source
+    assert "wireFrame" not in source
+
+    class EmbeddedPageParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.pages: list[str] = []
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "iframe":
+                self.pages.append(dict(attrs).get("srcdoc") or "")
+
+    parser = EmbeddedPageParser()
+    parser.feed(source)
+    assert len(parser.pages) == 1
+    embedded = parser.pages[0]
+    assert 'id="edutex-single-html-frame-bridge"' in embedded
+    assert "parent.postMessage" in embedded
+    assert "target.getBoundingClientRect().top + window.scrollY" in embedded
+
+
+def test_single_html_build_does_not_modify_existing_multi_file_outputs(
+    tmp_path: Path,
+) -> None:
+    """Single-file builds must not clean or overwrite regular HTML outputs."""
+    make_project(tmp_path)
+
+    html_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert html_result.exit_code == 0, html_result.output
+
+    output_dir = tmp_path / "output"
+    course_index = output_dir / "course.html"
+    lesson_page = output_dir / "lessons" / "lesson-01.html"
+    assert course_index.is_file()
+    assert lesson_page.is_file()
+    original_index = course_index.read_bytes()
+    original_lesson = lesson_page.read_bytes()
+
+    stale_lesson = output_dir / "lessons" / "stale-lesson.html"
+    stale_lesson.write_text("preserve this unrelated existing output", encoding="utf-8")
+
+    single_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert single_result.exit_code == 0, single_result.output
+    assert (output_dir / "course-single.html").is_file()
+
+    assert course_index.read_bytes() == original_index
+    assert lesson_page.read_bytes() == original_lesson
+    assert stale_lesson.read_text(encoding="utf-8") == "preserve this unrelated existing output"
+
+
+def test_single_html_embeds_local_markdown_images(tmp_path: Path) -> None:
+    """Local Markdown images render in HTML and are embedded in single-html."""
+    import base64
+
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    image_bytes = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8">'
+        b'<rect width="12" height="8" fill="#0f766e"/></svg>'
+    )
+    (tmp_path / "lessons" / "course-probe.svg").write_bytes(image_bytes)
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Local asset probe](course-probe.svg)\n",
+        encoding="utf-8",
+    )
+    expected_data_uri = (
+        "data:image/svg+xml;base64,"
+        + base64.b64encode(image_bytes).decode("ascii")
+    )
+
+    html_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert html_result.exit_code == 0, html_result.output
+    regular_lesson = (
+        tmp_path / "output" / "lessons" / "lesson-01.html"
+    ).read_text(encoding="utf-8")
+    assert expected_data_uri in regular_lesson
+    assert 'alt="Local asset probe"' in regular_lesson
+    assert "course-probe.svg" not in regular_lesson
+
+    single_result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert single_result.exit_code == 0, single_result.output
+    single_course = (tmp_path / "output" / "course-single.html").read_text(
+        encoding="utf-8"
+    )
+    assert expected_data_uri in single_course
+    assert "course-probe.svg" not in single_course
+
+
+def test_single_html_rejects_remote_markdown_images(tmp_path: Path) -> None:
+    """Single-file export must not leave network-loaded image dependencies."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Remote image](https://example.invalid/pixel.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "single-html"],
+    )
+    assert result.exit_code != 0
+    assert "remote image" in result.output.lower()
+    assert "course-single.html" not in result.output
+
+
+def test_html_build_reports_missing_local_markdown_image(tmp_path: Path) -> None:
+    """A missing local image fails visibly instead of disappearing silently."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Missing image](missing-course-image.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "missing-course-image.png" in result.output
+
+
+def test_html_build_rejects_local_image_outside_project(tmp_path: Path) -> None:
+    """A Markdown image path cannot escape the EduTeX project root."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Outside project](../../outside-project-image.png)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "outside the project" in result.output.lower()
+
+
+def test_html_build_rejects_unsupported_local_image_type(tmp_path: Path) -> None:
+    """A local resource with an unsupported media type fails visibly."""
+    make_project(tmp_path)
+    lesson_path = tmp_path / "lessons" / "hello.md"
+    (tmp_path / "lessons" / "not-an-image.txt").write_text(
+        "This is not an image.", encoding="utf-8"
+    )
+    lesson_path.write_text(
+        lesson_path.read_text(encoding="utf-8")
+        + "\n\n![Unsupported asset](not-an-image.txt)\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["course", "build", "--project", str(tmp_path), "--format", "html"],
+    )
+    assert result.exit_code != 0
+    assert "unsupported local markdown image type" in result.output.lower()
+
+
+def test_single_html_build_failure_preserves_previous_artifact(tmp_path: Path) -> None:
+    """A failed lesson render must not truncate an existing single-file course."""
+    from edutex.course.service import CourseBuildError, build_course
+
+    make_project(tmp_path)
+    destination = tmp_path / "output" / "course-single.html"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    previous_artifact = "previous-valid-course-artifact"
+    destination.write_text(previous_artifact, encoding="utf-8")
+
+    def fail_lesson_builder(manifest, lesson, module_number, lesson_number):
+        raise RuntimeError("intentional contract-test failure")
+
+    with pytest.raises(CourseBuildError):
+        build_course(
+            tmp_path / "course.yaml",
+            tmp_path,
+            "single-html",
+            output_path=destination,
+            lesson_builder=fail_lesson_builder,
+        )
+
+    assert destination.read_text(encoding="utf-8") == previous_artifact
+
+def test_course_build_registers_each_lesson_with_shared_support_scope(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import edutex.core.cli as cli_module
+
+    make_project(tmp_path)
+    (tmp_path / "lessons/goodbye.md").write_text(
+        GOODBYE_LESSON, encoding="utf-8"
+    )
+    manifest = MANIFEST + (
+        "      - id: lesson-02\n"
+        "        title: Goodbye\n"
+        "        source: lessons/goodbye.md\n"
+        "        duration_minutes: 10\n"
+        "        objectives: [Say goodbye]\n"
+    )
+    (tmp_path / "course.yaml").write_text(manifest, encoding="utf-8")
+
+    registered = []
+    actual_register = cli_module._register_project_assets
+
+    def record_registration(config, project_root):
+        registry = actual_register(config, project_root)
+        registered.append(
+            {Path(entity.source_path).resolve() for entity in registry.get_all()}
+        )
+        return registry
+
+    monkeypatch.setattr(cli_module, "_register_project_assets", record_registration)
+    result = CliRunner().invoke(
+        main, ["course", "build", "--project", str(tmp_path), "--format", "html"]
+    )
+    assert result.exit_code == 0, result.output
+
+    hello = (tmp_path / "lessons/hello.md").resolve()
+    goodbye = (tmp_path / "lessons/goodbye.md").resolve()
+    configured = (
+        tmp_path / "assets/knowledge_models/example.md"
+    ).resolve()
+
+    assert len(registered) == 2
+    support = registered[0] - {hello}
+    assert {path.name for path in support} == {"theme.yaml", "layout.yaml"}
+    assert registered == [support | {hello}, support | {goodbye}]
+    assert all(configured not in scope for scope in registered)

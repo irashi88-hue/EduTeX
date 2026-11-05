@@ -105,3 +105,46 @@ def test_preview_rejects_missing_source(tmp_path: Path) -> None:
 
     assert result.exit_code != 0
     assert "does not exist" in result.output.lower() or "not found" in result.output.lower()
+
+def test_build_validate_and_preview_register_operation_scope(tmp_path: Path, monkeypatch) -> None:
+    import edutex.core.cli as cli_module
+
+    project = make_project(tmp_path)
+    original = project / "assets" / "knowledge_models" / "example.md"
+    selected_preview = original.with_name("preview-only.md")
+    selected_preview.write_text(original.read_text(encoding="utf-8"), encoding="utf-8")
+
+    registered = []
+    actual_register = cli_module._register_project_assets
+
+    def record_registration(config, project_root):
+        registry = actual_register(config, project_root)
+        registered.append(
+            {Path(entity.source_path).resolve() for entity in registry.get_all()}
+        )
+        return registry
+
+    monkeypatch.setattr(cli_module, "_register_project_assets", record_registration)
+
+    build = CliRunner().invoke(main, ["build", "--project", str(project)])
+    assert build.exit_code == 0, build.output
+
+    validate = CliRunner().invoke(main, ["validate", "--project", str(project)])
+    assert validate.exit_code == 0, validate.output
+
+    preview = CliRunner().invoke(
+        main,
+        ["preview", str(selected_preview), "--project", str(project)],
+    )
+    assert preview.exit_code == 0, preview.output
+
+    assert len(registered) == 3
+    build_scope, validate_scope, preview_scope = registered
+    assert build_scope == validate_scope
+    assert original.resolve() in build_scope
+    assert selected_preview.resolve() not in build_scope
+
+    support = build_scope - {original.resolve()}
+    assert {path.name for path in support} == {"theme.yaml", "layout.yaml"}
+    assert preview_scope == support | {selected_preview.resolve()}
+    assert original.resolve() not in preview_scope

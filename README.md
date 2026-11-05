@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.9.0 - Runtime operation scopes
+
+EduTeX 1.9.0 adds an optional `runtime` configuration section. It declares candidate assets and typed references; required references are included transitively in an operation's scope, while optional references never expand it. Projects without `runtime` keep their 1.8.x behavior.
+
 ## Release 1.8.0 - Single-file interactive courses
 
 EduTeX 1.8.0 adds a single-file HTML course output (`--format single-html`) that bundles generated interactive lessons into one navigable HTML document.

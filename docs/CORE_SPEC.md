@@ -1,7 +1,7 @@
 document_id:      COMP-CORE-001
 title:            EduTeX Core Component Specification
 type:             Component Specification
-version:          1.1.0
+version:          2.0.0
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -229,10 +229,17 @@ Purpose: Exposes the framework-level lifecycle events and phase transitions.
 
 Consumers: Configuration, Registry, Resolver, Activator.
 
-Guarantee: Lifecycle phases SHALL be initiated in the order defined by RUNTIME_ARCHITECTURE.md.
+Guarantee: Lifecycle phases SHALL be initiated in the order defined by RUNTIME_ARCHITECTURE.md. The Termination phase SHALL map to the TERMINATING lifecycle state. The Runtime SHALL enter TERMINATING whenever a fatal failure requires cleanup and before successful completion.
+
+Normal completion SHALL proceed through TERMINATING before COMPLETE. COMPLETE SHALL be entered only after required termination cleanup succeeds.
+
+If a fatal error requires cleanup, the Runtime SHALL enter TERMINATING, signal all applicable cleanup, and enter FAILED after all cleanup attempts finish. This includes failures after activation has begun or while activated entities remain. A cleanup failure SHALL NOT prevent remaining cleanup attempts.
+
+A fatal error that requires no cleanup MAY transition directly to FAILED.
+
+COMPLETE and FAILED SHALL be terminal lifecycle states.
 
 Constraint: Lifecycle phase order SHALL NOT be altered by any consumer.
-
 CC-003 — Error Contract
 
 Purpose: Defines how fatal lifecycle errors are represented and propagated.
@@ -501,5 +508,11 @@ Initial release
 2026-10-22
 
 Draft revision defining the structured JSON runtime error envelope for CC-003.
+
+2.0.0
+
+2026-10-26
+
+Draft revision defining TERMINATING lifecycle behavior and cleanup transitions for CC-002.
 
 End of document.

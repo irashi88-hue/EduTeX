@@ -1,7 +1,7 @@
 document_id:      COMP-ACT-001
 title:            EduTeX Activator Component Specification
 type:             Component Specification
-version:          1.0.0
+version:          2.0.0
 status:           Draft
 owner:            EduTeX Runtime Infrastructure
 level:            3
@@ -155,15 +155,15 @@ Activator is responsible for:
 
 consuming the resolved entity graph from Resolver through RES-001 after the resolution pass completes;
 
-computing the activation order for all resolved entities, respecting the dependency relationships expressed in the resolved entity graph;
+computing a deterministic, dependency-respecting activation order for all entities in the supplied operation-scoped resolved graph;
 
-performing entity activation in the computed order, ensuring that an entity is activated only after all its dependencies are active;
+performing entity activation in the computed order, ensuring that an entity is activated only after all its in-scope dependencies are active;
 
 managing the activation lifecycle of each entity: pre-activation, activation, and post-activation;
 
 propagating fatal errors through the Error Contract (CC-003) when an entity fails to activate;
 
-exposing the activated framework state through the Activation Contract (ACT-001) once all entities are active;
+exposing the activated framework state through the Activation Contract (ACT-001) only after all entities in the operation scope are active;
 
 coordinating entity deactivation during the Termination phase of the Runtime Lifecycle in reverse activation order.
 
@@ -193,48 +193,56 @@ It represents the collection of all entities that have been successfully activat
 
 The activated framework state is established during the Activation phase of the Runtime Lifecycle.
 
-Once all entities are active, the activated framework state is exposed through ACT-001 and remains available until the Termination phase begins.
+Once all entities in the operation scope are active, the activated framework state is exposed through ACT-001 and remains available until the Termination phase begins.
 
 7.2 Activation Order
 
-Activator determines activation order by traversing the resolved entity graph produced by Resolver.
+Activator determines activation order by traversing the operation-scoped resolved entity graph produced by Resolver.
 
-Activation order SHALL respect dependency relationships: an entity SHALL NOT be activated before all entities it depends on are active.
+Activation order SHALL respect dependency relationships: an entity SHALL NOT be activated before all its in-scope dependencies are active.
 
-The activation order is derived from the resolved entity graph and SHALL NOT be modified by consumers.
+For entities with no dependency ordering between them, Activator SHALL use canonical entity identity `(entity_type.name, entity_id)` as the deterministic tie-breaker.
 
-If the resolved entity graph contains no dependency relationships between two entities, their relative activation order is determined by Activator according to its internal ordering strategy.
-
+Equivalent operation-scoped graphs SHALL produce the same activation order regardless of registry registration order.
 7.3 Activation Lifecycle
 
-Each entity undergoes a three-phase activation lifecycle.
+Each in-scope entity undergoes a three-phase activation lifecycle.
 
-The first phase is pre-activation: Activator prepares the entity for activation, verifying that all dependencies are active.
+The first phase is pre-activation: Activator prepares the entity and verifies that all in-scope dependencies are active.
 
-The second phase is activation: Activator performs the activation of the entity, transitioning it to the active state.
+The second phase is activation: Activator invokes the entity activation operation.
 
-The third phase is post-activation: Activator confirms that the entity has reached the active state and records it in the activated framework state.
+The third phase is post-activation: Activator confirms successful activation and records the entity in the activated framework state.
 
-If any phase fails, Activator propagates a fatal error through CC-003 and halts framework execution.
+An entity SHALL be recorded as active only after all three phases complete successfully.
 
+If pre-activation fails before the entity activation operation begins, Activator SHALL roll back previously activated entities in reverse activation order.
+
+If the entity activation operation has begun and any subsequent phase fails, Activator SHALL first attempt cleanup for the failing entity, then roll back previously activated entities in reverse activation order.
+
+Cleanup SHALL continue for every eligible entity even if an individual cleanup operation fails. The original activation failure SHALL remain the primary error; cleanup failures SHALL be attached as structured secondary details.
+
+Activator SHALL NOT expose partially activated state through ACT-001 or proceed to Processing or Build after activation failure.
 7.4 Deactivation
 
-During the Termination phase of the Runtime Lifecycle, Activator coordinates the deactivation of all active entities.
+During the TERMINATING lifecycle state, Activator coordinates deactivation of successfully activated entities in reverse activation order.
 
-Deactivation proceeds in reverse activation order, ensuring that an entity is deactivated before any entity it depends on.
+Deactivation SHALL continue for all remaining entities even if an individual cleanup operation fails.
 
-Deactivation failures are reported through CC-003 but do not prevent subsequent deactivations from proceeding.
+If normal termination cleanup fails, Activator SHALL report `RUNTIME_CLEANUP_FAILED` through CC-003 after all cleanup attempts finish. The Runtime SHALL enter FAILED and SHALL NOT report successful completion.
 
+During rollback after activation failure, cleanup errors SHALL be attached to the primary `RUNTIME_ACTIVATION_FAILED` diagnostic. They SHALL NOT replace that primary error or prevent remaining cleanup attempts.
 7.5 Activated Framework State
 
-The activated framework state is the collection of all entities that have successfully completed activation.
+The activated framework state is the collection of entities in the operation-scoped graph that have successfully completed activation.
 
-It is exposed through ACT-001 to Framework Services, which consume it to perform their runtime responsibilities.
+It is exposed through ACT-001 to Framework Services only after every entity in the operation scope has completed all three activation lifecycle phases.
 
 The activated framework state SHALL be consistent: no entity SHALL appear as active unless it has completed all three activation lifecycle phases.
 
-The activated framework state SHALL remain stable throughout the Processing phase of the Runtime Lifecycle.
+The activated framework state SHALL remain stable throughout Processing and Build.
 
+During rollback or termination, Activator SHALL NOT expose partial or invalidated state through ACT-001.
 7.6 Relationship to Resolver
 
 Activator consumes RES-001 exclusively in read-only mode.
@@ -257,20 +265,39 @@ Consumers: Framework Services (Knowledge, Theme, Layout).
 
 Guarantee: Entities accessible through this contract SHALL have completed all three activation lifecycle phases. No partially activated entity SHALL be exposed.
 
-Constraint: This contract SHALL NOT be available before all entities have been successfully activated.
+Constraint: This contract SHALL NOT be available before all entities in the operation scope have been successfully activated.
 
 Constraint: Framework Services SHALL NOT bypass this contract to access entity internals directly.
 
 ACT-002 — Deactivation Contract
 
-Purpose: Defines the deactivation sequence and notification mechanism used during the Termination phase.
+Purpose: Defines the deactivation sequence and cleanup behavior used during the TERMINATING lifecycle state.
 
 Consumers: Core (via CC-002), Framework Services requiring pre-termination cleanup.
 
 Guarantee: Deactivation SHALL proceed in reverse activation order.
 
-Constraint: Deactivation failures SHALL be reported through CC-003 but SHALL NOT prevent subsequent deactivations.
+Guarantee: Cleanup SHALL continue for all eligible entities after an individual cleanup failure.
 
+Constraint: Deactivation failures SHALL be reported through CC-003 after all cleanup attempts finish and SHALL NOT prevent subsequent deactivations.
+
+ACT-003 — Activation Failure and Rollback Contract
+
+Purpose: Defines atomic exposure of activated state and rollback behavior after an activation failure.
+
+Consumers: Core (via CC-002 and CC-003), diagnostic tooling.
+
+Guarantee: ACT-001 SHALL remain unavailable until all entities in the operation-scoped graph have completed activation successfully.
+
+Guarantee: If activation fails after an entity activation operation has begun, Activator SHALL attempt cleanup for that entity first, then for previously activated entities in reverse activation order.
+
+Guarantee: Cleanup attempts SHALL continue after individual failures. The original activation diagnostic SHALL remain primary, with cleanup failures represented in structured `details.cleanup_errors`.
+
+Constraint: Activation failure SHALL prevent the operation from proceeding to Processing or Build.
+
+Diagnostic: `RUNTIME_ACTIVATION_FAILED` details SHALL identify `entity` as `{type, id}` and `activation_phase` as one of `pre_activation`, `activation`, or `post_activation`. If cleanup failures occur, details SHALL include them in structured `cleanup_errors` using the entry schema defined below.
+
+Diagnostic: `RUNTIME_CLEANUP_FAILED` details SHALL include `cleanup_errors`, an ordered list of cleanup failures. Each entry SHALL contain `entity` as `{type, id}` and `cleanup_phase` as one of `activation_rollback` or `termination`. Entries SHALL be ordered by cleanup attempt. Human-readable messages MAY evolve without changing the stable code or structured fields.
 8.2 Consumed Contracts
 
 Activator consumes the following contracts from upstream components.
@@ -433,20 +460,21 @@ An entity SHALL NOT be activated before all entities it depends on are active.
 
 ACT-C-005 — Fatal Error on Activation Failure
 
-If an entity fails to complete any activation lifecycle phase, Activator SHALL propagate a fatal error through CC-003.
+If an entity fails to complete any activation lifecycle phase, Activator SHALL propagate a fatal error through CC-003 using `RUNTIME_ACTIVATION_FAILED`.
 
-The framework SHALL NOT proceed to the Processing phase if any activation fails.
+The operation SHALL NOT proceed to Processing or Build if any activation fails.
 
 ACT-C-006 — Consistent Activated State
 
-The activated framework state SHALL contain only entities that have successfully completed all three activation lifecycle phases.
+The activated framework state SHALL contain only entities that have successfully completed all three activation lifecycle phases within the operation scope.
 
 Partially activated entities SHALL NOT be exposed through ACT-001.
 
 ACT-C-007 — Reverse-Order Deactivation
 
-During the Termination phase, Activator SHALL deactivate entities in reverse activation order.
+During TERMINATING, Activator SHALL deactivate successfully activated entities in reverse activation order.
 
+Deactivation failures SHALL NOT prevent subsequent cleanup attempts.
 ACT-C-008 — No Educational Logic
 
 Activator SHALL NOT contain educational knowledge, domain-specific logic, or user content.
@@ -455,18 +483,31 @@ ACT-C-009 — Technology Independence
 
 Activator SHALL remain independent from any specific implementation technology.
 
+ACT-C-010 — Operation-Scoped Activation
+
+Activator SHALL activate only entities present in the operation-scoped resolved graph supplied by Resolver.
+
+Activator SHALL respect the dependency relationships and deterministic ordering defined by the resolved graph.
+
+ACT-C-011 — Rollback and Cleanup
+
+If activation fails after an entity activation operation has begun, Activator SHALL attempt cleanup for that entity before rolling back previously activated entities in reverse activation order.
+
+Activator SHALL continue all eligible cleanup attempts after individual cleanup failures.
+
+On activation failure, the original activation diagnostic SHALL remain primary and cleanup failures SHALL be included in structured details. During normal termination, cleanup failures SHALL be reported after all cleanup attempts finish.
+
 This specification defines behavior and contracts, not implementation.
 
 11. Extension Points
 
 11.1 Activation Lifecycle Hooks
 
-Future versions MAY introduce lifecycle hooks that allow entities to perform custom logic at each activation phase.
+The pre-activation, activation, post-activation, and cleanup responsibilities defined in Sections 7.3 and 7.4 are part of the V2 Activator contract.
 
-Hooks SHALL be invoked by Activator at the defined lifecycle boundaries.
+Activator SHALL invoke the applicable lifecycle responsibility at the defined boundary.
 
-Hooks SHALL NOT alter the activation order or the activation lifecycle structure.
-
+The contract defines observable behavior, not programming-language method signatures. Hook implementations SHALL NOT alter operation scope, dependency order, rollback order, or cleanup continuation guarantees.
 11.2 Activation Strategy Extension
 
 Future versions MAY introduce alternative activation strategies for specific entity type combinations, such as lazy activation or parallel activation where dependency order permits.
@@ -479,42 +520,32 @@ Consumers SHALL observe only the activated framework state, not the strategy use
 
 12.1 Activation Sequence
 
-The following illustrates the conceptual activation sequence.
+The following illustrates activation of an operation-scoped graph.
 
-Resolver: resolution pass completes
-    │
-    ▼
-Activator: consumes RES-001 resolved entity graph
-    │
-    ▼
-Activator: computes activation order from dependency graph
-    │
-    ▼
-Activator: activates Entity A (no dependencies)
-    │  Phase 1 — pre-activation: dependencies verified (none)
-    │  Phase 2 — activation: entity transitions to active state
-    │  Phase 3 — post-activation: entity recorded as active
-    │
-    ▼
-Activator: activates Entity B (depends on A — A is now active)
-    │  Phase 1 — pre-activation: A confirmed active
-    │  Phase 2 — activation
-    │  Phase 3 — post-activation
-    │
-    ├── Activation failure at any phase
-    │       │
-    │       ▼
-    │   CC-003 Error Contract: fatal error propagated
-    │   Framework execution halted
-    │
-    └── All entities activated successfully
-            │
-            ▼
-        ACT-001 Activation Contract: activated framework state available
-            │
-            ▼
-        Framework Services: consume ACT-001
-
+Resolver: resolution pass completes for the operation scope
+    |
+    v
+Activator: consumes the scoped RES-001 graph
+    |
+    v
+Activator: computes deterministic dependency-first order
+    |
+    v
+Activator: activates each in-scope entity through pre-activation, activation, and post-activation
+    |
+    +-- All entities succeed: ACT-001 becomes available
+    |
+    +-- An entity fails:
+            |
+            +-- If its activation operation began, attempt cleanup for that entity
+            |
+            +-- Roll back previously activated entities in reverse activation order
+            |
+            +-- Continue cleanup after individual failures
+            |
+            +-- Propagate RUNTIME_ACTIVATION_FAILED with structured cleanup_errors, if any
+            |
+            +-- Do not expose partial state or proceed to Processing or Build
 12.2 Deactivation Sequence
 
 The following illustrates the conceptual deactivation sequence during the Termination phase.
@@ -593,7 +624,7 @@ Activated framework state
 
 Public Contracts
 
-ACT-001 Activation Contract, ACT-002 Deactivation Contract
+ACT-001 Activation Contract, ACT-002 Deactivation Contract, ACT-003 Activation Failure and Rollback Contract
 
 Consumed Contracts
 
@@ -628,5 +659,11 @@ Description
 2026-08-11
 
 Initial release
+
+2.0.0
+
+2026-10-26
+
+Draft revision defining operation-scoped deterministic activation, rollback, and structured cleanup diagnostics.
 
 End of document.

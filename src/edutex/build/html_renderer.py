@@ -1,19 +1,27 @@
 """EduTeX HTML renderer.
 
-Produces a self-contained, accessible HTML document from DocumentStructure.
-Rendering is pure string transformation and does not perform file I/O.
+Produces an accessible HTML document from DocumentStructure. When project paths
+are supplied, local Markdown images are resolved and embedded as data URIs.
 """
 
 from __future__ import annotations
 
+import base64
 import html
 import json
+import mimetypes
 import re
+import urllib.parse
+from pathlib import Path
 
 from edutex.build.ordering import iter_positioned_items
 from edutex.knowledge.models import TextBlock
 from edutex.layout.models import DocumentStructure
 from edutex.theme.models import StyledNode, ThemeModel
+
+_MARKDOWN_IMAGE_RE = re.compile(
+    r'''!\[([^\]]*)\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+[\"']([^\"']*)[\"'])?\s*\)'''
+)
 
 
 _EDUTEX_UI_LABELS = {
@@ -133,7 +141,23 @@ def _ui_language(value: object) -> str:
 class HtmlRenderer:
     """Render a DocumentStructure as a complete standalone HTML document."""
 
-    def render(self, doc: DocumentStructure, meta: object, theme: ThemeModel) -> str:
+    def render(
+        self,
+        doc: DocumentStructure,
+        meta: object,
+        theme: ThemeModel,
+        *,
+        asset_base_dir: Path | None = None,
+        asset_root: Path | None = None,
+    ) -> str:
+        self._asset_base_dir = (
+            Path(asset_base_dir).resolve() if asset_base_dir is not None else None
+        )
+        self._asset_root = (
+            Path(asset_root).resolve()
+            if asset_root is not None
+            else self._asset_base_dir
+        )
         self._heading_entries: list[tuple[int, str, str]] = []
         self._used_ids: set[str] = set()
         self._labels = _EDUTEX_UI_LABELS[_ui_language(getattr(meta, "language", "en"))]
@@ -382,6 +406,7 @@ class HtmlRenderer:
     }}
     .prose {{ margin: 1.15rem 0; }}
     .prose p {{ margin: .65rem 0; }}
+    .prose img,.body-line img {{ max-width:100%; height:auto; }}
     .node {{
       margin: 1.2rem 0;
       padding: 1.1rem 1.25rem;
@@ -3091,7 +3116,82 @@ class HtmlRenderer:
                 result[key.strip()] = value.strip()
         return result
 
+    def _render_markdown_image(
+        self, source: str, alt: str, title: str | None = None
+    ) -> str:
+        raw_source = source.strip()
+        parsed = urllib.parse.urlsplit(raw_source)
+
+        if parsed.scheme.lower() in {"http", "https"} or parsed.netloc:
+            image_source = raw_source
+        elif parsed.scheme:
+            raise ValueError(
+                f"Unsupported Markdown image URL scheme in '{raw_source}'."
+            )
+        elif self._asset_base_dir is None:
+            # Keep direct renderer callers compatible when no project context is available.
+            image_source = raw_source
+        else:
+            relative_source = urllib.parse.unquote(parsed.path)
+            candidate = Path(relative_source)
+            if candidate.is_absolute():
+                raise ValueError(
+                    f"Markdown image path must be project-relative: '{raw_source}'."
+                )
+            image_path = (self._asset_base_dir / candidate).resolve()
+            asset_root = self._asset_root or self._asset_base_dir
+            if not image_path.is_relative_to(asset_root):
+                raise ValueError(
+                    f"Markdown image path is outside the project: '{raw_source}'."
+                )
+            if not image_path.is_file():
+                raise FileNotFoundError(
+                    f"Markdown image file does not exist: '{raw_source}'."
+                )
+
+            media_type = mimetypes.guess_type(image_path.name)[0]
+            if image_path.suffix.lower() == ".svg":
+                media_type = "image/svg+xml"
+            supported_types = {
+                "image/gif",
+                "image/jpeg",
+                "image/png",
+                "image/svg+xml",
+                "image/webp",
+            }
+            if media_type not in supported_types:
+                raise ValueError(
+                    f"Unsupported local Markdown image type for '{raw_source}'."
+                )
+            payload = image_path.read_bytes()
+            if not payload:
+                raise ValueError(f"Markdown image file is empty: '{raw_source}'.")
+            encoded = base64.b64encode(payload).decode("ascii")
+            image_source = f"data:{media_type};base64,{encoded}"
+
+        alt_attribute = html.escape(alt, quote=True)
+        title_attribute = (
+            f' title="{html.escape(title, quote=True)}"' if title is not None else ""
+        )
+        return (
+            f'<img class="knowledge-image" src="{html.escape(image_source, quote=True)}" '
+            f'alt="{alt_attribute}"{title_attribute}>'
+        )
+
     def _inline(self, text: str) -> str:
+        rendered_images: list[tuple[str, str]] = []
+
+        def replace_image(match: re.Match[str]) -> str:
+            source = match.group(2) or match.group(3) or ""
+            title = match.group(4)
+            image_html = self._render_markdown_image(
+                source, match.group(1), title
+            )
+            placeholder = f"\x00EDUTEXIMAGE{len(rendered_images)}END\x00"
+            rendered_images.append((placeholder, image_html))
+            return placeholder
+
+        text = _MARKDOWN_IMAGE_RE.sub(replace_image, text)
         marker = "__EDUTEX_BLANK__"
         text = re.sub(r"_{2,}", marker, text)
         text = html.escape(text, quote=False)
@@ -3099,7 +3199,12 @@ class HtmlRenderer:
         text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
         text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", text)
         text = re.sub(r"(?<!\w)_([^\s_][^_]*)_(?!\w)", r"<em>\1</em>", text)
-        return text.replace(marker, '<span class="blank" aria-label="blank space"></span>')
+        text = text.replace(
+            marker, '<span class="blank" aria-label="blank space"></span>'
+        )
+        for placeholder, image_html in rendered_images:
+            text = text.replace(placeholder, image_html)
+        return text
 
     def _render_toc(self) -> str:
         if not self._heading_entries:

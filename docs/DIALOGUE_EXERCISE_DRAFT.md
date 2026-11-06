@@ -2,6 +2,7 @@
 
 Stato: bozza non normativa. Non modifica il comportamento degli esercizi esistenti.
 Fase 1: solo testo. Audio e voce sono rimandati alla fase successiva.
+Versione 2: sintassi allineata al formato reale del Knowledge Model.
 
 ## 1. Obiettivo
 
@@ -23,44 +24,41 @@ Escluso:
 - servizi remoti o account;
 - salvataggio automatico dei dialoghi.
 
-## 3. Definizione nel Knowledge Model (proposta)
+## 3. Sintassi nel Knowledge Model
 
-La sintassi va allineata a quella degli esercizi esistenti prima dell'implementazione.
+Il blocco usa il formato degli esercizi esistenti: contenitore exercise, righe chiave: valore nel corpo, tipo dichiarato con type. Il parser legge un solo valore per riga, quindi le liste sono separate dal simbolo barra verticale, come le risposte alternative del tipo translation.
 
 Esempio:
 
+::: exercise
 type: dialogue
-id: dialogo-cibo-a1-01
+title: Dialogo al ristorante
 level: A1
 language: de
 topic: Essen im Restaurant
 role: Kellner
-student_goal: Ordinare un pasto completo
-vocabulary:
-  - Speisekarte
-  - bestellen
-  - Wasser
-target_structures:
-  - "Ich möchte ..."
-  - "Ich nehme ..."
+goal: Ordinare un pasto completo
+vocabulary: Speisekarte | bestellen | Wasser
+structures: Ich möchte ... | Ich nehme ...
 max_turns: 8
-success_criteria:
-  - Saluta e chiede un tavolo
-  - Ordina almeno un piatto con "Ich möchte" o "Ich nehme"
-  - Chiede il conto
-min_criteria_met: 3
+criteria: Saluta e chiede un tavolo | Ordina almeno un piatto con "Ich möchte" o "Ich nehme" | Chiede il conto
+min_criteria: 3
+:::
 
 Regole:
-- Campi obbligatori: type, id, level, language, topic, role, student_goal, success_criteria (almeno due voci).
+- Chiavi obbligatorie: type, level, language, topic, role, goal, criteria (almeno due voci).
+- Chiavi facoltative: title, vocabulary, structures, max_turns, min_criteria.
+- type deve valere esattamente dialogue, con lo stesso confronto usato per type: choice.
 - level ammette A1, A2, B1, B2, C1, C2.
 - max_turns e un intero tra 1 e 20, con default 8.
-- min_criteria_met e facoltativo; se assente vale il numero totale dei criteri.
-- id deve essere unico nel progetto.
-- vocabulary e target_structures sono facoltativi.
+- min_criteria e facoltativo; se assente vale il numero di criteri.
+- Nel corpo non sono ammesse righe di testo libero: ogni riga deve essere una chiave nota. Motivo: il parser tratta come chiave ogni riga che contiene i due punti.
+- Il blocco non contiene soluzioni annidate in questa fase.
+- Il corpo non dichiara un id: l'identificativo e generato dal renderer, come per gli altri esercizi.
 
 ## 4. Configurazione facoltativa
 
-Sezione opzionale in edutex.config.yaml:
+Sezione opzionale in edutex.config.yaml (formato YAML, come il resto della configurazione):
 
 dialogue:
   enabled: false
@@ -87,11 +85,11 @@ dialogue:
 Il prompt e generato dai campi dell'esercizio con un template fisso:
 
 - Sei un insegnante di {language} di livello {level}. Parla solo in {language}. Spiega in italiano solo se lo studente non capisce.
-- Limita la conversazione al tema: {topic}. Se lo studente esce dal tema, riportalo gentilmente.
-- Usa il lessico: {vocabulary}. Incoraggia le strutture: {target_structures}.
+- Sei {role}. Limita la conversazione all'obiettivo: {goal}, sul tema {topic}. Se lo studente esce dal tema, riportalo gentilmente.
+- Usa il lessico: {vocabulary}. Incoraggia le strutture: {structures}.
 - Fai una sola domanda per turno. Non superare {max_turns} turni.
 - Correggi gli errori in modo breve: mostra la frase corretta e poi continua.
-- Quando ti viene chiesto di valutare, controlla i criteri: {success_criteria}.
+- Quando ti viene chiesto di valutare, controlla i criteri: {criteria}.
 - Formato del verdetto, come ultime tre righe:
   - VERDETTO: SUPERATO oppure VERDETTO: NON SUPERATO
   - CRITERI: n/N
@@ -119,16 +117,16 @@ In quel caso la pagina mostra tema, ruolo, obiettivo e criteri in forma stampabi
 
 ## 10. Test previsti per l'implementazione
 
-- Validazione: campi obbligatori, valori di level, intervallo di max_turns, unicita di id.
+- Parsing: blocco valido; chiave obbligatoria mancante segnalata; riga di testo libero rifiutata; level e max_turns fuori intervallo rifiutati.
 - Rendering: il pannello contiene i dati dell'esercizio; con enabled: false compare solo il fallback.
 - Sicurezza: nessun URL remoto diverso dall'endpoint configurato; un input con script non viene eseguito.
 - Prompt: stessi campi producono lo stesso prompt.
-- Parser: casi SUPERATO, NON SUPERATO e verdetto assente.
-- Regressione: gli esercizi esistenti producono lo stesso HTML di prima.
+- Parser del verdetto: casi SUPERATO, NON SUPERATO e verdetto assente.
+- Regressione: gli esercizi esistenti (choice, translation, cloze e gli altri) producono lo stesso HTML di prima.
 
 ## 11. Domande aperte
 
-- Sintassi definitiva, allineata agli esercizi esistenti.
-- Modello consigliato per italiano e tedesco, con esempi di prova.
-- Soglia di superamento: tutti i criteri oppure un minimo min_criteria_met.
+- Confermare il separatore | per le liste, oppure usare sezioni dedicate nel blocco.
+- Confermare che l'id sia generato dal renderer, oppure dichiarato dall'autore per tracciare i log.
+- Soglia di superamento: tutti i criteri oppure min_criteria.
 - Il pannello va incluso anche nell'output a file singolo o solo nelle pagine delle lezioni?

@@ -2,7 +2,7 @@
 
 Stato: bozza non normativa. Non modifica il comportamento degli esercizi esistenti.
 Fase 1: solo testo. Audio e voce sono rimandati alla fase successiva.
-Versione 2: sintassi allineata al formato reale del Knowledge Model.
+Versione 3: liste nel formato del tipo choice.
 
 ## 1. Obiettivo
 
@@ -26,7 +26,7 @@ Escluso:
 
 ## 3. Sintassi nel Knowledge Model
 
-Il blocco usa il formato degli esercizi esistenti: contenitore exercise, righe chiave: valore nel corpo, tipo dichiarato con type. Il parser legge un solo valore per riga, quindi le liste sono separate dal simbolo barra verticale, come le risposte alternative del tipo translation.
+Il blocco usa il formato degli esercizi esistenti: contenitore exercise, righe chiave: valore nel corpo, tipo dichiarato con type. Le liste seguono il formato del tipo choice: una chiave senza valore, seguita da righe che iniziano con un trattino.
 
 Esempio:
 
@@ -38,21 +38,30 @@ language: de
 topic: Essen im Restaurant
 role: Kellner
 goal: Ordinare un pasto completo
-vocabulary: Speisekarte | bestellen | Wasser
-structures: Ich möchte ... | Ich nehme ...
 max_turns: 8
-criteria: Saluta e chiede un tavolo | Ordina almeno un piatto con "Ich möchte" o "Ich nehme" | Chiede il conto
 min_criteria: 3
+vocabulary:
+- Speisekarte
+- bestellen
+- Wasser
+structures:
+- Ich möchte ...
+- Ich nehme ...
+criteria:
+- Saluta e chiede un tavolo
+- Ordina almeno un piatto con "Ich möchte" o "Ich nehme"
+- Chiede il conto
 :::
 
 Regole:
 - Chiavi obbligatorie: type, level, language, topic, role, goal, criteria (almeno due voci).
 - Chiavi facoltative: title, vocabulary, structures, max_turns, min_criteria.
+- Chiavi di lista: vocabulary, structures, criteria. Ogni voce e una riga che inizia con un trattino.
 - type deve valere esattamente dialogue, con lo stesso confronto usato per type: choice.
 - level ammette A1, A2, B1, B2, C1, C2.
 - max_turns e un intero tra 1 e 20, con default 8.
 - min_criteria e facoltativo; se assente vale il numero di criteri.
-- Nel corpo non sono ammesse righe di testo libero: ogni riga deve essere una chiave nota. Motivo: il parser tratta come chiave ogni riga che contiene i due punti.
+- Nel corpo sono ammesse solo chiavi note, voci di lista e righe vuote. Il testo libero e rifiutato.
 - Il blocco non contiene soluzioni annidate in questa fase.
 - Il corpo non dichiara un id: l'identificativo e generato dal renderer, come per gli altri esercizi.
 
@@ -74,6 +83,7 @@ dialogue:
 
 - Il pannello mostra tema, ruolo, obiettivo, criteri e il pulsante "Avvia".
 - All'avvio il pannello invia una richiesta POST {endpoint}/api/chat con il prompt di sistema e i messaggi dello studente.
+- Il prompt di sistema e costruito in Python dai campi dell'esercizio e incorporato nella pagina come dato, non ricostruito nel JavaScript.
 - L'output del modello e mostrato solo come testo, mai come HTML.
 - Lo stato resta in memoria. Nessuna persistenza automatica.
 - Al raggiungimento di max_turns, o con il pulsante "Termina e valuta", il modello produce il verdetto.
@@ -117,7 +127,7 @@ In quel caso la pagina mostra tema, ruolo, obiettivo e criteri in forma stampabi
 
 ## 10. Test previsti per l'implementazione
 
-- Parsing: blocco valido; chiave obbligatoria mancante segnalata; riga di testo libero rifiutata; level e max_turns fuori intervallo rifiutati.
+- Parsing: blocco valido; chiave obbligatoria mancante segnalata; lista vuota o con una sola voce rifiutata; riga di testo libero rifiutata; level e max_turns fuori intervallo rifiutati.
 - Rendering: il pannello contiene i dati dell'esercizio; con enabled: false compare solo il fallback.
 - Sicurezza: nessun URL remoto diverso dall'endpoint configurato; un input con script non viene eseguito.
 - Prompt: stessi campi producono lo stesso prompt.
@@ -126,7 +136,6 @@ In quel caso la pagina mostra tema, ruolo, obiettivo e criteri in forma stampabi
 
 ## 11. Domande aperte
 
-- Confermare il separatore | per le liste, oppure usare sezioni dedicate nel blocco.
-- Confermare che l'id sia generato dal renderer, oppure dichiarato dall'autore per tracciare i log.
 - Soglia di superamento: tutti i criteri oppure min_criteria.
+- Confermare che l'id sia generato dal renderer, oppure dichiarato dall'autore per tracciare i log.
 - Il pannello va incluso anche nell'output a file singolo o solo nelle pagine delle lezioni?

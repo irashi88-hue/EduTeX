@@ -162,6 +162,8 @@ class HtmlRenderer:
         self._heading_entries: list[tuple[int, str, str]] = []
         self._used_ids: set[str] = set()
         self._labels = _EDUTEX_UI_LABELS[_ui_language(getattr(meta, "language", "en"))]
+        self._ui_language_code = _ui_language(getattr(meta, "language", "en"))
+        self._dialogue_config = dialogue_config
         body_parts: list[str] = []
         for _, item in iter_positioned_items(doc.elements, doc.prose_blocks):
             if isinstance(item, TextBlock):
@@ -1737,6 +1739,8 @@ class HtmlRenderer:
                     )
                 elif self._is_choice_exercise(body):
                     content = self._render_choice_exercise(body, section_id)
+                elif self._is_dialogue_exercise(body):
+                    content = self._render_dialogue_exercise(body, section_id)
                 else:
                     content = self._render_exercise_body(body, section_id)
                 solution_id = getattr(element, "solution_id", "")
@@ -2456,6 +2460,21 @@ class HtmlRenderer:
             f'</div></div>'
         )
         return "\n".join(rendered)
+
+    def _is_dialogue_exercise(self, body: str) -> bool:
+        from edutex.build.dialogue import is_dialogue_body
+
+        return is_dialogue_body(body)
+
+    def _render_dialogue_exercise(self, body: str, exercise_id: str) -> str:
+        from edutex.build.dialogue_render import render_dialogue_exercise
+
+        return render_dialogue_exercise(
+            body,
+            exercise_id,
+            ui_language=self._ui_language_code,
+            config=self._dialogue_config,
+        )
 
     def _render_exercise_body(self, body: str, exercise_id: str) -> str:
         """Render exercise text and turn underscore blanks into text inputs."""

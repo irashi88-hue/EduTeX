@@ -177,6 +177,7 @@ class BuildService:
                     theme=theme.theme_model,
                     asset_base_dir=knowledge_model_path.resolve().parent,
                     asset_root=project_root.resolve(),
+                    dialogue_config=config.dialogue,
                 )
             except Exception as exc:
                 raise BuildError(f"HTML rendering failed: {exc}") from exc

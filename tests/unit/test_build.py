@@ -50,6 +50,7 @@ def test_build_service_clears_stale_artifacts_on_failure(tmp_path, monkeypatch):
             theme,
             asset_base_dir=None,
             asset_root=None,
+            dialogue_config=None,
         ):
             if self.calls:
                 raise RuntimeError("synthetic renderer failure")

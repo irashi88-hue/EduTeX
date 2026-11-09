@@ -149,6 +149,7 @@ class HtmlRenderer:
         *,
         asset_base_dir: Path | None = None,
         asset_root: Path | None = None,
+        dialogue_config: object | None = None,
     ) -> str:
         self._asset_base_dir = (
             Path(asset_base_dir).resolve() if asset_base_dir is not None else None

@@ -170,6 +170,28 @@ class RuntimeConfig(_ImmutableConfigModel):
     references: tuple[RuntimeReference, ...] = ()
 
 
+class DialogueConfig(_ImmutableConfigModel):
+    """Optional text-only dialogue exercises backed by a local model endpoint."""
+
+    enabled: bool = False
+    endpoint: str = "http://localhost:11434"
+    model: str = ""
+    timeout_seconds: int = Field(default=60, ge=1, le=600)
+
+    @field_validator("endpoint")
+    @classmethod
+    def _endpoint_must_be_http(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("dialogue endpoint must start with http:// or https://")
+        return value
+
+    @model_validator(mode="after")
+    def _model_required_when_enabled(self) -> "DialogueConfig":
+        if self.enabled and not self.model.strip():
+            raise ValueError("dialogue.model is required when dialogue.enabled is true")
+        return self
+
+
 class EduTexConfig(_ImmutableConfigModel):
     """Root configuration model for the EduTeX framework."""
 
@@ -181,3 +203,4 @@ class EduTexConfig(_ImmutableConfigModel):
     extensions: ExtensionsConfig = Field(default_factory=ExtensionsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
+    dialogue: DialogueConfig = Field(default_factory=DialogueConfig)

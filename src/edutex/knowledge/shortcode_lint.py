@@ -93,6 +93,10 @@ class ShortcodeLinter:
         elif declared=="matching":
             words=self._list_after(lines,"words:"); meanings=self._list_after(lines,"meanings:"); self._require(bool(words) and len(words)==len(meanings),"matching requires equally sized words and meanings lists.",report,line,shortcode)
         elif declared=="translation": self._require(any(item.startswith(("source:","text:","prompt:")) for item in lower),"translation requires source text.",report,line,shortcode)
+        elif declared=="dialogue":
+            from edutex.build.dialogue import parse_dialogue_body
+            for error in parse_dialogue_body(body).errors:
+                self._add(report,"error","SC105",f"dialogue: {error}","Correct the dialogue exercise fields.",line=line,shortcode=shortcode)
         elif declared=="choice":
             options=self._list_after(lines,"options:"); self._require(any(item.startswith(("question:","prompt:")) for item in lower) and len(options)>=2,"choice requires a question and at least two options.",report,line,shortcode)
     @staticmethod

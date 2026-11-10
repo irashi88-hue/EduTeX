@@ -40,6 +40,10 @@ tools/               # Developer tooling scripts
 
 
 
+## Release 1.10.0 - Dialogue exercises
+
+EduTeX 1.10.0 adds the `dialogue` exercise type for text-only oral practice. The standard path opens a Langdock agent configured in `dialogue.langdock_url` and copies the exercise instructions to the clipboard. A printable native-speaker card is always shown as an alternative. The build lint recognises the type and validates its fields. New courses start with a setup lesson for creating the agent. Projects without `dialogue` keep their 1.9.x behavior, and extensions declaring `>=1.0.0,<2.0.0` remain compatible.
+
 ## Release 1.9.0 - Runtime operation scopes
 
 EduTeX 1.9.0 adds an optional `runtime` configuration section. It declares candidate assets and typed references; required references are included transitively in an operation's scope, while optional references never expand it. Projects without `runtime` keep their 1.8.x behavior.

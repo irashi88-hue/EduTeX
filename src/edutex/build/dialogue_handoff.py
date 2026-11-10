@@ -21,6 +21,7 @@ from edutex.build.dialogue_render import (
 )
 
 EXERCISE_TAG = "ESERCIZIO DIALOGO"
+END_RULE = "Chiusura: non dare mai il verdetto a metà dialogo. Dai il verdetto finale solo quando lo studente scrive VALUTA, oppure quando il dialogo si è concluso naturalmente con il saluto finale. Usa il formato indicato, come ultime tre righe."
 
 _HANDOFF_LABELS: dict[str, dict[str, str]] = {
     "it": {
@@ -92,6 +93,8 @@ def _exercise_text(spec: DialogueSpec, start_prompt: str) -> str:
             f"[{EXERCISE_TAG}: {title}]",
             "",
             build_system_prompt(spec),
+            "",
+            END_RULE,
             "",
             start_prompt,
         ]

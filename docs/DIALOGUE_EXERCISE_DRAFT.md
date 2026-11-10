@@ -12,10 +12,10 @@ Permettere a una lezione HTML di proporre un breve dialogo guidato su un tema li
 
 Incluso:
 - nuovo tipo di esercizio dialogue nel Knowledge Model;
-- configurazione facoltativa dell'endpoint;
+- link facoltativo all'agente Langdock;
 - prompt di sistema generato in modo deterministico;
 - verdetto testuale con parser;
-- fallback stampabile quando il modello non e disponibile;
+- fallback stampabile quando il link all'agente non è configurato;
 - test previsti.
 
 Escluso:
@@ -65,77 +65,97 @@ Regole:
 - Il blocco non contiene soluzioni annidate in questa fase.
 - Il corpo non dichiara un id: l'identificativo e generato dal renderer, come per gli altri esercizi.
 
-## 4. Configurazione facoltativa
+## 4. Configurazione
 
-Sezione opzionale in edutex.config.yaml (formato YAML, come il resto della configurazione):
+Il collegamento all'agente va nella sezione `dialogue` di `edutex.config.yaml`:
 
+~~~yaml
 dialogue:
-  enabled: false
-  endpoint: http://localhost:11434
-  model: nome-del-modello-installato
-  timeout_seconds: 60
+  langdock_url: https://app.langdock.com/chat?a=ID-DELL-AGENTE
+~~~
 
-- Il default e enabled: false: senza configurazione la pagina mostra solo il fallback.
-- Non esiste un modello predefinito: va indicato esplicitamente.
-- L'unica chiamata di rete consentita e verso endpoint.
+- `langdock_url` è facoltativo e deve iniziare con `https://`.
+- Senza `langdock_url` la pagina mostra solo la traccia per il madrelingua.
+- Il valore è personale: non va committato nel repo.
+- I campi `enabled`, `endpoint`, `model` e `timeout_seconds` riguardano l'integrazione con Ollama, rinviata (sezione 9).
 
 ## 5. Comportamento nella pagina HTML
 
-- Il pannello mostra tema, ruolo, obiettivo, criteri e il pulsante "Avvia".
-- All'avvio il pannello invia una richiesta POST {endpoint}/api/chat con il prompt di sistema e i messaggi dello studente.
-- Il prompt di sistema e costruito in Python dai campi dell'esercizio e incorporato nella pagina come dato, non ricostruito nel JavaScript.
-- L'output del modello e mostrato solo come testo, mai come HTML.
-- Lo stato resta in memoria. Nessuna persistenza automatica.
-- Al raggiungimento di max_turns, o con il pulsante "Termina e valuta", il modello produce il verdetto.
-- Pulsante facoltativo "Scarica trascrizione" che salva un file di testo sul computer dello studente.
-- Avviso visibile: il verdetto e indicativo e non sostituisce la valutazione dell'insegnante.
+Ogni esercizio `dialogue` mostra due percorsi:
 
-## 6. Prompt di sistema
+- **Agente (percorso standard).** Il pulsante "Apri l'agente e copia l'esercizio" copia nel dispositivo il testo dell'esercizio e apre l'agente in una nuova scheda. Se gli appunti non sono disponibili, compare un'area di testo da copiare a mano. Se il browser blocca la scheda, compare il link diretto.
+- **Madrelingua (alternativa).** La sezione "Alternativa: parla con un madrelingua" riporta ruolo, obiettivo, tema e criteri, con checkbox per l'autovalutazione. Il verdetto in questo caso lo dà il madrelingua o l'insegnante.
 
-Il prompt e generato dai campi dell'esercizio con un template fisso:
+Regole di comportamento:
 
-- Sei un insegnante di {language} di livello {level}. Parla solo in {language}. Spiega in italiano solo se lo studente non capisce.
-- Interpreta: {role}. Limita la conversazione all'obiettivo: {goal}, sul tema {topic}. Se lo studente esce dal tema, riportalo gentilmente.
-- Usa il lessico: {vocabulary}. Incoraggia le strutture: {structures}.
-- Fai una sola domanda per turno. Non superare {max_turns} turni.
-- Correggi gli errori in modo breve: mostra la frase corretta e poi continua.
-- Quando ti viene chiesto di valutare, controlla i criteri: {criteria}.
-- Formato del verdetto, come ultime tre righe:
-  - VERDETTO: SUPERATO oppure VERDETTO: NON SUPERATO
-  - CRITERI: n/N
-  - una breve motivazione in italiano
+- La pagina non effettua chiamate di rete: il link all'agente è solo un collegamento.
+- Il testo dell'esercizio viene escapato: nessun contenuto dell'autore è interpretato come HTML.
+- Le conversazioni avvengono in Langdock, non nella pagina. Non c'è trascrizione automatica.
 
-Il template deve produrre lo stesso testo per gli stessi campi.
+## 6. Istruzioni dell'agente
 
-## 7. Parser del verdetto
+Le istruzioni generali dell'agente si incollano una sola volta nella configurazione dell'agente in Langdock:
 
-- Cerca la riga VERDETTO: nelle ultime righe della risposta.
-- Se e assente o malformata, mostra "Verdetto non disponibile: serve la valutazione dell'insegnante".
-- Il parser non ricalcola i criteri: mostra quanto dichiarato dal modello.
+~~~text
+Sei un insegnante di lingue che svolge esercizi di dialogo guidato.
 
-## 8. Fallback
+Quando ricevi un messaggio che inizia con "ESERCIZIO DIALOGO", leggi le istruzioni che seguono e applicale per tutta la conversazione: lingua, ruolo, obiettivo, lessico, strutture, numero massimo di turni e criteri di valutazione.
 
-Il fallback e attivo quando enabled e false, l'endpoint non risponde, scade il timeout o il modello non e installato.
+Se ricevi un messaggio senza il blocco "ESERCIZIO DIALOGO", chiedi allo studente di incollare il testo dell'esercizio dalla pagina del corso.
 
-In quel caso la pagina mostra tema, ruolo, obiettivo e criteri in forma stampabile, con una checklist di autovalutazione. Nessun errore bloccante e nessuna risorsa esterna.
+Dai il verdetto solo quando lo studente scrive VALUTA, oppure quando il dialogo si è concluso naturalmente con il saluto finale. Non dare mai il verdetto a metà dialogo. Quando lo fai, usa il formato indicato nelle istruzioni, come ultime tre righe. Rispondi sempre nella lingua indicata nell'esercizio.
+~~~
 
-## 9. Sicurezza e privacy
+## 7. Testo copiato e prompt
 
-- Nessuna dipendenza remota nella pagina: la sola chiamata di rete e verso l'endpoint configurato.
-- L'output del modello e inserito come testo semplice, senza HTML interpretato.
-- Nessun dato viene inviato a terzi. Nessuna persistenza automatica.
+Il testo copiato è composto da:
 
-## 10. Test previsti per l'implementazione
+- la riga `[ESERCIZIO DIALOGO: titolo]`;
+- il prompt generato da `build_system_prompt` a partire dai campi dell'esercizio;
+- la regola di chiusura;
+- la frase di avvio nella lingua dell'esercizio.
 
-- Parsing: blocco valido; chiave obbligatoria mancante segnalata; lista vuota o con una sola voce rifiutata; riga di testo libero rifiutata; level e max_turns fuori intervallo rifiutati.
-- Rendering: il pannello contiene i dati dell'esercizio; con enabled: false compare solo il fallback.
-- Sicurezza: nessun URL remoto diverso dall'endpoint configurato; un input con script non viene eseguito.
-- Prompt: stessi campi producono lo stesso prompt.
-- Parser del verdetto: casi SUPERATO, NON SUPERATO e verdetto assente.
-- Regressione: gli esercizi esistenti (choice, translation, cloze e gli altri) producono lo stesso HTML di prima.
+Il prompt segue un template fisso, quindi gli stessi campi producono sempre lo stesso testo. La regola di chiusura impone questi comportamenti:
 
-## 11. Domande aperte
+- non dare il verdetto a metà dialogo;
+- dare il verdetto solo su richiesta con VALUTA, oppure a fine dialogo;
+- usare come ultime tre righe il formato `VERDETTO:`, `CRITERI:` e una motivazione breve.
 
-- Soglia di superamento: tutti i criteri oppure min_criteria.
-- Confermare che l'id sia generato dal renderer, oppure dichiarato dall'autore per tracciare i log.
-- Il pannello va incluso anche nell'output a file singolo o solo nelle pagine delle lezioni?
+Il limite di turni è una regola per l'agente. La pagina non lo conta e non lo verifica.
+
+## 8. Verdetto
+
+Il verdetto è prodotto dall'agente e mostrato nella chat. La pagina non lo legge. Il parser `parse_verdict` resta disponibile per usi futuri.
+
+Il verdetto è indicativo e non sostituisce la valutazione dell'insegnante.
+
+## 9. Percorsi non standard (rinviati)
+
+L'integrazione con Ollama, attivabile con `enabled: true`, mostra un pannello che chiama un endpoint locale. Non è il percorso standard ed è rinviata per questioni di prestazioni: la GPU AMD RX 5700 non viene usata in modo affidabile da Ollama su Windows. Il codice resta nel repo, ma non è documentato come supportato.
+
+## 10. Errori e fallback
+
+- Link non `https://`: la pagina mostra un errore visibile e non crea il pulsante.
+- Esercizio non valido: la pagina mostra l'elenco degli errori di parsing.
+- Lint: il tipo `dialogue` è riconosciuto e la regola sulla soluzione annidata non si applica. Il lint non verifica ancora i campi obbligatori: gli errori compaiono nella pagina.
+
+## 11. Sicurezza e privacy
+
+- Nessuna chiave API nella pagina e nel repo.
+- Il link all'agente è personale e non va committato.
+- Le conversazioni passano dai server di Langdock. Se gli studenti sono minorenni o i dati sono di un istituto, verificare con il responsabile privacy prima dell'uso.
+
+## 12. Test
+
+I test di riferimento sono:
+
+- `tests/unit/test_dialogue_contract.py`: parsing;
+- `tests/unit/test_dialogue_config_contract.py`: configurazione;
+- `tests/unit/test_dialogue_render_contract.py`: rendering con Ollama, rinviato ma ancora verde;
+- `tests/unit/test_dialogue_handoff_contract.py`: percorso agente e madrelingua, sicurezza del link, testo copiato e regola di chiusura.
+
+## 13. Domande aperte
+
+- Il lint dovrebbe validare i campi obbligatori del dialogo?
+- Serve un contatore dei turni verificabile, oppure la regola per l'agente è sufficiente?
+- Quando si introdurrà la voce, il percorso con l'agente resterà lo standard?

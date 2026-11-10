@@ -157,5 +157,5 @@ I test di riferimento sono:
 ## 13. Domande aperte
 
 - Il lint dovrebbe validare i campi obbligatori del dialogo?
-- Serve un contatore dei turni verificabile, oppure la regola per l'agente è sufficiente?
+- Limite di turni: deciso di affidarlo alla regola per l'agente, senza contatore nella pagina.
 - Quando si introdurrà la voce, il percorso con l'agente resterà lo standard?

@@ -9,6 +9,12 @@ modules:
   - id: module-01
     title: "Getting started"
     lessons:
+      - id: lesson-00
+        title: "Preparazione: crea l'agente del dialogo"
+        source: assets/knowledge_models/00-preparazione.md
+        duration_minutes: 15
+        objectives:
+          - "Creare l'agente per il dialogo, oppure decidere di saltare il passo"
       - id: lesson-01
         title: "First lesson"
         source: assets/knowledge_models/example.md

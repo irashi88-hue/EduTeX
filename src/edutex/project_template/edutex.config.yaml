@@ -14,3 +14,7 @@ extensions:
   enabled: []
 logging:
   level: "INFO"
+
+dialogue:
+  # Link all'agente Langdock (https://...). Vuoto: solo traccia per il madrelingua.
+  langdock_url: ""

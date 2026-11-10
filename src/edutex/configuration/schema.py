@@ -177,6 +177,7 @@ class DialogueConfig(_ImmutableConfigModel):
     endpoint: str = "http://localhost:11434"
     model: str = ""
     timeout_seconds: int = Field(default=60, ge=1, le=600)
+    langdock_url: str = ""
 
     @field_validator("endpoint")
     @classmethod

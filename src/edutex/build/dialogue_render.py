@@ -429,6 +429,11 @@ def render_dialogue_exercise(
     Returns an error block when the body is invalid, a static printable block
     when the dialogue is disabled or absent, and an interactive panel otherwise.
     """
+    langdock_url = str(getattr(config, "langdock_url", "") or "").strip()
+    if langdock_url:
+        from edutex.build.dialogue_handoff import render_langdock_handoff
+
+        return render_langdock_handoff(body, exercise_id, ui_language=ui_language, langdock_url=langdock_url)
     labels = _labels_for(ui_language)
     parsed = parse_dialogue_body(body)
     eid = _esc(exercise_id)

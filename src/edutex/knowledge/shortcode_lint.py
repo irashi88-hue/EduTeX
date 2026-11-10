@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from .parser import ParseError, parse
 
-INTERACTIVE_TYPES={"cloze","short_answer","short-answer","true_false","true-false","builder","sentence-builder","matching","translation","choice"}
+INTERACTIVE_TYPES={"cloze","short_answer","short-answer","true_false","true-false","builder","sentence-builder","matching","translation","choice","dialogue"}
 
 @dataclass(frozen=True)
 class Diagnostic:
@@ -74,7 +74,7 @@ class ShortcodeLinter:
         if node_type=="example" and subtype=="comparative" and not any(item.strip().startswith(("+","-")) for item in body.splitlines() if item.strip()): self._add(report,"warning","SC204","Comparative example has no + or - entry.","Prefix correct lines with + and incorrect lines with -.",line=line,shortcode=shortcode)
         if node_type=="exercise":
             children=[item for item in node.get("children",[]) if item.get("type")=="solution"]
-            if not children:self._add(report,"warning","SC201","Exercise has no nested solution.","Add a solution shortcode before the exercise closing delimiter.",line=line,shortcode=shortcode)
+            if not children and not re.search(r"^\s*type\s*:\s*dialogue\s*$",body,re.IGNORECASE|re.MULTILINE):self._add(report,"warning","SC201","Exercise has no nested solution.","Add a solution shortcode before the exercise closing delimiter.",line=line,shortcode=shortcode)
             self._lint_exercise(body,children,report,line,shortcode)
     def _lint_exercise(self,body,solutions,report,line,shortcode):
         declared=""

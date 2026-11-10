@@ -42,6 +42,7 @@ def test_handoff_renders_button_and_link() -> None:
     out = render_dialogue_exercise(VALID_BODY, "ex-1", ui_language="it", config=HANDOFF)
 
     assert "data-langdock-handoff" in out
+    assert "madrelingua" in out
     assert f'href="{URL}"' in out
 
 
@@ -60,6 +61,7 @@ def test_copied_text_contains_the_exact_system_prompt() -> None:
     assert spec is not None
     assert data["text"].startswith("[ESERCIZIO DIALOGO")
     assert build_system_prompt(spec) in data["text"]
+    assert "VALUTA" in data["text"]
 
 
 def test_non_https_url_is_rejected() -> None:

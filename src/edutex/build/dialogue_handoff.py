@@ -11,7 +11,7 @@ from typing import Any
 from edutex.build.dialogue import DialogueSpec, build_system_prompt, parse_dialogue_body
 from edutex.build.dialogue_render import (
     _esc,
-    _fallback_html,
+
     _header,
     _labels_for,
     _render_errors,
@@ -101,6 +101,48 @@ def _exercise_text(spec: DialogueSpec, start_prompt: str) -> str:
     )
 
 
+_NATIVE_LABELS: dict[str, dict[str, str]] = {
+    "it": {
+        "title": "Alternativa: parla con un madrelingua",
+        "intro": "Se non usi l'agente, svolgi il dialogo con un madrelingua o con un compagno che interpreta il ruolo indicato.",
+        "role": "Ruolo del madrelingua",
+        "goal": "Obiettivo",
+        "topic": "Tema",
+        "criteria": "Criteri da verificare",
+        "verdict": "Il verdetto lo dà il madrelingua o l'insegnante, usando questi criteri.",
+    },
+    "en": {
+        "title": "Alternative: practise with a native speaker",
+        "intro": "If you do not use the agent, do the dialogue with a native speaker or a partner who plays the role.",
+        "role": "Native speaker's role",
+        "goal": "Goal",
+        "topic": "Topic",
+        "criteria": "Criteria to check",
+        "verdict": "The verdict is given by the native speaker or the teacher, using these criteria.",
+    },
+}
+
+
+def _native_section(spec: DialogueSpec, ui_language: str | None) -> str:
+    code = str(ui_language or "en").strip().lower()[:2]
+    nl = _NATIVE_LABELS.get(code, _NATIVE_LABELS["en"])
+    boxes = "".join(
+        f'<li><label><input type="checkbox"> {_esc(criterion)}</label></li>'
+        for criterion in spec.criteria
+    )
+    return (
+        '<div class="edutex-dialogue-native">\n'
+        f"<h4>{_esc(nl['title'])}</h4>\n"
+        f"<p>{_esc(nl['intro'])}</p>\n"
+        f"<p><strong>{_esc(nl['role'])}:</strong> {_esc(spec.role)}. "
+        f"<strong>{_esc(nl['goal'])}:</strong> {_esc(spec.goal)}. "
+        f"<strong>{_esc(nl['topic'])}:</strong> {_esc(spec.topic)}.</p>\n"
+        f"<p><strong>{_esc(nl['criteria'])}</strong></p>\n"
+        f"<ul>{boxes}</ul>\n"
+        f"<p>{_esc(nl['verdict'])}</p>\n"
+        "</div>\n"
+    )
+
 def render_langdock_handoff(
     body: str,
     exercise_id: str,
@@ -134,11 +176,12 @@ def render_langdock_handoff(
     inner = (
         _header(spec, base)
         + _summary_html(spec, base)
-        + _fallback_html(spec, base, hidden=False)
+        + ""
         + '<div class="edutex-dialogue-actions">\n'
         + f'<button type="button" data-langdock-handoff>{_esc(hl["button"])}</button>\n'
         + f'<a href="{_esc(url)}" target="_blank" rel="noopener noreferrer">{_esc(hl["open_link"])}</a>\n'
         + "</div>\n"
+        + _native_section(spec, ui_language)
         + '<p class="edutex-dialogue-status" data-langdock-status role="status"></p>\n'
         + f'<textarea data-langdock-text readonly rows="10" hidden>{_esc(text)}</textarea>\n'
         + f'<script type="application/json" data-langdock-config>{_script_json(data)}</script>\n'

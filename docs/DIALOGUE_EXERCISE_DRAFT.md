@@ -6,7 +6,7 @@ Versione 3: liste nel formato del tipo choice.
 
 ## 1. Obiettivo
 
-Permettere a una lezione HTML di proporre un breve dialogo guidato su un tema limitato. Un modello linguistico locale (Ollama) interpreta il ruolo di insegnante, corregge gli errori e fornisce un verdetto indicativo.
+Permettere a una lezione HTML di proporre un breve dialogo guidato su un tema limitato. Un agente di chat (Langdock), configurato dall'insegnante, interpreta il ruolo di insegnante, corregge gli errori e fornisce un verdetto indicativo. In alternativa, una traccia stampabile permette di svolgere il dialogo con un madrelingua.
 
 ## 2. Ambito
 
